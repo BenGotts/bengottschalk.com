@@ -2,7 +2,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 
-const projects = [
+interface Project {
+  title: string;
+  startDate: string;
+  endDate: string;
+  technologies: string;
+  details: string[];
+  githubLink: string;
+  projectLink?: string;
+}
+
+const projects: Project[] = [
     {
       title: "Next.js Personal Website",
       startDate: "Dec 2023",
@@ -99,19 +109,19 @@ const projects = [
       },
   ];
   
-  const parseDate = (dateStr) => {
+  const parseDate = (dateStr: string): Date => {
     if (!dateStr) return new Date(); // Treat projects without an end date as ongoing, i.e., very recent
     const [monthStr, year] = dateStr.split(' ');
     const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(monthStr);
-    return new Date(year, month);
+    return new Date(parseInt(year), month);
   };
   
   // Sort projects by startDate and endDate, newest first
 projects.sort((a, b) => {
-    const startDiff = parseDate(b.startDate) - parseDate(a.startDate);
+    const startDiff = parseDate(b.startDate).getTime() - parseDate(a.startDate).getTime();
     if (startDiff !== 0) return startDiff;
     // If startDate is the same, sort by endDate, considering ongoing projects as the newest
-    return parseDate(b.endDate || "Dec 9999") - parseDate(a.endDate || "Dec 9999"); // Treat no endDate as far future
+    return parseDate(b.endDate || "Dec 9999").getTime() - parseDate(a.endDate || "Dec 9999").getTime(); // Treat no endDate as far future
   });
   
 
@@ -171,3 +181,5 @@ export default function MyProjects() {
         </section>
       );
 }
+
+

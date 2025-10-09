@@ -3,8 +3,9 @@ import Connect from "@/components/about/Connect";
 import Experience from "@/components/about/Experience";
 import HobbiesInterests from "@/components/about/HobbiesInterests";
 import MyProjects from "@/components/about/MyProjects";
+import { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'About Me | bengottschalk.com',
   description: 'Learn more about Benjamin Gottschalk and how to connect with him.',
 }
@@ -20,3 +21,5 @@ export default function About() {
     </div>
   )
 }
+
+

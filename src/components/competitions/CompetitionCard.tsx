@@ -6,8 +6,14 @@ import Link from "next/link";
 import "@cubing/icons";
 import ReactCountryFlag from "react-country-flag";
 import { WCA_ID } from "@/consts";
+import { Competition } from "@/lib/types";
 
-export default function CompetitionCard({ competition, isOngoing = false }) {
+interface CompetitionCardProps {
+  competition: Competition;
+  isOngoing?: boolean;
+}
+
+export default function CompetitionCard({ competition, isOngoing = false }: CompetitionCardProps) {
     // Check if I'm a delegate or organizer for this competition
     const isMyDelegate = competition.delegates?.some(delegate => delegate.wca_id === WCA_ID);
     const isMyOrganizer = competition.organizers?.some(organizer => organizer.wca_id === WCA_ID);

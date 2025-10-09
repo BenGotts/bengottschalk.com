@@ -2,17 +2,33 @@ import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
 // import PastCompetitions from "@/components/competitions/PastCompetitions"
 import { WCA_ID } from "@/consts";
+import { Metadata } from 'next';
 // import { Separator } from "@/components/ui/separator";
 
 export const revalidate = 3600;
-export const metadata = {
+export const metadata: Metadata = {
   title: "Competitions | bengottschalk.com",
   description: "List of competitions that Benjamin Gottschalk is attending.",
 }
 
+interface Competition {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  country_iso2: string;
+  city: string;
+  website: string;
+}
+
+interface UserInfo {
+  upcoming_competitions: Competition[];
+  ongoing_competitions: Competition[];
+}
+
 export default async function CompetitionsPage() {
   const userInfo = await fetch(`https://www.worldcubeassociation.org/api/v0/users/${WCA_ID}?upcoming_competitions=true&ongoing_competitions=true`)
-  .then(response => response.json());
+  .then(response => response.json() as Promise<UserInfo>);
 
   
   // const userInfoPromise = fetch(`https://www.worldcubeassociation.org/api/v0/users/${WCA_ID}?upcoming_competitions=true&ongoing_competitions=true`)
@@ -42,3 +58,5 @@ export default async function CompetitionsPage() {
     </div>
   )
 }
+
+

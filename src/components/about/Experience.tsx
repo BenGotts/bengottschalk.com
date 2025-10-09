@@ -1,7 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-const experiences = [
+interface JobExperience {
+  title: string;
+  company: string;
+  startDate: string;
+  endDate: string;
+  details: string[];
+}
+
+const experiences: JobExperience[] = [
   {
     title: "Software Development Engineer",
     company: "Marchex (MPS)",
@@ -78,3 +86,5 @@ export default function Experience() {
     </section>
   )
 }
+
+

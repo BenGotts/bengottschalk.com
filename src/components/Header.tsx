@@ -1,13 +1,17 @@
-
 'use client'
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useState } from "react"
 
+interface MenuItem {
+  name: string;
+  href: string;
+}
+
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       name: "Home",
       href: "/"
@@ -23,6 +27,10 @@ export default function Header() {
     {
       name: "Projects",
       href: "https://github.com/BenGotts?tab=repositories"
+    },
+    {
+      name: "Services",
+      href: "/services"
     },
     {
       name: "About",
@@ -55,6 +63,7 @@ export default function Header() {
             <Link href="/competitions" className="text-white hover:text-blue-200 transition-colors">Competitions</Link>
             <Link href="https://wca.bengottschalk.com" target="_blank" className="text-white hover:text-blue-200 transition-colors">WCA</Link>
             <Link href="https://github.com/BenGotts?tab=repositories" target="_blank" className="text-white hover:text-blue-200 transition-colors">Projects</Link>
+            <Link href="/services" className="text-white hover:text-blue-200 transition-colors">Services</Link>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -112,3 +121,5 @@ export default function Header() {
     </header>
   )
 }
+
+

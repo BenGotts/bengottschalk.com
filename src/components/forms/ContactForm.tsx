@@ -9,14 +9,14 @@ export default function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const clientAction = async (formData) => {
+  const clientAction = async (formData: FormData) => {
     setIsSubmitting(true);
     setError("");
 
     const contactData = {
-      name: formData.get('name'),
-      email: formData.get('email'),
-      message: formData.get('message'),
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      message: formData.get('message') as string,
     }
 
     const result = ContactFormSchema.safeParse(contactData);
@@ -130,3 +130,5 @@ export default function ContactForm() {
     </div>
   )
 }
+
+

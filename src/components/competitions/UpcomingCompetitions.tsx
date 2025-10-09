@@ -1,8 +1,13 @@
 "use client";
 
 import CompetitionCard from "./CompetitionCard";
+import { Competition } from "@/lib/types";
 
-export default function UpcomingCompetitions({ competitions }) {
+interface UpcomingCompetitionsProps {
+  competitions: Competition[];
+}
+
+export default function UpcomingCompetitions({ competitions }: UpcomingCompetitionsProps) {
     if (!competitions || competitions.length === 0) {
         return <div className="text-center text-gray-500 py-8">No upcoming competitions found.</div>;
     }
@@ -15,3 +20,5 @@ export default function UpcomingCompetitions({ competitions }) {
         </div>
     );
 }
+
+

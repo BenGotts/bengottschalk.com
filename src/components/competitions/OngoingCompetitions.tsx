@@ -1,8 +1,13 @@
 "use client";
 
 import CompetitionCard from "./CompetitionCard";
+import { Competition } from "@/lib/types";
 
-export default function OngoingCompetitions({ competitions }) {
+interface OngoingCompetitionsProps {
+  competitions: Competition[];
+}
+
+export default function OngoingCompetitions({ competitions }: OngoingCompetitionsProps) {
     if (!competitions || competitions.length === 0) {
         return null;
     }
