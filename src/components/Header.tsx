@@ -29,10 +29,6 @@ export default function Header() {
       name: "Competitions",
       href: "/competitions"
     },
-    {
-      name: "Contact",
-      href: "/contact"
-    },
   ]
 
   return (

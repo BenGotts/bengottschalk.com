@@ -7,14 +7,26 @@ export default function QuickProposalCTA() {
 
   useEffect(() => {
     const toggleVisibility = () => {
-      if (window.scrollY > 500) {
-        setIsVisible(true)
-      } else {
-        setIsVisible(false)
+      const footer = document.querySelector('footer')
+      const scrollY = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      
+      // Show button if scrolled down more than 500px
+      const shouldShow = scrollY > 500
+      
+      // Hide button if footer is in viewport
+      let hideForFooter = false
+      if (footer) {
+        const footerTop = footer.getBoundingClientRect().top
+        hideForFooter = footerTop < windowHeight
       }
+      
+      setIsVisible(shouldShow && !hideForFooter)
     }
 
     window.addEventListener('scroll', toggleVisibility)
+    toggleVisibility() // Check on mount
     return () => window.removeEventListener('scroll', toggleVisibility)
   }, [])
 
