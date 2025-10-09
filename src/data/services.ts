@@ -26,7 +26,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Professional UI/UX design'
         ],
         popular: true,
-        priceRange: 'Starting at $2,500'
+        priceRange: 'Starting at $1,500'
       },
       {
         title: 'Full-Stack Web Application Development',
@@ -39,7 +39,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Complete deployment'
         ],
         popular: true,
-        priceRange: 'Starting at $5,000'
+        priceRange: 'Starting at $3,000'
       },
       {
         title: 'E-commerce Solutions',
@@ -52,7 +52,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Inventory management'
         ],
         popular: false,
-        priceRange: 'Starting at $4,500'
+        priceRange: 'Starting at $2,500'
       },
       {
         title: 'Mobile App Development',
@@ -65,7 +65,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Push notifications'
         ],
         popular: false,
-        priceRange: 'Starting at $6,000'
+        priceRange: 'Starting at $3,500'
       },
       {
         title: 'Website Redesign & Modernization',
@@ -78,7 +78,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Improved user experience'
         ],
         popular: false,
-        priceRange: 'Starting at $2,000'
+        priceRange: 'Starting at $1,200'
       },
       {
         title: 'CMS Integration & Development',
@@ -91,7 +91,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Training & documentation'
         ],
         popular: false,
-        priceRange: 'Starting at $2,500'
+        priceRange: 'Starting at $1,500'
       }
     ]
   },
@@ -109,7 +109,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Comprehensive documentation'
         ],
         popular: true,
-        priceRange: 'Starting at $3,000'
+        priceRange: 'Starting at $2,000'
       },
       {
         title: 'Business Process Automation',
@@ -122,7 +122,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Integration with existing systems'
         ],
         popular: false,
-        priceRange: 'Starting at $1,500'
+        priceRange: 'Starting at $800'
       },
       {
         title: 'AI & Machine Learning Integration',
@@ -135,7 +135,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Business system integration'
         ],
         popular: false,
-        priceRange: 'Starting at $4,000'
+        priceRange: 'Starting at $2,500'
       },
       {
         title: 'Database Design & Optimization',
@@ -148,7 +148,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Data migration services'
         ],
         popular: false,
-        priceRange: 'Starting at $1,800'
+        priceRange: 'Starting at $1,000'
       }
     ]
   },
@@ -166,7 +166,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Cost optimization strategies'
         ],
         popular: false,
-        priceRange: 'Starting at $2,000'
+        priceRange: 'Starting at $1,200'
       },
       {
         title: 'CI/CD Pipeline Implementation',
@@ -179,7 +179,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Workflow optimization'
         ],
         popular: false,
-        priceRange: 'Starting at $1,500'
+        priceRange: 'Starting at $800'
       },
       {
         title: 'System Monitoring & Maintenance',
@@ -192,7 +192,7 @@ export const serviceCategories: ServiceCategory[] = [
           'Maintenance retainers available'
         ],
         popular: false,
-        priceRange: 'From $500/month'
+        priceRange: 'From $300/month'
       }
     ]
   }

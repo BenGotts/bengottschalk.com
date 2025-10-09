@@ -60,6 +60,14 @@ export default function Hero() {
                 View Services →
               </Button>
             </Link>
+            <Link href="/competitions">
+              <Button size="lg" className="bg-green-600 text-white hover:bg-green-700 px-8 py-6 text-lg shadow-xl hover:shadow-2xl transition-all hover:scale-105 font-semibold">
+                <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                My Competitions
+              </Button>
+            </Link>
             <Link href="/contact">
               <Button size="lg" className="bg-white/10 text-white border-2 border-white/50 hover:bg-white hover:text-blue-900 px-8 py-6 text-lg backdrop-blur-sm font-semibold transition-all">
                 Get in Touch

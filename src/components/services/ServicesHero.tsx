@@ -16,17 +16,12 @@ export default function ServicesHero() {
         <p className="text-xl md:text-2xl mb-10 text-blue-50 max-w-3xl mx-auto font-light">
           Transform your ideas into powerful, scalable software solutions. From web applications to mobile apps, I deliver quality code that drives results.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex justify-center">
           <a href="#proposal-form">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 hover:scale-105 transition-transform text-lg px-10 py-6 shadow-xl">
+            <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 hover:scale-105 transition-transform text-lg px-10 py-6 shadow-xl font-semibold">
               Submit Proposal →
             </Button>
           </a>
-          <Link href="#services">
-            <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 transition-all text-lg px-10 py-6">
-              View Services
-            </Button>
-          </Link>
         </div>
       </div>
     </section>

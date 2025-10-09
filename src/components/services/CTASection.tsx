@@ -14,12 +14,12 @@ export default function CTASection() {
         </p>
         <div className="flex flex-col sm:flex-row gap-5 justify-center">
           <a href="#proposal-form">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 hover:scale-105 transition-transform text-lg px-10 py-6 shadow-2xl">
+            <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 hover:scale-105 transition-transform text-lg px-10 py-6 shadow-2xl font-semibold">
               Submit a Proposal →
             </Button>
           </a>
           <Link href="/contact">
-            <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 transition-all text-lg px-10 py-6">
+            <Button size="lg" className="bg-white/10 text-white border-2 border-white/50 hover:bg-white hover:text-blue-900 px-10 py-6 text-lg backdrop-blur-sm font-semibold transition-all">
               Quick Contact
             </Button>
           </Link>
