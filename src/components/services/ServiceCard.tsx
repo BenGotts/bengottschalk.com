@@ -45,11 +45,18 @@ export default function ServiceCard({ service }: ServiceCardProps) {
             {service.priceRange}
           </span>
         </div>
-        <Link href="/contact" className="w-full">
-          <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all">
-            Get a Quote →
-          </Button>
-        </Link>
+        <div className="w-full flex flex-col gap-2">
+          <a href="#proposal-form" className="w-full">
+            <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all">
+              Submit Proposal →
+            </Button>
+          </a>
+          <Link href="/contact" className="w-full">
+            <Button variant="outline" className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50">
+              Quick Contact
+            </Button>
+          </Link>
+        </div>
       </CardFooter>
     </Card>
   )
