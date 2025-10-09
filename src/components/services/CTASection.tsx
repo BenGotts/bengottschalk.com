@@ -13,11 +13,11 @@ export default function CTASection() {
           Submit a detailed proposal to get an accurate quote, or reach out for a free consultation.
         </p>
         <div className="flex flex-col sm:flex-row gap-5 justify-center">
-          <a href="#proposal-form">
+          <Link href="#proposal-form">
             <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 hover:scale-105 transition-transform text-lg px-10 py-6 shadow-2xl font-semibold">
               Submit a Proposal →
             </Button>
-          </a>
+          </Link>
           <Link href="/contact">
             <Button size="lg" className="bg-white/10 text-white border-2 border-white/50 hover:bg-white hover:text-blue-900 px-10 py-6 text-lg backdrop-blur-sm font-semibold transition-all">
               Quick Contact

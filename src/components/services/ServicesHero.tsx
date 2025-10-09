@@ -17,11 +17,11 @@ export default function ServicesHero() {
           Transform your ideas into powerful, scalable software solutions. From web applications to mobile apps, I deliver quality code that drives results.
         </p>
         <div className="flex justify-center">
-          <a href="#proposal-form">
+          <Link href="#proposal-form">
             <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 hover:scale-105 transition-transform text-lg px-10 py-6 shadow-xl font-semibold">
               Submit Proposal →
             </Button>
-          </a>
+          </Link>
         </div>
       </div>
     </section>

@@ -1,5 +1,6 @@
 'use client'
 import React, { useState } from 'react'
+import Link from 'next/link'
 
 interface FAQ {
   question: string;
@@ -154,22 +155,22 @@ export default function FAQSection() {
             I'm happy to discuss your specific needs and answer any questions you might have.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="#proposal-form">
+            <Link href="#proposal-form">
               <button className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Submit Proposal
               </button>
-            </a>
-            <a href="/contact">
+            </Link>
+            <Link href="/contact">
               <button className="inline-flex items-center gap-2 px-8 py-3 bg-white hover:bg-gray-50 text-blue-600 border-2 border-blue-600 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 Quick Contact
               </button>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
