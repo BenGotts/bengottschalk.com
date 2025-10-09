@@ -1,7 +1,12 @@
 import { Body, Container, Head, Hr, Html, Section, Tailwind, Text } from "@react-email/components";
 import * as React from "react";
 
-export default function ContactEmailTemplate({ name, message }) {
+interface ContactEmailTemplateProps {
+  name: string;
+  message: string;
+}
+
+export default function ContactEmailTemplate({ name, message }: ContactEmailTemplateProps) {
   return (
     <Html>
       <Head />

@@ -11,15 +11,7 @@ export const metadata: Metadata = {
   description: "Rubik's Cube competitions that Benjamin Gottschalk is attending as a competitor, delegate, and organizer.",
 }
 
-interface Competition {
-  id: string;
-  name: string;
-  start_date: string;
-  end_date: string;
-  country_iso2: string;
-  city: string;
-  website: string;
-}
+import { Competition } from "@/lib/types";
 
 interface UserInfo {
   upcoming_competitions: Competition[];

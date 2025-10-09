@@ -8,8 +8,13 @@ import "@cubing/icons";
 import ReactCountryFlag from "react-country-flag";
 import { useState } from "react";
 import { WCA_ID } from "@/consts";
+import { Competition } from "@/lib/types";
 
-export default function PastCompetitions({ competitions }) {
+interface PastCompetitionsProps {
+  competitions: Competition[];
+}
+
+export default function PastCompetitions({ competitions }: PastCompetitionsProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Calculate stats

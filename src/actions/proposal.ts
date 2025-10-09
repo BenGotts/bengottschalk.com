@@ -16,10 +16,15 @@ export async function submitProposal(formData: unknown) {
   const { data } = result;
   console.log('Proposal submission:', data);
 
+  const toEmail = process.env.SEND_TO_EMAIL;
+  if (!toEmail) {
+    return { success: false, error: 'Email configuration missing' };
+  }
+
   try {
     const { data: emailData, error } = await resend.emails.send({
       from: 'no-reply@bengottschalk.com',
-      to: process.env.SEND_TO_EMAIL,
+      to: toEmail,
       reply_to: data.email,
       subject: `Project Proposal: ${data.projectTitle} - ${data.name}`,
       react: ProposalEmailTemplate(data)
