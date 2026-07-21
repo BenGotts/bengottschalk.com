@@ -2,6 +2,12 @@
   "name": "bengottschalk.com",
   "version": "0.1.0",
   "private": true,
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
