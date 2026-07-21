@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@plugin "daisyui";
+@import "@cubing/icons/css";
+
+@plugin "daisyui/theme" {
+  name: "pnwtheme";
+  default: true;
+  prefersdark: true;
+  color-scheme: "dark";
+
+  --color-primary: #0284c7;    /* Ocean Blue */
+  --color-secondary: #059669;  /* Evergreen Green */
+  --color-accent: #06b6d4;     /* Cyan */
+  --color-neutral: #0f172a;    /* Dark Navy */
+  --color-base-100: #020617;   /* Slate Black */
+  --color-base-200: #0f172a;   /* Solid Dark Card */
+  --color-base-300: #1e293b;   /* Solid Border / Card Header */
+  --color-info: #38bdf8;
+  --color-success: #10b981;
+}

@@ -1,1 +1,0 @@
-export const WCA_ID = "2016GOTT01"; // Benjamin Gottschalk
