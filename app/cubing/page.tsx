@@ -223,7 +223,7 @@ export default async function CubingPage() {
           <h2 className="text-lg font-bold text-white">Competition History Map</h2>
           <p className="text-xs text-slate-400">Interactive map of past single-venue competitions ({pastCompsForMap.length} mapped).</p>
         </div>
-        <MapWrapper competitions={pastCompsForMap} />
+        <MapWrapper comps={pastCompsForMap} />
       </div>
     </div>
   );
