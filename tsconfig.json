@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2025",
+    "target": "es2024",
     "lib": [
       "dom",
       "dom.iterable",
@@ -31,10 +31,10 @@
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
     "**/*.mts",
     "**/*.ts",
-    "**/*.tsx",
-    ".next/dev/types/**/*.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
