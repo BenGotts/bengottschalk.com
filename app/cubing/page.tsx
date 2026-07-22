@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BentoCard } from "@/components/BentoCard";
-import CompMapWrapper from "@/components/CompMapWrapper";
+import MapWrapper from "@/components/MapWrapper";
 import {
   MY_WCA_ID,
   EVENT_NAMES,
@@ -223,7 +223,7 @@ export default async function CubingPage() {
           <h2 className="text-lg font-bold text-white">Competition History Map</h2>
           <p className="text-xs text-slate-400">Interactive map of past single-venue competitions ({pastCompsForMap.length} mapped).</p>
         </div>
-        <CompMapWrapper competitions={pastCompsForMap} />
+        <MapWrapper competitions={pastCompsForMap} />
       </div>
     </div>
   );
