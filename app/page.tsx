@@ -1,224 +1,189 @@
-import Link from "next/link";
-import Image from "next/image";
-import { BentoCard } from "@/components/BentoCard";
-import { formatWcaResult } from "@/lib/wca";
+import Link from 'next/link';
+import {
+  getWcaProfile,
+  getWcaUserData,
+  getWcaCompetitions,
+  filterMapCompetitions,
+  formatWcaResult
+} from '@/lib/wca';
+import MapWrapper from '@/components/MapWrapper';
 
-async function getWcaProfile() {
-  try {
-    const res = await fetch("https://www.worldcubeassociation.org/api/v0/persons/2016gott01", {
-      next: { revalidate: 86400 }, // Cache for 24 hours
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch (error) {
-    console.error("Failed to fetch WCA profile", error);
-    return null;
-  }
-}
+export default async function HomePage() {
+  // Fetch real WCA data using your existing helpers
+  const profileData = await getWcaProfile();
+  const userData = await getWcaUserData();
+  const allComps = await getWcaCompetitions();
 
-export default async function Home() {
-  const wcaData = await getWcaProfile();
+  // Parse upcoming competitions from the user payload
+  const upcomingComps = userData?.user?.upcoming_competitions || [];
+  const nextComp = upcomingComps.length > 0 ? upcomingComps[0] : null;
 
-  const sq1Single = wcaData?.personal_records?.sq1?.single;
-  const sq1Average = wcaData?.personal_records?.sq1?.average;
-  const compCount = wcaData?.competition_count ?? 152;
-  const medalTotal = wcaData?.medals?.total ?? 212;
-  const avatarUrl = wcaData?.person?.avatar?.thumb_url;
+  // Filter map data for the Leaflet component
+  const today = new Date().toISOString().split('T')[0];
+  const mapComps = filterMapCompetitions(allComps, upcomingComps, today);
+
+  // Extract and format Personal Records
+  const prs = profileData?.personal_records || {};
+  
+  const sq1Single = formatWcaResult(prs?.sq1?.single?.best, 'sq1');
+  const sq1Average = formatWcaResult(prs?.sq1?.average?.best, 'sq1', true);
+  
+  const cube333Single = formatWcaResult(prs?.['333']?.single?.best, '333');
+  const cube333Average = formatWcaResult(prs?.['333']?.average?.best, '333', true);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <main className="min-h-screen bg-base-100 text-base-content px-4 py-8 md:px-12 lg:px-24 max-w-7xl mx-auto space-y-12">
       
-      {/* 1. HERO / BIO (2 Cols Wide) */}
-      <BentoCard 
-        hoverColor="sky" 
-        className="col-span-1 md:col-span-2 lg:col-span-2 justify-between"
-      >
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div className="space-y-3">
-            <span className="text-3xl">👋</span>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-snug">
-              Hi, I&apos;m <span className="text-sky-400">Ben Gottschalk</span>.
-            </h1>
-            <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-              Software Engineer, WCA Regional Delegate, Square-1 Specialist, Trumpeter, and Short-Form Speedcubing Content Creator based in the Pacific Northwest.
-            </p>
+      {/* 1. HERO HEADER */}
+      <section className="space-y-6 pt-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+          <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+          WCA Delegate & Speedcuber
+        </div>
+        
+        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">
+          Hi, I&apos;m <span className="text-primary">Ben Gottschalk</span>.
+        </h1>
+        
+        <p className="text-lg md:text-xl text-base-content/80 max-w-2xl leading-relaxed">
+          I solve Rubik&apos;s cubes fast, delegate WCA competitions across the Pacific Northwest, build modern web applications, and create content.
+        </p>
+
+        <div className="flex flex-wrap gap-3 pt-2">
+          <Link href="/cubing" className="btn btn-primary btn-sm rounded-full">🧩 Cubing Hub</Link>
+          <Link href="/tech" className="btn btn-outline btn-sm rounded-full">💻 Tech & Code</Link>
+          <Link href="/content" className="btn btn-outline btn-sm rounded-full">📹 Daily Content</Link>
+          <Link href="/music" className="btn btn-outline btn-sm rounded-full">🎵 Music & Tracks</Link>
+        </div>
+      </section>
+
+      {/* 2. LIVE WCA STAT TICKER */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-base-200/60 backdrop-blur rounded-2xl border border-base-300">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-base-content/60 font-semibold">WCA ID</p>
+          <p className="text-xl md:text-2xl font-extrabold text-primary">2016GOTT01</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wider text-base-content/60 font-semibold">Gold Medals</p>
+          <p className="text-xl md:text-2xl font-extrabold">{profileData?.medals?.gold ?? '48'}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wider text-base-content/60 font-semibold">Competitions</p>
+          <p className="text-xl md:text-2xl font-extrabold">{profileData?.competition_count ?? '--'}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wider text-base-content/60 font-semibold">Square-1 Single</p>
+          <p className="text-xl md:text-2xl font-extrabold text-secondary">{sq1Single}</p>
+        </div>
+      </section>
+
+      {/* 3. CORE SPOTLIGHT: WCA SCORECARD & MAP */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Column: Key Personal Records */}
+        <div className="lg:col-span-5 bg-base-200 p-6 rounded-2xl border border-base-300 space-y-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span>🧩</span> Main Events PRs
+              </h2>
+              <Link href="/cubing" className="text-xs text-primary hover:underline">
+                View all events &rarr;
+              </Link>
+            </div>
+
+            <div className="space-y-4">
+              {/* Square-1 Highlight */}
+              <div className="p-4 bg-base-100 rounded-xl border border-primary/20 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-lg">Square-1</span>
+                  <span className="badge badge-accent text-xs">Former NAR</span>
+                </div>
+                <div className="flex justify-between text-sm pt-1">
+                  <span className="text-base-content/70">Single: <strong className="text-base-content">{sq1Single}</strong></span>
+                  <span className="text-base-content/70">Average: <strong className="text-base-content">{sq1Average}</strong></span>
+                </div>
+              </div>
+
+              {/* 3x3 Highlight */}
+              <div className="p-4 bg-base-100 rounded-xl border border-base-300 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-lg">3x3x3 Cube</span>
+                  <span className="text-xs text-base-content/60">Official</span>
+                </div>
+                <div className="flex justify-between text-sm pt-1">
+                  <span className="text-base-content/70">Single: <strong className="text-base-content">{cube333Single}</strong></span>
+                  <span className="text-base-content/70">Average: <strong className="text-base-content">{cube333Average}</strong></span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {avatarUrl && (
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-slate-700 shrink-0">
-              <Image 
-                src={avatarUrl} 
-                alt="Benjamin Gottschalk WCA Avatar" 
-                fill 
-                sizes="(max-width: 640px) 64px, 80px"
-                className="object-cover" 
-              />
+          {/* Next Competition Banner */}
+          {nextComp && (
+            <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
+              <p className="text-xs uppercase font-bold text-primary tracking-wide">Next Upcoming Comp</p>
+              <p className="font-bold text-base mt-1">{nextComp.name}</p>
+              <p className="text-xs text-base-content/70">{nextComp.start_date} • {nextComp.city}</p>
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-6">
-          <span className="bg-slate-950 text-slate-300 border border-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-md">
-            💻 Software Eng
-          </span>
-          <span className="bg-slate-950 text-emerald-400 border border-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center gap-1.5">
-            <span className="cubing-icon event-333"></span> WCA Delegate
-          </span>
-          <span className="bg-slate-950 text-cyan-300 border border-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center gap-1.5">
-            <span className="cubing-icon event-sq1"></span> World #{sq1Single?.world_rank ?? 13} SQ-1
-          </span>
-          <span className="bg-slate-950 text-slate-300 border border-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-md">
-            🎺 Trumpeter
-          </span>
-        </div>
-      </BentoCard>
-
-      {/* 2. DYNAMIC SQUARE-1 SPECIALIST CARD (1 Col Wide) */}
-      <BentoCard 
-        hoverColor="cyan" 
-        className="col-span-1 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/40 justify-between"
-      >
-        <div className="flex justify-between items-start mb-2">
-          <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Main Event</span>
-          <span className="cubing-icon event-sq1 text-cyan-300 text-3xl"></span>
-        </div>
-
-        <div className="my-1 space-y-2">
-          <div>
-            <div className="text-lg font-black text-white leading-tight">SQUARE-1 SPECIALIST</div>
-            <div className="text-xs text-slate-400 mt-0.5">WCA ID: 2016GOTT01</div>
+        {/* Right Column: Interactive Competition Map */}
+        <div className="lg:col-span-7 bg-base-200 p-6 rounded-2xl border border-base-300 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <span>📍</span> Competition Journey
+            </h2>
+            <span className="text-xs text-base-content/60">Pacific Northwest Focus</span>
           </div>
+          <div className="h-80 w-full rounded-xl overflow-hidden border border-base-300 relative z-0">
+            {/* Pass the filtered comps data down to the wrapper */}
+            <MapWrapper comps={mapComps} />
+          </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="bg-slate-950 p-2 rounded-lg border border-cyan-800/50">
-              <div className="text-[10px] text-slate-400 font-bold uppercase">PR Single</div>
-              <div className="text-sm font-black text-cyan-300">{formatWcaResult(sq1Single?.best)}</div>
-              <div className="text-[9px] text-emerald-400 font-semibold">World #{sq1Single?.world_rank}</div>
+      {/* 4. CROSS-DISCIPLINE SHOWCASE (Unchanged) */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold">Beyond Speedcubing</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-base-200 p-6 rounded-2xl border border-base-300 hover:border-primary/50 transition-colors flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">💻</div>
+              <h3 className="text-lg font-bold">Software & Web Apps</h3>
+              <p className="text-sm text-base-content/70 leading-relaxed">Building open-source tools, WCA API utilities, and modern Next.js applications for the community.</p>
             </div>
-            <div className="bg-slate-950 p-2 rounded-lg border border-cyan-800/50">
-              <div className="text-[10px] text-slate-400 font-bold uppercase">PR Avg</div>
-              <div className="text-sm font-black text-cyan-300">{formatWcaResult(sq1Average?.best)}</div>
-              <div className="text-[9px] text-emerald-400 font-semibold">World #{sq1Average?.world_rank}</div>
+            <Link href="/tech" className="btn btn-sm btn-ghost justify-start px-0 text-primary mt-4">Explore Tech Portfolio &rarr;</Link>
+          </div>
+          <div className="bg-base-200 p-6 rounded-2xl border border-base-300 hover:border-primary/50 transition-colors flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary text-xl font-bold">📹</div>
+              <h3 className="text-lg font-bold">Daily Content & Shorts</h3>
+              <p className="text-sm text-base-content/70 leading-relaxed">Daily 3BLD solves, Square-1 walkthroughs, reconstructions, and speedcubing technique breakdowns.</p>
             </div>
+            <Link href="/content" className="btn btn-sm btn-ghost justify-start px-0 text-secondary mt-4">Watch Latest Solves &rarr;</Link>
           </div>
-        </div>
-
-        <Link href="/content#sq1" className="text-xs font-bold text-cyan-400 hover:underline pt-2 inline-block">
-          View Sq1 Solves &rarr;
-        </Link>
-      </BentoCard>
-
-      {/* 3. DYNAMIC WCA DELEGATE & STATS (1 Col Wide) */}
-      <BentoCard hoverColor="emerald" className="col-span-1 justify-between">
-        <div className="flex justify-between items-start mb-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cubing Leadership</span>
-          <span className="cubing-icon event-333 text-emerald-400 text-2xl"></span>
-        </div>
-        
-        <div className="my-1">
-          <div className="text-lg font-black text-emerald-400 leading-tight">WCA REGIONAL DELEGATE</div>
-          <div className="text-xs text-slate-400 mt-1">Oregon & PNW Competitions</div>
-          
-          <div className="flex gap-3 mt-3 text-xs font-bold">
-            <div className="bg-slate-950 px-2.5 py-1 rounded border border-slate-800 text-slate-200">
-              🏆 <span className="text-emerald-400">{compCount}</span> Comps
+          <div className="bg-base-200 p-6 rounded-2xl border border-base-300 hover:border-primary/50 transition-colors flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent text-xl font-bold">🎵</div>
+              <h3 className="text-lg font-bold">Music & Production</h3>
+              <p className="text-sm text-base-content/70 leading-relaxed">Curated playlists for solve sessions, music production projects, and creative tracks.</p>
             </div>
-            <div className="bg-slate-950 px-2.5 py-1 rounded border border-slate-800 text-slate-200">
-              🥇 <span className="text-amber-400">{medalTotal}</span> Medals
-            </div>
+            <Link href="/music" className="btn btn-sm btn-ghost justify-start px-0 text-accent mt-4">Listen & Explore &rarr;</Link>
           </div>
         </div>
+      </section>
 
-        <Link href="/cubing" className="text-xs font-bold text-sky-400 hover:underline pt-2 inline-block">
-          Profile & Comps &rarr;
-        </Link>
-      </BentoCard>
-
-      {/* 4. SOFTWARE ENG (2 Cols Wide) */}
-      <BentoCard hoverColor="sky" className="col-span-1 md:col-span-2 lg:col-span-2 justify-between">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Engineering</span>
-            <h3 className="text-lg font-bold text-white mt-0.5">Full-Stack Development</h3>
-          </div>
-          <span className="text-xl">💻</span>
+      <footer className="pt-8 border-t border-base-300 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-base-content/60">
+        <p>© {new Date().getFullYear()} Ben Gottschalk. Built with Next.js & Tailwind CSS.</p>
+        <div className="flex gap-6">
+          <Link href="/cubing" className="hover:text-primary transition-colors">Cubing</Link>
+          <Link href="/tech" className="hover:text-primary transition-colors">Tech</Link>
+          <Link href="/content" className="hover:text-primary transition-colors">Content</Link>
+          <Link href="/music" className="hover:text-primary transition-colors">Music</Link>
         </div>
-
-        <div className="flex flex-wrap gap-1.5 my-3">
-          <span className="bg-slate-950 border border-slate-800 text-sky-300 text-[11px] font-semibold px-2.5 py-1 rounded">Next.js</span>
-          <span className="bg-slate-950 border border-slate-800 text-sky-300 text-[11px] font-semibold px-2.5 py-1 rounded">Tailwind v4</span>
-          <span className="bg-slate-950 border border-slate-800 text-sky-300 text-[11px] font-semibold px-2.5 py-1 rounded">DaisyUI 5</span>
-          <span className="bg-slate-950 border border-slate-800 text-sky-300 text-[11px] font-semibold px-2.5 py-1 rounded">WCA API Integration</span>
-        </div>
-
-        <Link href="/tech" className="text-xs font-bold text-sky-400 hover:underline">
-          Explore Projects & Repos &rarr;
-        </Link>
-      </BentoCard>
-
-      {/* 5. SOLVE OF THE DAY (1 Col Wide) */}
-      <BentoCard hoverColor="cyan" className="col-span-1 justify-between">
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Series</span>
-            <span className="text-xl">📹</span>
-          </div>
-          <h3 className="text-base font-bold text-white mb-0.5">Solve of the Day</h3>
-          <p className="text-xs text-slate-400 mb-3">1K+ Followers on YouTube & TikTok</p>
-
-          <div className="space-y-1.5 mb-4">
-            <div className="bg-slate-950 p-2 rounded-lg border border-cyan-500/40 text-xs font-bold text-cyan-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="cubing-icon event-sq1 text-sm text-cyan-400"></span> Square-1
-              </span>
-              <span className="text-[9px] bg-cyan-950 text-cyan-300 font-bold px-1 rounded border border-cyan-800">MAIN</span>
-            </div>
-
-            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs font-bold text-slate-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="cubing-icon event-333 text-sm text-sky-400"></span> 3x3x3
-              </span>
-              <span className="text-[9px] text-slate-500 font-normal">Recons</span>
-            </div>
-          </div>
-        </div>
-
-        <Link href="/content" className="btn btn-xs bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold border-none w-full rounded-md">
-          Watch Shorts &rarr;
-        </Link>
-      </BentoCard>
-
-      {/* 6. MUSIC ENSEMBLES (1 Col Wide) */}
-      <BentoCard hoverColor="blue" className="col-span-1 justify-between">
-        <div className="flex justify-between items-start mb-1">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Music</span>
-          <span className="text-xl">🎺</span>
-        </div>
-        <div className="my-2 space-y-1">
-          <div className="text-xs font-bold text-white">Hillsboro Symphony</div>
-          <div className="text-xs font-bold text-emerald-400">One More Time Band</div>
-        </div>
-        <Link href="/music" className="text-xs font-bold text-sky-400 hover:underline pt-1 inline-block">
-          Concerts & Media &rarr;
-        </Link>
-      </BentoCard>
-
-      {/* 7. QUICK CONTACT BANNER (4 Cols Wide) */}
-      <BentoCard hoverColor="emerald" className="col-span-1 md:col-span-2 lg:col-span-4 flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Get In Touch</span>
-            <span className="text-base">✉️</span>
-          </div>
-          <div className="text-base md:text-lg font-black text-white">
-            Have a software project, WCA competition inquiry, or trumpet performance booking?
-          </div>
-        </div>
-        <Link href="/contact" className="btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none px-6 rounded-lg shrink-0">
-          Contact Page &rarr;
-        </Link>
-      </BentoCard>
-
-    </div>
+      </footer>
+    </main>
   );
 }
