@@ -18,3 +18,184 @@
   --color-info: #38bdf8;
   --color-success: #10b981;
 }
+
+.competition-map-container {
+  outline: none;
+  cursor: grab;
+}
+
+.competition-map-container:active {
+  cursor: grabbing;
+}
+
+.competition-map-active {
+  box-shadow: inset 0 0 0 2px rgb(16 185 129 / 0.45);
+}
+
+.competition-map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+}
+
+.competition-marker-icon {
+  background: transparent !important;
+  border: none !important;
+  width: 24px !important;
+  height: 35px !important;
+}
+
+.competition-marker-icon .competition-marker-pin {
+  width: 24px;
+  height: 35px;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.competition-marker-icon .competition-marker-pin svg {
+  display: block;
+  width: 24px;
+  height: 35px;
+  max-width: 24px;
+  max-height: 35px;
+}
+
+.competition-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  flex-shrink: 0;
+}
+
+.competition-legend-dot--ongoing {
+  background: #dc2626;
+}
+
+.competition-legend-dot--upcoming {
+  background: #16a34a;
+}
+
+.competition-legend-dot--previous {
+  background: #2563eb;
+}
+
+.competition-marker-tooltip {
+  background: rgb(15 23 42 / 0.96) !important;
+  border: 1px solid rgb(51 65 85 / 0.9) !important;
+  color: #e2e8f0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35) !important;
+}
+
+.competition-marker-tooltip::before {
+  border-top-color: rgb(15 23 42 / 0.96) !important;
+}
+
+.competition-popup-header {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+}
+
+.competition-popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+.competition-popup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.competition-popup-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.competition-popup-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.competition-popup-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.competition-popup-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+
+.competition-popup-list::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+}
+
+.competition-popup-item {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.competition-popup-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.competition-popup-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.competition-popup-badge--ongoing {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.competition-popup-badge--upcoming {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.competition-popup-badge--previous {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.competition-map-popup .leaflet-popup-content {
+  margin: 12px 14px;
+  overflow: visible;
+}
+
+.competition-map-popup .leaflet-popup-content-wrapper {
+  overflow: hidden;
+}

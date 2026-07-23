@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 const CompetitionMap = dynamic(() => import('./CompetitionMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full bg-base-300 animate-pulse rounded-2xl flex items-center justify-center text-base-content/50">
-      Loading Interactive Map...
+    <div className="h-full w-full bg-slate-900 animate-pulse rounded-lg flex items-center justify-center text-slate-500 text-sm">
+      Loading map…
     </div>
   ),
 });
