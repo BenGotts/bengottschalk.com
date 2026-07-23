@@ -1,0 +1,59 @@
+{
+  "date": "2026-07-22",
+  "solves": [
+    {
+      "date": "2026-07-22",
+      "event": "333",
+      "scramble": "D R U R' U' F' L F L' U2 R U' R' F R' F' R2 U R' U' R",
+      "timeMs": 8450,
+      "timeFormatted": "8.45",
+      "videos": {
+        "youtube": "https://youtube.com/shorts/example-333",
+        "tiktok": "https://tiktok.com/@bengottschalk/video/example-333"
+      },
+      "reconstruction": {
+        "summary": "Standard CFOP — clean F2L with a T-perm finish.",
+        "steps": [
+          { "label": "Cross", "moves": "x2 D' R' F D' F' D R2" },
+          { "label": "F2L 1–4", "moves": "U R U' R' · R U R' U' · U' F' U F · U R U' R'" },
+          { "label": "OLL", "moves": "R U R' U R U2 R'" },
+          { "label": "PLL", "moves": "R' U R' D2 R U' R' D2 R2", "comment": "T-perm" }
+        ]
+      },
+      "tags": ["cfop", "t-perm"]
+    },
+    {
+      "date": "2026-07-22",
+      "event": "sq1",
+      "scramble": "(6, -3) / (0, -3) / (-2, -1) / (3, -3) / (0, -3) / (4, 0) / (5, -2) / (-3, 0) / (2, -4) / (0, -3) / (-1, 0) / (0, 3) / (0, 6)",
+      "timeMs": 6230,
+      "timeFormatted": "6.23",
+      "videos": {
+        "youtube": "https://youtube.com/shorts/example-sq1",
+        "tiktok": "https://tiktok.com/@bengottschalk/video/example-sq1"
+      },
+      "reconstruction": {
+        "summary": "CPLL skip into fast U-perm.",
+        "steps": [
+          { "label": "Cube shape", "moves": "(6, -3) / (0, -3) / (-2, -1)" },
+          { "label": "CO", "moves": "/ (3, -3) / (0, -3) / (4, 0)" },
+          { "label": "CP", "moves": "/ (5, -2) / (-3, 0) / (2, -4)" },
+          { "label": "EP", "moves": "/ (0, -3) / (-1, 0) / (0, 3) / (0, 6)", "comment": "U-perm" }
+        ]
+      },
+      "tags": ["cpll", "u-perm"]
+    },
+    {
+      "date": "2026-07-22",
+      "event": "333bf",
+      "scramble": "R U R' U' F' L F L' D R U R' U' F R' F' R2 U R' U' R D'",
+      "timeMs": 45230,
+      "timeFormatted": "45.23",
+      "videos": {
+        "youtube": "https://youtube.com/shorts/example-3bld",
+        "tiktok": "https://tiktok.com/@bengottschalk/video/example-3bld"
+      },
+      "tags": ["3bld", "daily"]
+    }
+  ]
+}

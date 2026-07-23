@@ -17,12 +17,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-slate-950">
       <body 
-        className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col justify-between antialiased"
+        className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col antialiased overflow-x-hidden"
         suppressHydrationWarning
       >
-        <div>
+        <div className="flex-1 flex flex-col">
           <Navbar />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             {children}
           </main>
         </div>

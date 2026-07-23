@@ -5,13 +5,11 @@ import {
   formatMultiResult,
   parseActivityCode,
 } from "@wca/helpers";
+import type { CompetitionMapStatus, MapCompetition } from "./map-competitions";
+import { wcaCompetitionUrl } from "./map-competitions";
+import { getPerson, getPersonCompetitions, getUser, type WcaUserPayload } from "./wca-api";
 
 export const MY_WCA_ID = "2016GOTT01";
-
-const WCA_HEADERS = {
-  "User-Agent": "bengottschalk.com/1.0 (bgottschalk@worldcubeassociation.org)",
-  Accept: "application/json",
-};
 
 /**
  * Event Names Map for official WCA events
@@ -130,72 +128,60 @@ export function formatActivityCode(activityCode: string): string {
 /**
  * Fetch profile data, personal records, and medal counts
  */
-export async function getWcaProfile() {
-  try {
-    const res = await fetch(
-      `https://www.worldcubeassociation.org/api/v0/persons/${MY_WCA_ID}`,
-      {
-        headers: WCA_HEADERS,
-        next: { revalidate: 86400 }, // Cache 24h
-      }
-    );
-    return res.ok ? await res.json() : null;
-  } catch (error) {
-    console.error("Error fetching WCA profile:", error);
-    return null;
-  }
+export async function getWcaProfile(): Promise<any> {
+  return getPerson(MY_WCA_ID);
 }
 
-/**
- * Fetch user payload including upcoming competition commitments
- */
-export async function getWcaUserData() {
-  try {
-    const res = await fetch(
-      `https://www.worldcubeassociation.org/api/v0/users/${MY_WCA_ID}?upcoming_competitions=true`,
-      {
-        headers: WCA_HEADERS,
-        next: { revalidate: 43200 }, // Cache 12h
-      }
-    );
-    return res.ok ? await res.json() : null;
-  } catch (error) {
-    console.error("Error fetching WCA user data:", error);
-    return null;
-  }
+export async function getWcaUserData(): Promise<WcaUserPayload | null> {
+  return getUser(MY_WCA_ID, {
+    upcomingCompetitions: true,
+    ongoingCompetitions: true,
+  });
 }
 
-/**
- * Fetch complete competition history
- */
 export async function getWcaCompetitions() {
-  try {
-    const res = await fetch(
-      `https://www.worldcubeassociation.org/api/v0/persons/${MY_WCA_ID}/competitions`,
-      {
-        headers: WCA_HEADERS,
-        next: { revalidate: 43200 }, // Cache 12h
-      }
-    );
-    return res.ok ? await res.json() : [];
-  } catch (error) {
-    console.error("Error fetching WCA competitions:", error);
-    return [];
-  }
+  const data = await getPersonCompetitions(MY_WCA_ID);
+  return data ?? [];
+}
+
+export function getUpcomingCompetitions(userData: { upcoming_competitions?: unknown } | null): any[] {
+  return Array.isArray(userData?.upcoming_competitions) ? userData.upcoming_competitions : [];
+}
+
+/** Competitions currently in progress that the user is attending. */
+export function getOngoingCompetitions(userData: { ongoing_competitions?: unknown } | null): any[] {
+  return Array.isArray(userData?.ongoing_competitions) ? userData.ongoing_competitions : [];
+}
+
+/** Ongoing comps first, then upcoming (deduped by id). */
+export function getScheduledCompetitions(userData: { upcoming_competitions?: unknown; ongoing_competitions?: unknown } | null): any[] {
+  const ongoing = getOngoingCompetitions(userData);
+  const upcoming = getUpcomingCompetitions(userData);
+  const ongoingIds = new Set(ongoing.map((c) => c.id));
+  return [...ongoing, ...upcoming.filter((c) => !ongoingIds.has(c.id))];
+}
+
+/** Prefer an ongoing comp; otherwise the next upcoming one. */
+export function getNextCompetition(userData: { upcoming_competitions?: unknown; ongoing_competitions?: unknown } | null): any | null {
+  const scheduled = getScheduledCompetitions(userData);
+  return scheduled[0] ?? null;
+}
+
+export function isOngoingCompetition(userData: { ongoing_competitions?: unknown } | null, compId: string): boolean {
+  return getOngoingCompetitions(userData).some((c) => c.id === compId);
 }
 
 /**
- * Filters past & upcoming competitions safely for Leaflet mapping.
- * Flags upcoming competitions with `isUpcoming: true` for visual differentiation.
+ * Filters past, upcoming, and ongoing competitions for Leaflet mapping.
  */
 export function filterMapCompetitions(
   allComps: any[],
   upcomingComps: any[] = [],
+  ongoingComps: any[] = [],
   today: string
-) {
-  const compMap = new Map<string, any>();
+): MapCompetition[] {
+  const compMap = new Map<string, MapCompetition>();
 
-  // Process past competitions
   if (Array.isArray(allComps)) {
     allComps.forEach((comp) => {
       const isPast = comp.start_date < today;
@@ -215,34 +201,40 @@ export function filterMapCompetitions(
           latitude: comp.latitude_degrees,
           longitude: comp.longitude_degrees,
           date: comp.start_date,
-          isUpcoming: false,
+          status: "previous",
+          url: comp.url ?? wcaCompetitionUrl(comp.id),
         });
       }
     });
   }
 
-  // Process upcoming competitions
-  if (Array.isArray(upcomingComps)) {
-    upcomingComps.forEach((comp) => {
-      const hasValidCoords =
-        typeof comp.latitude_degrees === "number" &&
-        typeof comp.longitude_degrees === "number" &&
-        !(comp.latitude_degrees === 0 && comp.longitude_degrees === 0);
-      const isSingleCity =
-        comp.city && !comp.city.toLowerCase().includes("multiple");
+  const addScheduledComp = (comp: any, status: CompetitionMapStatus) => {
+    const hasValidCoords =
+      typeof comp.latitude_degrees === "number" &&
+      typeof comp.longitude_degrees === "number" &&
+      !(comp.latitude_degrees === 0 && comp.longitude_degrees === 0);
+    const isSingleCity =
+      comp.city && !comp.city.toLowerCase().includes("multiple");
 
-      if (hasValidCoords && isSingleCity) {
-        compMap.set(comp.id, {
-          id: comp.id,
-          name: comp.name,
-          cityName: comp.city,
-          latitude: comp.latitude_degrees,
-          longitude: comp.longitude_degrees,
-          date: comp.date_range || comp.start_date,
-          isUpcoming: true,
-        });
-      }
-    });
+    if (hasValidCoords && isSingleCity) {
+      compMap.set(comp.id, {
+        id: comp.id,
+        name: comp.name,
+        cityName: comp.city,
+        latitude: comp.latitude_degrees,
+        longitude: comp.longitude_degrees,
+        date: comp.date_range || comp.start_date,
+        status,
+        url: comp.url ?? wcaCompetitionUrl(comp.id),
+      });
+    }
+  };
+
+  if (Array.isArray(upcomingComps)) {
+    upcomingComps.forEach((comp) => addScheduledComp(comp, "upcoming"));
+  }
+  if (Array.isArray(ongoingComps)) {
+    ongoingComps.forEach((comp) => addScheduledComp(comp, "ongoing"));
   }
 
   return Array.from(compMap.values());
