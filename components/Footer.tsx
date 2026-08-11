@@ -167,7 +167,7 @@ export function Footer() {
 
           <LinkGroup label="Work & Music" labelClass="text-sky-500/80">
             <FooterLink href="/tech" className={`${linkHover} hover:text-sky-400`}>Tech Portfolio</FooterLink>
-            <FooterLink href="/contact?topic=tech" className={`${linkHover} hover:text-sky-400`}>Hire Me</FooterLink>
+            <FooterLink href="/contact?topic=tech" className={`${linkHover} hover:text-sky-400`}>Side projects</FooterLink>
             <FooterLink href="/music#symphony" className={`${linkHover} hover:text-blue-400`}>Hillsboro Symphony</FooterLink>
             <FooterLink href="/music#marching" className={`${linkHover} hover:text-blue-400`}>OMTAAMB</FooterLink>
           </LinkGroup>

@@ -47,8 +47,8 @@ function enablePopupScroll(event: LeafletEvent) {
   if (!popup) return;
 
   disableScrollOnElement(popup);
-  disableScrollOnElement(popup.querySelector(".leaflet-popup-content"));
-  disableScrollOnElement(popup.querySelector(".leaflet-popup-content-wrapper"));
+  disableScrollOnElement(popup.querySelector(".leaflet-popup-content") as HTMLElement | null);
+  disableScrollOnElement(popup.querySelector(".leaflet-popup-content-wrapper") as HTMLElement | null);
 }
 
 function LocationPopup({ location }: { location: MapLocationGroup }) {

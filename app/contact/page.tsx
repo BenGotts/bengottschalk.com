@@ -1,13 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 type TopicType = "cubing" | "tech" | "music" | "content" | "general";
 
-export default function ContactPage() {
+const TOPICS: TopicType[] = ["cubing", "tech", "music", "content", "general"];
+
+function isTopicType(value: string | null): value is TopicType {
+  return TOPICS.includes(value as TopicType);
+}
+
+function ContactPageContent() {
+  const searchParams = useSearchParams();
   const [topic, setTopic] = useState<TopicType>("cubing");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const param = searchParams.get("topic");
+    if (isTopicType(param)) {
+      setTopic(param);
+    }
+  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,5 +173,13 @@ export default function ContactPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ContactPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-slate-500">Loading contact form…</div>}>
+      <ContactPageContent />
+    </Suspense>
   );
 }
