@@ -10,16 +10,18 @@ export interface Project extends DateSpan {
 
 const projectList: Project[] = [
   {
-    title: "Next.js Personal Website",
+    title: "bengottschalk.com",
     start: "2023-12",
     end: null,
-    technologies: "Next.js, NextUI, React.js, Tailwind CSS, Node.js, Firebase",
+    technologies: "Next.js, React, TypeScript, Tailwind CSS, DaisyUI, Zod, Vercel",
     details: [
-      "Revamped personal website with Next.js, NextUI, and Tailwind CSS for modern design; hosted on Firebase.",
-      "Enhanced site with Next.js for server-side rendering and static generation, boosting performance and SEO.",
-      "Employed Tailwind CSS and NextUI for efficient styling and cohesive UI.",
+      "Rebuilt my personal website as a home for my cubing, with Next.js 16, React 19, and TypeScript, deployed on Vercel.",
+      "Pulls my competitions, personal records, and results from the World Cube Association API, validated with Zod and cached with Next.js Cache Components.",
+      "Shows my latest YouTube uploads through the YouTube Data API.",
+      "Styled with Tailwind CSS and DaisyUI in a dark theme inspired by Rubik's Cube colors.",
     ],
-    githubLink: "https://github.com/BenGotts/website-nextjs",
+    githubLink: "https://github.com/BenGotts/bengottschalk.com",
+    projectLink: "https://bengottschalk.com",
   },
   {
     title: "Personal Website",
@@ -54,8 +56,7 @@ const projectList: Project[] = [
       "Created a program for generating random Rubik's Cube scrambles with a visual representation using OpenCV.",
       "Utilized innovative Python techniques for an engaging and functional application.",
     ],
-    // TODO: this points at the website repo, not the scrambler.
-    githubLink: "https://github.com/BenGotts/website-nextjs",
+    githubLink: "https://github.com/BenGotts/Python-Rubiks-Cube-Scrambler",
   },
   {
     title: "smallsh",

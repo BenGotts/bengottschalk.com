@@ -8,6 +8,20 @@ export interface Experience extends DateSpan {
 
 export const experience: Experience[] = [
   {
+    title: "Software Developer",
+    company: "Shadybrook Lumber Products",
+    start: "2026-07",
+    end: null,
+    details: [],
+  },
+  {
+    title: "Freelance Software Developer",
+    company: "Self-employed",
+    start: "2023-09",
+    end: "2026-07",
+    details: [],
+  },
+  {
     title: "Software Development Engineer",
     company: "Marchex (MPS)",
     start: "2022-10",

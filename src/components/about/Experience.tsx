@@ -23,12 +23,14 @@ export default function Experience() {
               <Separator className="my-3" />
               
               <div>
-                <p className="text-md text-gray-600 mb-3">{formatDateSpan(job)}</p>
-                <ul className="list-disc pl-5 text-gray-700">
-                  {job.details.map((detail, detailIndex) => (
-                    <li key={detailIndex}>{detail}</li>
-                  ))}
-                </ul>
+                <p className={`text-md text-gray-600 ${job.details.length > 0 ? "mb-3" : ""}`}>{formatDateSpan(job)}</p>
+                {job.details.length > 0 && (
+                  <ul className="list-disc pl-5 text-gray-700">
+                    {job.details.map((detail, detailIndex) => (
+                      <li key={detailIndex}>{detail}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </CardContent>
           </Card>
