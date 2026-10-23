@@ -1,6 +1,8 @@
-import { FaLinkedin, FaGithub, FaYoutube, FaTiktok, FaDonate } from "react-icons/fa";
 import Link from "next/link";
 import { cacheLife } from "next/cache";
+import { FaDonate } from "react-icons/fa";
+import StickerLogo from "@/components/StickerLogo";
+import { DONATE_URL, SOCIAL_LINKS } from "@/content/links";
 
 // Cached so the static shell can include it; refreshed daily for the new year.
 async function CopyrightYear() {
@@ -11,32 +13,33 @@ async function CopyrightYear() {
 
 export default function Footer() {
   return (
-    <footer className="sticky bottom-0 bg-blue-600 text-white p-4 z-10">
-      <div className="max-w-(--breakpoint-xl) mx-auto px-4">
-        <div className="flex flex-wrap justify-between items-center">
-          <div className="text-center md:text-left md:flex-1">
-            <p>&copy; <CopyrightYear /> Ben Gottschalk</p>
-          </div>
-          <div className="flex justify-center md:justify-end items-center gap-4 mt-4 md:mt-0">
-            <Link href="/about" className="hover:text-gray-300 flex items-center">About</Link>
-            <Link href="/contact" className="hover:text-gray-300 flex items-center">Contact</Link>
-            <Link href="https://ko-fi.com/bengottschalk" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 flex items-center">
-              <FaDonate className="mr-2" /> Donate
-            </Link>
-            <Link href="https://www.linkedin.com/in/benjgottschalk" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 flex items-center">
-              <FaLinkedin />
-            </Link>
-            <Link href="https://github.com/BenGotts" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 flex items-center">
-              <FaGithub />
-            </Link>
-            <Link href="https://www.youtube.com/c/BenjaminGottschalk" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 flex items-center">
-              <FaYoutube />
-            </Link>
-            <Link href="https://www.tiktok.com/@bengotts" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 flex items-center">
-              <FaTiktok />
-            </Link>
-          </div>
-        </div>
+    <footer className="border-t border-base-300 bg-base-200">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-8 sm:flex-row sm:justify-between sm:px-6">
+        <p className="flex items-center gap-2 text-sm text-muted">
+          <StickerLogo className="size-5" />
+          &copy; <CopyrightYear /> Ben Gottschalk
+        </p>
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
+          <Link href="/about" className="link link-hover">About</Link>
+          <Link href="/contact" className="link link-hover">Contact</Link>
+          <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" className="link link-hover inline-flex items-center gap-1.5">
+            <FaDonate aria-hidden="true" /> Donate
+          </a>
+          <span className="flex items-center gap-1">
+            {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className="btn btn-ghost btn-sm btn-square"
+              >
+                <Icon className="size-4" aria-hidden="true" />
+              </a>
+            ))}
+          </span>
+        </nav>
       </div>
     </footer>
   );

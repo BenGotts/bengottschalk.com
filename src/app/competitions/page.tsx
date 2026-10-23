@@ -12,14 +12,29 @@ export default async function CompetitionsPage() {
   const competitions = await getCompetitionsOverview();
 
   return (
-    <div className="m-2 sm:m-4 space-y-3 sm:space-y-4 grow">
+    <div className="space-y-10">
+      <header>
+        <h1 className="text-4xl font-bold">Competitions</h1>
+        <p className="mt-2 text-lg text-muted">Where I&apos;m competing, delegating, and organizing next.</p>
+      </header>
+
       {competitions.ok ? (
         <>
-          <OngoingCompetitions competitions={competitions.data.ongoing} />
-          <UpcomingCompetitions competitions={competitions.data.upcoming} />
+          {competitions.data.ongoing.length > 0 && (
+            <section aria-labelledby="ongoing-heading" className="space-y-4">
+              <h2 id="ongoing-heading" className="text-2xl font-bold">Happening now</h2>
+              <OngoingCompetitions competitions={competitions.data.ongoing} />
+            </section>
+          )}
+          <section aria-labelledby="upcoming-heading" className="space-y-4">
+            <h2 id="upcoming-heading" className="text-2xl font-bold">Upcoming</h2>
+            <UpcomingCompetitions competitions={competitions.data.upcoming} />
+          </section>
         </>
       ) : (
-        <div className="text-center text-gray-500 py-8">Competitions couldn't be loaded from the WCA right now.</div>
+        <div role="alert" className="alert alert-warning">
+          Competitions couldn&apos;t be loaded from the WCA right now. Please try again later.
+        </div>
       )}
     </div>
   )

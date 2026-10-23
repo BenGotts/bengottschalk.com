@@ -2,12 +2,8 @@ import CompetitionCard from "./CompetitionCard";
 import type { Competition } from "@/lib/wca";
 
 export default function OngoingCompetitions({ competitions }: { competitions: Competition[] }) {
-    if (!competitions || competitions.length === 0) {
-        return null;
-    }
-
     return (
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
             {competitions.map((comp) => (
                 <CompetitionCard key={comp.id} competition={comp} isOngoing={true} />
             ))}

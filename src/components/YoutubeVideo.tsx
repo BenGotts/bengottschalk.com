@@ -1,15 +1,19 @@
-export default function YoutubeVideo({ videoId }: { videoId?: string }) {
+interface YoutubeVideoProps {
+    videoId: string;
+    title: string;
+}
+
+export default function YoutubeVideo({ videoId, title }: YoutubeVideoProps) {
     return (
-        // This wrapper ensures the iframe can shrink on smaller screens
-        <div className="flex justify-center items-center max-w-full" style={{ maxWidth: "560px", maxHeight: "315px" }}>
+        <div className="aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-base-200">
             <iframe
-                width="560"
-                height="315"
-                src={`https://www.youtube.com/embed/${videoId}`}
-                title="YouTube video player"
+                className="size-full"
+                src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                title={title}
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
-                style={{ maxWidth: "100%", maxHeight: "100%" }} // Ensures the video does not exceed the screen size
             ></iframe>
         </div>
     );
