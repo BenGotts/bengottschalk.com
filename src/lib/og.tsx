@@ -2,19 +2,26 @@
 // inline styles and flexbox, so these don't use Tailwind or theme variables.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { cacheLife } from "next/cache";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
 /**
  * DM Sans for generated images. Satori can't read the woff2 files next/font
  * uses, so woff copies (from @fontsource/dm-sans, OFL) live in src/assets/fonts.
+ * Cached because uncached file reads would make the image routes dynamic.
  */
 export async function ogFonts() {
+  "use cache";
+  cacheLife("max");
   const dir = join(process.cwd(), "src/assets/fonts");
-  const [regular, bold] = await Promise.all([
-    readFile(join(dir, "DMSans-Regular.woff")),
-    readFile(join(dir, "DMSans-Bold.woff")),
-  ]);
+  // Exact ArrayBuffer copies: a Buffer comes back from the cache as a byte view,
+  // but Satori needs a plain ArrayBuffer.
+  const load = async (file: string) => {
+    const bytes = await readFile(join(dir, file));
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  };
+  const [regular, bold] = await Promise.all([load("DMSans-Regular.woff"), load("DMSans-Bold.woff")]);
   return [
     { name: "DM Sans", data: regular, weight: 400 as const, style: "normal" as const },
     { name: "DM Sans", data: bold, weight: 700 as const, style: "normal" as const },
