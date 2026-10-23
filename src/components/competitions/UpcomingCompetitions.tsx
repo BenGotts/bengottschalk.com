@@ -1,7 +1,7 @@
 import CompetitionCard from "./CompetitionCard";
-import type { WcaCompetition } from "@/lib/types";
+import type { Competition } from "@/lib/wca";
 
-export default function UpcomingCompetitions({ competitions }: { competitions: WcaCompetition[] }) {
+export default function UpcomingCompetitions({ competitions }: { competitions: Competition[] }) {
     if (!competitions || competitions.length === 0) {
         return <div className="text-center text-gray-500 py-8">No upcoming competitions found.</div>;
     }
