@@ -3,10 +3,9 @@ import { LuArrowUpRight } from "react-icons/lu";
 import { formatDateSpan } from "@/content/dates";
 import { projects } from "@/content/projects";
 
-export default function MyProjects() {
+export default function ProjectList() {
   return (
-    <section id="Projects" className="space-y-4">
-      <h2 className="text-3xl font-bold">Projects</h2>
+    <div className="space-y-4">
       {projects.map((project) => (
         <article key={project.title} className="card border border-base-300 bg-base-200">
           <div className="card-body gap-3 p-5">
@@ -48,6 +47,6 @@ export default function MyProjects() {
           </div>
         </article>
       ))}
-    </section>
+    </div>
   );
 }

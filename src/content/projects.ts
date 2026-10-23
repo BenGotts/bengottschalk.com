@@ -35,18 +35,19 @@ const projectList: Project[] = [
     ],
     githubLink: "https://github.com/BenGotts/website",
   },
-  {
-    title: "Cuble Game",
-    start: "2022-03",
-    end: "2022-03",
-    technologies: "React.js, Firebase, Firestore, Material UI (MUI), Netlify, GitHub Actions",
-    details: [
-      "Developed a Rubik's Cube-themed game using React/MUI with daily-scripted WCA data updates in Firestore.",
-      "Hosted on Netlify with GitHub Actions CI/CD ensuring efficient deployment and maintenance.",
-    ],
-    githubLink: "https://github.com/BenGotts/cuble-app",
-    projectLink: "https://cuble.app",
-  },
+  // Hidden while cuble.app is offline; uncomment when it's back up.
+  // {
+  //   title: "Cuble Game",
+  //   start: "2022-03",
+  //   end: "2022-03",
+  //   technologies: "React.js, Firebase, Firestore, Material UI (MUI), Netlify, GitHub Actions",
+  //   details: [
+  //     "Developed a Rubik's Cube-themed game using React/MUI with daily-scripted WCA data updates in Firestore.",
+  //     "Hosted on Netlify with GitHub Actions CI/CD ensuring efficient deployment and maintenance.",
+  //   ],
+  //   githubLink: "https://github.com/BenGotts/cuble-app",
+  //   projectLink: "https://cuble.app",
+  // },
   {
     title: "Rubik's Cube Scrambling Program",
     start: "2018-12",

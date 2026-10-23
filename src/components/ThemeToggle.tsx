@@ -1,21 +1,11 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { LuMoon, LuSun } from "react-icons/lu";
 import { THEME_STORAGE_KEY, THEMES } from "@/lib/theme";
-
-function subscribe(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => observer.disconnect();
-}
-
-const getTheme = () => document.documentElement.dataset.theme ?? THEMES.dark;
-const getServerTheme = () => THEMES.dark;
+import { useTheme } from "@/lib/useTheme";
 
 export default function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getTheme, getServerTheme);
-  const isDark = theme !== THEMES.light;
+  const isDark = useTheme() !== THEMES.light;
 
   const toggle = () => {
     const next = isDark ? THEMES.light : THEMES.dark;

@@ -101,6 +101,46 @@
   --color-medal-bronze: #C8803F;
 }
 
+/* Leaflet (competition map) in theme colors. Prefixed with .leaflet-container to beat leaflet.css. */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--color-base-200);
+}
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-popup-tip {
+  background: var(--color-base-200);
+  color: var(--color-base-content);
+  border: 1px solid var(--color-base-300);
+  box-shadow: none;
+}
+.leaflet-container .leaflet-popup-content {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.leaflet-container .leaflet-popup-content a {
+  color: var(--color-primary);
+}
+.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-base-200) 85%, transparent);
+  color: var(--muted);
+}
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-primary);
+}
+.leaflet-container .leaflet-bar a {
+  background: var(--color-base-200);
+  color: var(--color-base-content);
+  border-color: var(--color-base-300);
+}
+.leaflet-container .map-marker {
+  stroke: var(--color-base-100);
+  stroke-width: 1.5;
+  fill-opacity: 0.85;
+}
+.leaflet-container .map-marker-past { fill: var(--color-primary); }
+.leaflet-container .map-marker-upcoming { fill: var(--color-secondary); }
+.leaflet-container .map-marker-ongoing { fill: var(--color-error); }
+
 @layer base {
   h1, h2, h3, h4 {
     font-family: var(--font-display);
