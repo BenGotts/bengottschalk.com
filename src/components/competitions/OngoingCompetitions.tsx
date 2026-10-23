@@ -1,8 +1,7 @@
-"use client";
-
 import CompetitionCard from "./CompetitionCard";
+import type { Competition } from "@/lib/wca";
 
-export default function OngoingCompetitions({ competitions }) {
+export default function OngoingCompetitions({ competitions }: { competitions: Competition[] }) {
     if (!competitions || competitions.length === 0) {
         return null;
     }

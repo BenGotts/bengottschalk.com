@@ -1,13 +1,21 @@
 import { FaLinkedin, FaGithub, FaYoutube, FaTiktok, FaDonate } from "react-icons/fa";
 import Link from "next/link";
+import { cacheLife } from "next/cache";
+
+// Cached so the static shell can include it; refreshed daily for the new year.
+async function CopyrightYear() {
+  "use cache";
+  cacheLife("days");
+  return new Date().getFullYear();
+}
 
 export default function Footer() {
   return (
     <footer className="sticky bottom-0 bg-blue-600 text-white p-4 z-10">
-      <div className="max-w-screen-xl mx-auto px-4">
+      <div className="max-w-(--breakpoint-xl) mx-auto px-4">
         <div className="flex flex-wrap justify-between items-center">
           <div className="text-center md:text-left md:flex-1">
-            <p>&copy; {new Date().getFullYear()} Ben Gottschalk</p>
+            <p>&copy; <CopyrightYear /> Ben Gottschalk</p>
           </div>
           <div className="flex justify-center md:justify-end items-center gap-4 mt-4 md:mt-0">
             <Link href="/about" className="hover:text-gray-300 flex items-center">About</Link>

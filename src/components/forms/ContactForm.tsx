@@ -9,7 +9,7 @@ export default function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const clientAction = async (formData) => {
+  const clientAction = async (formData: FormData) => {
     setIsSubmitting(true);
     setError("");
 
@@ -34,7 +34,7 @@ export default function ContactForm() {
       } else {
         setError("An error occurred while sending your message. Please try again.");
       }
-    } catch (error) {
+    } catch {
       setError("An unexpected error occurred. Please try again later.");
     } finally {
       setIsSubmitting(false);
@@ -43,7 +43,7 @@ export default function ContactForm() {
 
   if (isSubmitted) {
     return (
-      <div className="py-8 px-4 sm:px-6 lg:px-8 flex-grow">
+      <div className="py-8 px-4 sm:px-6 lg:px-8 grow">
         <div className="mx-auto max-w-md flex-1 text-center">
           <h2 className="text-3xl font-bold tracking-tight text-[#0077b6]">Thank You!</h2>
           <p className="mt-4 text-lg text-[#333]">
@@ -51,7 +51,7 @@ export default function ContactForm() {
           </p>
           <button
             onClick={() => setIsSubmitted(false)}
-            className="mt-6 inline-flex justify-center rounded-md bg-[#0077b6] py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-[#005a8c] focus:outline-none focus:ring-2 focus:ring-[#0077b6] focus:ring-offset-2"
+            className="mt-6 inline-flex justify-center rounded-md bg-[#0077b6] py-3 px-4 text-sm font-medium text-white shadow-xs hover:bg-[#005a8c] focus:outline-hidden focus:ring-2 focus:ring-[#0077b6] focus:ring-offset-2"
           >
             Send Another Message
           </button>
@@ -61,7 +61,7 @@ export default function ContactForm() {
   }
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 flex-grow">
+    <div className="py-8 px-4 sm:px-6 lg:px-8 grow">
       <div className="mx-auto max-w-md flex-1">
         <h2 className="text-3xl font-bold tracking-tight text-[#0077b6]">Get in Touch</h2>
         <p className="mt-4 text-lg text-[#333]">
@@ -83,7 +83,7 @@ export default function ContactForm() {
                 type="text"
                 autoComplete="name"
                 required
-                className="block w-full rounded-md border-[#0077b6] bg-white py-3 px-4 text-[#333] shadow-sm focus:border-[#0077b6] focus:ring-[#0077b6]"
+                className="block w-full rounded-md border-[#0077b6] bg-white py-3 px-4 text-[#333] shadow-xs focus:border-[#0077b6] focus:ring-[#0077b6]"
               />
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function ContactForm() {
                 type="email"
                 autoComplete="email"
                 required
-                className="block w-full rounded-md border-[#0077b6] bg-white py-3 px-4 text-[#333] shadow-sm focus:border-[#0077b6] focus:ring-[#0077b6]"
+                className="block w-full rounded-md border-[#0077b6] bg-white py-3 px-4 text-[#333] shadow-xs focus:border-[#0077b6] focus:ring-[#0077b6]"
               />
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function ContactForm() {
                 name="message"
                 rows={3}
                 required
-                className="block w-full rounded-md border-[#0077b6] bg-white py-3 px-4 text-[#333] shadow-sm focus:border-[#0077b6] focus:ring-[#0077b6]"
+                className="block w-full rounded-md border-[#0077b6] bg-white py-3 px-4 text-[#333] shadow-xs focus:border-[#0077b6] focus:ring-[#0077b6]"
               />
             </div>
           </div>
@@ -120,7 +120,7 @@ export default function ContactForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`inline-flex w-full justify-center rounded-md bg-[#0077b6] py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-[#005a8c] focus:outline-none focus:ring-2 focus:ring-[#0077b6] focus:ring-offset-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`inline-flex w-full justify-center rounded-md bg-[#0077b6] py-3 px-4 text-sm font-medium text-white shadow-xs hover:bg-[#005a8c] focus:outline-hidden focus:ring-2 focus:ring-[#0077b6] focus:ring-offset-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>

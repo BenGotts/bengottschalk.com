@@ -1,4 +1,4 @@
-export default function YoutubeVideo({ videoId }) {
+export default function YoutubeVideo({ videoId }: { videoId?: string }) {
     return (
         // This wrapper ensures the iframe can shrink on smaller screens
         <div className="flex justify-center items-center max-w-full" style={{ maxWidth: "560px", maxHeight: "315px" }}>
