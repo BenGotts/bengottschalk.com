@@ -1,157 +1,114 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
-
-@theme {
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-
-  --color-chart-1: hsl(var(--chart-1));
-  --color-chart-2: hsl(var(--chart-2));
-  --color-chart-3: hsl(var(--chart-3));
-  --color-chart-4: hsl(var(--chart-4));
-  --color-chart-5: hsl(var(--chart-5));
-
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
-
-  @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
-  }
-  @keyframes accordion-up {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
-  }
+/* DaisyUI with only the site's own themes (no built-in themes are shipped). */
+@plugin 'daisyui' {
+  themes: false;
+  logs: false;
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+/* "Midnight Cube": the default, dark. All text/background pairs pass WCAG AA. */
+@plugin 'daisyui/theme' {
+  name: 'midnight';
+  default: true;
+  color-scheme: dark;
+  --color-base-100: #0B1220;
+  --color-base-200: #111A2E;
+  --color-base-300: #1A2540;
+  --color-base-content: #E6EBF5;
+  --color-primary: #4C8DFF;
+  --color-primary-content: #06142E;
+  --color-secondary: #2FBF71;
+  --color-secondary-content: #04210F;
+  --color-accent: #FFD23F;
+  --color-accent-content: #2A1F00;
+  --color-neutral: #263352;
+  --color-neutral-content: #E6EBF5;
+  --color-info: #38BDF8;
+  --color-info-content: #04202E;
+  --color-success: #2FBF71;
+  --color-success-content: #04210F;
+  --color-warning: #FFD23F;
+  --color-warning-content: #2A1F00;
+  --color-error: #FF6B6B;
+  --color-error-content: #2B0707;
+  --radius-selector: 2rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+  --muted: #9AA6BF;
+}
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+@plugin 'daisyui/theme' {
+  name: 'midnight-light';
+  color-scheme: light;
+  --color-base-100: #F4F7FB;
+  --color-base-200: #FFFFFF;
+  --color-base-300: #DCE3EE;
+  --color-base-content: #0F1A2E;
+  --color-primary: #1F5FD1;
+  --color-primary-content: #FFFFFF;
+  --color-secondary: #0F7A45;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #8A6100;
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #1A2540;
+  --color-neutral-content: #F4F7FB;
+  --color-info: #0369A1;
+  --color-info-content: #FFFFFF;
+  --color-success: #0F7A45;
+  --color-success-content: #FFFFFF;
+  --color-warning: #8A6100;
+  --color-warning-content: #FFFFFF;
+  --color-error: #B42318;
+  --color-error-content: #FFFFFF;
+  --radius-selector: 2rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+  --muted: #4A5873;
+}
+
+@theme inline {
+  /* Font variables come from next/font in src/app/layout.tsx. */
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Headings use the same family; kept as its own token so it can diverge later. */
+  --font-display: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+
+  /* Secondary text, e.g. dates and labels: `text-muted`. */
+  --color-muted: var(--muted);
+}
+
+@theme {
+  /* Rubik's Cube sticker colors, for small accents (event markers, the logo). */
+  --color-cube-white: #F4F4F4;
+  --color-cube-yellow: #FFD500;
+  --color-cube-red: #C41E3A;
+  --color-cube-orange: #FF5800;
+  --color-cube-blue: #0051BA;
+  --color-cube-green: #009E60;
+
+  --color-medal-gold: #E2B13C;
+  --color-medal-silver: #B5BDC8;
+  --color-medal-bronze: #C8803F;
+}
+
 @layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
   }
 
-  /* Tailwind v4 dropped the pointer cursor on buttons; keep the v3 behavior. */
+  /* Tailwind v4 dropped the pointer cursor on buttons. */
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-}
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-.animate-pulse-border {
-  border: 2px solid #ef4444;
 }

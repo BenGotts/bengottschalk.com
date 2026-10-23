@@ -13,8 +13,8 @@ export default async function Home() {
   const latestVideo = videos.ok ? videos.data[0] : undefined;
 
   return (
-    <div className="flex flex-col grow justify-center items-center m-6">
-      {latestVideo && <YoutubeVideo videoId={latestVideo.id} />}
+    <div className="mx-auto flex max-w-3xl flex-col items-center gap-14">
+      {latestVideo && <YoutubeVideo videoId={latestVideo.id} title={latestVideo.title} />}
       <Connect />
     </div>
   );
