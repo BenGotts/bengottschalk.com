@@ -21,6 +21,13 @@ export function formatResult(eventId: string, value: number, kind: ResultKind = 
   return formatCentiseconds(value);
 }
 
+const isoDateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** `"2025-05-01"` → `"May 1, 2025"`. WCA dates are calendar dates, so format them in UTC. */
+export function formatIsoDate(date: string): string {
+  return isoDateFormat.format(new Date(`${date}T00:00:00Z`));
+}
+
 const DELEGATE_STATUS_LABELS: Record<string, string> = {
   trainee_delegate: "Trainee Delegate",
   junior_delegate: "Junior Delegate",

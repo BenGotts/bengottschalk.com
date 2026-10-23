@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { hasStaffRole, mergeCompetitions, utcDateString } from "./competitions";
+import {
+  buildCompetitionHistory,
+  groupByYear,
+  groupMapLocations,
+  hasStaffRole,
+  historyStats,
+  isMultiLocation,
+  mergeCompetitions,
+  utcDateString,
+} from "./competitions";
 import type { Competition } from "./schemas";
 
 function competition(id: string, start: string, end: string, overrides: Partial<Competition> = {}): Competition {
@@ -72,6 +81,68 @@ describe("hasStaffRole", () => {
       organizers: [{ id: 2, wca_id: null, name: "Someone" }],
     });
     expect(hasStaffRole(staffed, "2016GOTT01")).toEqual({ isDelegate: true, isOrganizer: false });
+  });
+});
+
+describe("buildCompetitionHistory", () => {
+  it("merges competed and delegated, keeps only finished competitions, newest first", () => {
+    const history = buildCompetitionHistory(
+      [competition("Both2025", "2025-05-01", "2025-05-01"), competition("Competed2024", "2024-01-01", "2024-01-02")],
+      [
+        competition("Both2025", "2025-05-01", "2025-05-01"),
+        competition("DelegatedOnly2025", "2025-08-01", "2025-08-01", { city: "Seattle, Washington" }),
+        competition("Upcoming2026", "2026-12-01", "2026-12-01"),
+        competition("Cancelled2025", "2025-09-01", "2025-09-01", { cancelled_at: "2025-08-01T00:00:00Z" }),
+      ],
+      today,
+    );
+    expect(history.map((h) => [h.id, h.competed, h.delegated])).toEqual([
+      ["DelegatedOnly2025", false, true],
+      ["Both2025", true, true],
+      ["Competed2024", true, false],
+    ]);
+    expect(historyStats(history)).toEqual({ competed: 2, delegated: 2, countries: 1, usStates: 2 });
+  });
+});
+
+describe("multi-location competitions", () => {
+  // Ben's real data: FMC2019 is XW at 0,0; FMC Americas 2018 is XM.
+  const fmcWorld = competition("FMC2019", "2019-04-13", "2019-04-14", { country_iso2: "XW", city: "Multiple Cities", latitude_degrees: 0, longitude_degrees: 0 });
+  const fmcAmericas = competition("FMCAmericas2018", "2018-11-04", "2018-11-04", { country_iso2: "XM", city: "Multiple cities" });
+  const paris = competition("WC2017", "2017-07-14", "2017-07-16", { country_iso2: "FR", city: "Paris" });
+
+  it("aren't counted as countries", () => {
+    const history = buildCompetitionHistory([fmcWorld, fmcAmericas, paris, competition("Local", "2020-01-01", "2020-01-01")], [], today);
+    expect(historyStats(history).countries).toBe(2);
+    expect(isMultiLocation(fmcWorld)).toBe(true);
+    expect(isMultiLocation(paris)).toBe(false);
+  });
+
+  it("aren't put on the map", () => {
+    const locations = groupMapLocations([fmcWorld, fmcAmericas, paris].map((c) => ({ competition: c, status: "past" as const })));
+    expect(locations.flatMap((l) => l.competitions.map((c) => c.id))).toEqual(["WC2017"]);
+  });
+});
+
+describe("groupByYear", () => {
+  it("groups newest year first", () => {
+    const groups = groupByYear([{ start_date: "2025-01-01" }, { start_date: "2026-03-01" }, { start_date: "2025-06-01" }]);
+    expect(groups.map((g) => [g.year, g.entries.length])).toEqual([["2026", 1], ["2025", 2]]);
+  });
+});
+
+describe("groupMapLocations", () => {
+  it("combines competitions at the same venue and prefers the most current status", () => {
+    const venue = { latitude_degrees: 45.52311, longitude_degrees: -122.67651 };
+    const locations = groupMapLocations([
+      { competition: competition("Old", "2019-01-01", "2019-01-01", venue), status: "past" },
+      { competition: competition("Soon", "2026-11-01", "2026-11-01", { ...venue, date_range: "Nov 1, 2026" }), status: "upcoming" },
+      { competition: competition("Elsewhere", "2020-01-01", "2020-01-01", { latitude_degrees: 47.6, longitude_degrees: -122.3 }), status: "past" },
+    ]);
+    expect(locations).toHaveLength(2);
+    const portland = locations.find((l) => l.competitions.length === 2);
+    expect(portland?.status).toBe("upcoming");
+    expect(portland?.competitions.map((c) => [c.id, c.dateLabel])).toEqual([["Soon", "Nov 1, 2026"], ["Old", "2019-01-01"]]);
   });
 });
 

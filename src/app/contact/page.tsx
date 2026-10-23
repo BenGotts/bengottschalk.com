@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import ContactForm from "@/components/forms/ContactForm";
 
-export default function page() {
-  return (
-    <div className="grow bg-[#f0f8ff]">
-      <ContactForm />
-    </div>
-  )
+export const metadata: Metadata = pageMetadata({
+  title: "Contact",
+  description: "Get in touch with Ben Gottschalk.",
+  path: "/contact",
+});
+
+export default function ContactPage() {
+  return <ContactForm />
 }

@@ -59,6 +59,42 @@ function indexActivities(wcif: Wcif): Map<number, LocatedActivity> {
   return index;
 }
 
+const ASSIGNMENT_LABELS: Record<string, string> = {
+  competitor: "Competing",
+  "staff-judge": "Judging",
+  "staff-scrambler": "Scrambling",
+  "staff-runner": "Running",
+  "staff-dataentry": "Data entry",
+  "staff-announcer": "Announcing",
+  "staff-delegate": "Delegating",
+};
+
+/** `staff-judge` → `Judging`; unknown codes become `Staff: other-code`-style labels. */
+export function assignmentLabel(assignmentCode: string): string {
+  const known = ASSIGNMENT_LABELS[assignmentCode];
+  if (known) return known;
+  const words = assignmentCode.replace(/^staff-/, "").split(/[-_]/).join(" ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Groups entries by local day at the venue, e.g. `"Saturday, Oct 24"`. */
+export function groupScheduleByDay(entries: ScheduleEntry[]): { day: string; entries: ScheduleEntry[] }[] {
+  const groups = new Map<string, ScheduleEntry[]>();
+  for (const entry of entries) {
+    const day = new Intl.DateTimeFormat("en-US", {
+      weekday: "long", month: "short", day: "numeric", timeZone: entry.timezone,
+    }).format(new Date(entry.startTime));
+    groups.set(day, [...(groups.get(day) ?? []), entry]);
+  }
+  return [...groups.entries()].map(([day, dayEntries]) => ({ day, entries: dayEntries }));
+}
+
+/** `"9:00 AM"` in the venue's timezone. */
+export function formatScheduleTime(entry: Pick<ScheduleEntry, "startTime" | "timezone">): string {
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: entry.timezone })
+    .format(new Date(entry.startTime));
+}
+
 /** One person's roles, events and assignments at a competition, sorted by time. */
 export function getPersonSchedule(wcif: Wcif, wcaId: string): PersonSchedule | null {
   const person = wcif.persons.find((p) => p.wcaId === wcaId);
