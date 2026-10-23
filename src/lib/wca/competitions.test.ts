@@ -101,7 +101,7 @@ describe("buildCompetitionHistory", () => {
       ["Both2025", true, true],
       ["Competed2024", true, false],
     ]);
-    expect(historyStats(history)).toEqual({ attended: 3, competed: 2, delegated: 2, countries: 1, usStates: 2 });
+    expect(historyStats(history)).toEqual({ competed: 2, delegated: 2, countries: 1, usStates: 2 });
   });
 });
 

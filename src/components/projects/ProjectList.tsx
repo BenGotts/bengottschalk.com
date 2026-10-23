@@ -10,7 +10,7 @@ export default function ProjectList() {
         <article key={project.title} className="card border border-base-300 bg-base-200">
           <div className="card-body gap-3 p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold">
                 {project.projectLink ? (
                   <a
                     href={project.projectLink}
@@ -23,7 +23,7 @@ export default function ProjectList() {
                 ) : (
                   project.title
                 )}
-              </h3>
+              </h2>
               <p className="text-sm text-muted">{formatDateSpan(project)}</p>
             </div>
             <ul className="flex flex-wrap gap-2" aria-label="Technologies">

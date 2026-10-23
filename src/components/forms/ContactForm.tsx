@@ -21,6 +21,7 @@ export default function ContactForm() {
       name: formData.get('name'),
       email: formData.get('email'),
       message: formData.get('message'),
+      website: formData.get('website') ?? undefined,
     }
 
     const result = ContactFormSchema.safeParse(contactData);
@@ -80,6 +81,11 @@ export default function ContactForm() {
         <div className="space-y-1.5">
           <label htmlFor="message" className="block text-sm font-medium">Message</label>
           <textarea id="message" name="message" rows={5} required className={`textarea ${fieldClass}`} />
+        </div>
+        {/* Honeypot: off-screen and skipped by keyboard and screen readers, so only bots fill it. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+          <label htmlFor="website">Website</label>
+          <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
         </div>
         <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
           {isSubmitting && <span className="loading loading-spinner loading-sm" aria-hidden="true" />}

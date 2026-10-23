@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { LuArrowUpRight } from "react-icons/lu";
 import StatTile from "@/components/StatTile";
 import PrTable from "@/components/results/PrTable";
 import { eventName, formatIsoDate, formatResult, getPerson, getRegionalRecords } from "@/lib/wca";
 
-export const metadata: Metadata = {
-  title: "Results | bengottschalk.com",
-  description: "Benjamin Gottschalk's official WCA personal records, rankings, medals and records.",
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Results",
+  description: "Ben Gottschalk's official WCA personal records in every event, with national, continental and world ranks, medals and records.",
+  path: "/results",
+});
 
 export default async function ResultsPage() {
   const [person, regionalRecords] = await Promise.all([getPerson(), getRegionalRecords()]);

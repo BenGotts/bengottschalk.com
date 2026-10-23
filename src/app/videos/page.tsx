@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { FaYoutube } from "react-icons/fa";
 import VideoCard from "@/components/videos/VideoCard";
 import { getLatestVideos } from "@/lib/youtube";
 
-export const metadata: Metadata = {
-  title: "Videos | bengottschalk.com",
-  description: "Latest YouTube videos from Benjamin Gottschalk.",
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Videos",
+  description: "Ben Gottschalk's latest Rubik's Cube videos from YouTube.",
+  path: "/videos",
+});
 
 const CHANNEL_URL = "https://www.youtube.com/c/BenjaminGottschalk";
 
@@ -28,7 +30,7 @@ export default async function VideosPage() {
       {videos.ok && videos.data.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {videos.data.map((video, index) => (
-            <VideoCard key={video.id} video={video} priority={index < 3} />
+            <VideoCard key={video.id} video={video} priority={index < 3} headingLevel="h2" />
           ))}
         </div>
       ) : (

@@ -12,6 +12,11 @@ export async function contact(formData: unknown) {
     return { success: false, error: "Invalid form data" };
   }
 
+  // A filled honeypot means a bot. Report success so it has nothing to adapt to.
+  if (parsed.data.website) {
+    return { success: true, data: null };
+  }
+
   const sendTo = process.env.SEND_TO_EMAIL;
   if (!sendTo) {
     console.error("SEND_TO_EMAIL is not set");

@@ -2,7 +2,14 @@ import Image from "next/image";
 import { formatIsoDate } from "@/lib/wca/format";
 import type { Video } from "@/lib/youtube";
 
-export default function VideoCard({ video, priority = false }: { video: Video; priority?: boolean }) {
+interface VideoCardProps {
+  video: Video;
+  priority?: boolean;
+  /** Heading level for the title, to fit the page outline. */
+  headingLevel?: "h2" | "h3";
+}
+
+export default function VideoCard({ video, priority = false, headingLevel: Heading = "h3" }: VideoCardProps) {
   return (
     <article className="card group relative overflow-hidden border border-base-300 bg-base-200 transition-colors hover:border-primary">
       <div className="relative aspect-video bg-base-300">
@@ -18,7 +25,7 @@ export default function VideoCard({ video, priority = false }: { video: Video; p
         )}
       </div>
       <div className="card-body gap-1 p-4">
-        <h3 className="line-clamp-2 font-semibold leading-snug">
+        <Heading className="line-clamp-2 font-semibold leading-snug">
           {/* Stretched link: the whole card opens the video. */}
           <a
             href={`https://www.youtube.com/watch?v=${video.id}`}
@@ -28,7 +35,7 @@ export default function VideoCard({ video, priority = false }: { video: Video; p
           >
             {video.title}
           </a>
-        </h3>
+        </Heading>
         <p className="text-sm text-muted">{formatIsoDate(video.publishedAt.slice(0, 10))}</p>
       </div>
     </article>

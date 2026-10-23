@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { LuArrowRight, LuArrowUpRight } from "react-icons/lu";
 import StatTile from "@/components/StatTile";
@@ -6,7 +7,8 @@ import CompetitionCard from "@/components/competitions/CompetitionCard";
 import CompetitionSchedule from "@/components/competitions/CompetitionSchedule";
 import VideoCard from "@/components/videos/VideoCard";
 import { experience } from "@/content/experience";
-import { WCA_PROFILE_URL } from "@/content/links";
+import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@/content/links";
+import { SITE_URL } from "@/consts";
 import {
   formatDelegateStatus,
   getCompetitionHistory,
@@ -17,8 +19,13 @@ import {
 import { getLatestVideos } from "@/lib/youtube";
 
 export const metadata: Metadata = {
-  title: 'Home | bengottschalk.com',
-  description: 'The official website for Benjamin Gottschalk.',
+  ...pageMetadata({
+    title: "Ben Gottschalk",
+    description: "Ben Gottschalk: competitive Rubik's Cube solver, WCA Delegate for the Pacific Northwest, and software developer.",
+    path: "/",
+  }),
+  // The home page uses the full name as its whole title, without the template.
+  title: { absolute: "Ben Gottschalk · Competitive cuber and WCA Delegate" },
 }
 
 function SectionHeader({ id, title, href, linkLabel }: { id: string; title: string; href: string; linkLabel: string }) {
@@ -45,8 +52,27 @@ export default async function Home() {
   const nextUp = competitions.ok ? competitions.data.upcoming.slice(0, 2) : [];
   const currentJob = experience.find((job) => job.end === null);
 
+  // schema.org Person, so search engines can connect the site to these profiles.
+  const personJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Benjamin Gottschalk",
+    alternateName: "Ben Gottschalk",
+    url: SITE_URL,
+    ...(currentJob && {
+      jobTitle: currentJob.title,
+      worksFor: { "@type": "Organization", name: currentJob.company },
+    }),
+    sameAs: [WCA_PROFILE_URL, ...SOCIAL_LINKS.map((link) => link.href)],
+  };
+
   return (
     <div className="space-y-16">
+      <script
+        type="application/ld+json"
+        // Escape "<" so the JSON can never close the script tag early.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd).replace(/</g, "\\u003c") }}
+      />
       <section className="space-y-6 pt-4">
         {role.ok && role.data && (
           <p className="text-sm font-semibold uppercase tracking-widest text-secondary">

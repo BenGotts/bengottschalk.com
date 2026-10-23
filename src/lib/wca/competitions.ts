@@ -109,7 +109,6 @@ export function buildCompetitionHistory(
 }
 
 export interface HistoryStats {
-  attended: number;
   competed: number;
   delegated: number;
   countries: number;
@@ -134,7 +133,6 @@ function usState(entry: Pick<HistoryEntry, "city" | "country_iso2">): string | n
 export function historyStats(history: HistoryEntry[]): HistoryStats {
   const states = new Set(history.map(usState).filter((state) => state !== null));
   return {
-    attended: history.length,
     competed: history.filter((entry) => entry.competed).length,
     delegated: history.filter((entry) => entry.delegated).length,
     countries: new Set(history.filter((entry) => !isMultiLocation(entry)).map((entry) => entry.country_iso2)).size,
