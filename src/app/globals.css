@@ -120,11 +120,12 @@
 .leaflet-container .leaflet-popup-content a {
   color: var(--color-primary);
 }
-.leaflet-container .leaflet-control-attribution {
+/* leaflet.css loads after this file with the same specificity, so these need one more class. */
+.leaflet-container .leaflet-control-container .leaflet-control-attribution {
   background: color-mix(in oklab, var(--color-base-200) 85%, transparent);
   color: var(--muted);
 }
-.leaflet-container .leaflet-control-attribution a {
+.leaflet-container .leaflet-control-container .leaflet-control-attribution a {
   color: var(--color-primary);
 }
 .leaflet-container .leaflet-bar a {

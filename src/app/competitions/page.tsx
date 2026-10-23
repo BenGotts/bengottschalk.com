@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import StatTile from "@/components/StatTile";
 import CompetitionHistory from "@/components/competitions/CompetitionHistory";
 import CompetitionMapLoader from "@/components/competitions/CompetitionMapLoader";
@@ -7,10 +8,11 @@ import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
 import { formatIsoDate, getCompetitionHistory, getCompetitionsOverview, groupMapLocations, type MapStatus } from "@/lib/wca";
 
-export const metadata: Metadata = {
-  title: "Competitions | bengottschalk.com",
-  description: "Competitions Benjamin Gottschalk is attending, has competed in, and has delegated.",
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Competitions",
+  description: "Where Ben Gottschalk is competing, delegating, and organizing next, plus every WCA competition he has attended, on a map.",
+  path: "/competitions",
+});
 
 export default async function CompetitionsPage() {
   const [competitions, historyResult] = await Promise.all([getCompetitionsOverview(), getCompetitionHistory()]);

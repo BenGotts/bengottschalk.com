@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function AboutMe() {
     return (
         <section id="AboutMe" className="space-y-4">
-            <h2 className="text-3xl font-bold">About Me</h2>
+            <h1 className="text-4xl font-bold">About Me</h1>
             <p className="text-lg leading-relaxed">
                 Hi there! My name is Benjamin Gottschalk and I am a motivated Software Engineer with a Bachelor of Science in Computer Science and a minor in Mathematics from Oregon State University. My time at OSU has equipped me with a solid foundation in computer science principles and mathematics, allowing me to solve complex problems and engineer innovative solutions.
             </p>

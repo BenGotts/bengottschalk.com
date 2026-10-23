@@ -32,6 +32,8 @@ const FILTERS: { status: MapStatus; label: string; dot: string; active: string }
   { status: "ongoing", label: "Happening now", dot: "bg-error", active: "border-error bg-error/10" },
 ];
 
+const DRAW_ORDER: Record<MapStatus, number> = { past: 0, upcoming: 1, ongoing: 2 };
+
 function MapButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -81,7 +83,9 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
         const competitions = location.competitions.filter((c) => shown[c.status]);
         if (competitions.length === 0) return [];
         return [{ ...location, competitions, status: mostCurrentStatus(competitions.map((c) => c.status)) }];
-      }),
+      })
+      // Later markers draw on top: past first, so upcoming and ongoing stay visible.
+      .toSorted((a, b) => DRAW_ORDER[a.status] - DRAW_ORDER[b.status]),
     [locations, shown],
   );
 
@@ -179,8 +183,9 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
         ))}
       </fieldset>
 
-      {/* The height lives here: MapContainer keeps the className it first rendered with. */}
-      <div className={`relative ${expanded ? "min-h-0 flex-1" : "h-[28rem]"}`}>
+      {/* The height lives here: MapContainer keeps the className it first rendered with.
+          `isolate` keeps Leaflet's internal z-indexes (up to 1000) from stacking over the sticky header. */}
+      <div className={`relative isolate ${expanded ? "min-h-0 flex-1" : "h-[28rem]"}`}>
         <MapContainer
           key={mapInstance}
           ref={setMap}
@@ -200,7 +205,9 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
               key={`${location.key}-${location.status}-${location.competitions.length}`}
               center={[location.latitude, location.longitude]}
               radius={6 + Math.min(10, Math.sqrt(location.competitions.length) * 2)}
-              pathOptions={{ className: `map-marker map-marker-${location.status}` }}
+              // A creation option, not pathOptions: Leaflet only reads className when the
+              // marker is built (the key above rebuilds it when the status changes).
+              className={`map-marker map-marker-${location.status}`}
             >
               <Popup>
                 <p className="m-0 font-semibold">{location.city}</p>

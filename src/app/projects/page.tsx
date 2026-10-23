@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import ProjectList from "@/components/projects/ProjectList";
 
-export const metadata: Metadata = {
-  title: "Projects | bengottschalk.com",
-  description: "Software projects by Benjamin Gottschalk, many of them for the cubing community.",
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Projects",
+  description: "Software projects by Ben Gottschalk, many of them for the cubing community.",
+  path: "/projects",
+});
 
 export default function ProjectsPage() {
   return (

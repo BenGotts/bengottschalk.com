@@ -1,7 +1,9 @@
 import "@cubing/icons";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { LuArrowLeft } from "react-icons/lu";
 import ProgressionChart from "@/components/results/ProgressionChart";
 import {
@@ -27,12 +29,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/results/[event]">): Promise<Metadata> {
   const { event } = await params;
-  return {
-    title: `${eventName(event)} results | bengottschalk.com`,
-    description: `Benjamin Gottschalk's ${eventName(event)} personal records and PR history.`,
-  };
+  return pageMetadata({
+    title: `${eventName(event)} results`,
+    description: `Ben Gottschalk's ${eventName(event)} personal records, WCA rankings, and PR history.`,
+    path: `/results/${event}`,
+  });
 }
-
 
 const rankLine = (rank: Rank) => `NR ${rank.country_rank} · CR ${rank.continent_rank} · WR ${rank.world_rank}`;
 
@@ -54,9 +56,33 @@ function PrHistory({ title, points, eventId, kind }: { title: string; points: Pr
   );
 }
 
-// Params are checked before anything renders so unknown events get a real 404,
-// not a 200 with not-found content streamed into the static shell.
-export default async function EventResultsPage({ params }: PageProps<"/results/[event]">) {
+// Same shape as the page, shown only for event URLs that weren't prerendered.
+function EventResultsSkeleton() {
+  return (
+    <div className="space-y-10">
+      <div className="skeleton h-14 w-72 rounded-box" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="skeleton h-36 rounded-box" />
+        <div className="skeleton h-36 rounded-box" />
+      </div>
+      <div className="skeleton h-80 rounded-box" />
+    </div>
+  );
+}
+
+// `params` is awaited inside <Suspense> so navigation stays instant (Partial
+// Prefetching streams this route's shell first). Unknown events still render
+// the not-found page; because streaming has started, the status stays 200 and
+// Next adds `noindex`.
+export default function EventResultsPage({ params }: PageProps<"/results/[event]">) {
+  return (
+    <Suspense fallback={<EventResultsSkeleton />}>
+      <EventResults params={params} />
+    </Suspense>
+  );
+}
+
+async function EventResults({ params }: Pick<PageProps<"/results/[event]">, "params">) {
   const { event } = await params;
   if (!isKnownEvent(event)) notFound();
 

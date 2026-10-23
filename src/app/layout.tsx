@@ -4,13 +4,16 @@ import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { THEMES, themeInitScript } from '@/lib/theme'
+import { SITE_NAME, SITE_URL } from '@/consts'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans', display: 'swap' })
 const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-dm-mono', display: 'swap' })
 
 export const metadata: Metadata = {
-  title: 'Ben Gottschalk',
-  description: 'A website for Ben Gottschalk',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  description: "Ben Gottschalk: competitive Rubik's Cube solver, WCA Delegate, and software developer.",
+  twitter: { card: "summary_large_image" },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
