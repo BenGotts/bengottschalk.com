@@ -1,119 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-
-const projects = [
-    {
-      title: "Next.js Personal Website",
-      startDate: "Dec 2023",
-      endDate: "",
-      technologies: "Next.js, NextUI, React.js, Tailwind CSS, Node.js, Firebase",
-      details: [
-        "Revamped personal website with Next.js, NextUI, and Tailwind CSS for modern design; hosted on Firebase.",
-        "Enhanced site with Next.js for server-side rendering and static generation, boosting performance and SEO.",
-        "Employed Tailwind CSS and NextUI for efficient styling and cohesive UI."
-      ],
-      githubLink: "https://github.com/BenGotts/website-nextjs"
-    },
-    {
-        title: "Personal Website",
-        startDate: "Nov 2019",
-        endDate: "Dec 2023",
-        technologies: "HTML, CSS, Javascript, Node.js, Firebase, handlebars",
-        details: [
-          "Engineered a dynamic website on Google Firebase with a custom domain for a professional online presence.",
-          "Deployed Firebase functions using Node.js and Handlebars for dynamic content management.",
-          "Integrated various APIs for dynamic data loading and employed CSS for website design."
-        ],
-        githubLink: "https://github.com/BenGotts/website"
-      },
-    {
-      title: "Cuble Game",
-      startDate: "Mar 2022",
-      endDate: "Mar 2022",
-      technologies: "React.js, Firebase, Firestore, Material UI (MUI), Netlify, GitHub Actions",
-      details: [
-        "Developed a Rubik's Cube-themed game using React/MUI with daily-scripted WCA data updates in Firestore.",
-        "Hosted on Netlify with GitHub Actions CI/CD ensuring efficient deployment and maintenance."
-      ],
-      githubLink: "https://github.com/BenGotts/cuble-app",
-      projectLink: "https://cuble.app"
-    },
-    {
-      title: "Rubik's Cube Scrambling Program",
-      startDate: "Dec 2018",
-      endDate: "Aug 2020",
-      technologies: "Python, OpenCV",
-      details: [
-        "Created a program for generating random Rubik's Cube scrambles with a visual representation using OpenCV.",
-        "Utilized innovative Python techniques for an engaging and functional application."
-      ],
-      githubLink: "https://github.com/BenGotts/website-nextjs"
-    },
-    {
-        title: "smallsh",
-        startDate: "Jul 2020",
-        endDate: "Jul 2020",
-        technologies: "C, Shell, Operating Systems",
-        details: [
-          "Used C to write a simple shell program.",
-          "smallsh supports exit, cd, status, and # (for comments).",
-          "Ignores ctrl+C and has background/foreground with ctrl+Z (using signals)."
-        ],
-        githubLink: "https://github.com/BenGotts/smallsh"
-      },
-      {
-        title: "Cube Data",
-        startDate: "Apr 2023",
-        endDate: "Apr 2023",
-        technologies: "React.js, Firebase, Firestore, Material UI (MUI), Netlify, GitHub Actions",
-        details: [
-          "Utilized React and MUI to create a visual interface for a local unofficial Rubik's Cube competiiton.",
-          "Fetch uploaded data from Firestore.",
-          "Hosted on Netlify with GitHub Actions to build and redeploy on main branch commits."
-        ],
-        githubLink: "https://github.com/BenGotts/LocalCubeData",
-        projectLink: "https://cubedata.netlify.app/"
-      },
-      {
-        title: "Blackjack",
-        startDate: "Jan 2019",
-        endDate: "Jan 2019",
-        technologies: "C++",
-        details: [
-          "Implemented Blackjack (21) command line game in C++.",
-          "Allowed more than 1 user to play at a time."
-        ],
-        githubLink: "https://github.com/BenGotts/blackjack_cpp"
-      },
-      {
-        title: "PBL Trainer",
-        startDate: "Mar 2020",
-        endDate: "Mar 2020",
-        technologies: "Python, Replit",
-        details: [
-          "Implemented command line tool for Square-1 solvers to train the last solving step.",
-          "Uploaded to Replit and previously showcased on my personal website."
-        ],
-        githubLink: "https://github.com/BenGotts/pblTrainer"
-      },
-  ];
-  
-  const parseDate = (dateStr: string) => {
-    if (!dateStr) return new Date(); // Treat projects without an end date as ongoing, i.e., very recent
-    const [monthStr, year] = dateStr.split(' ');
-    const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(monthStr);
-    return new Date(Number(year), month);
-  };
-  
-  // Sort projects by startDate and endDate, newest first
-projects.sort((a, b) => {
-    const startDiff = parseDate(b.startDate).getTime() - parseDate(a.startDate).getTime();
-    if (startDiff !== 0) return startDiff;
-    // If startDate is the same, sort by endDate, considering ongoing projects as the newest
-    return parseDate(b.endDate || "Dec 9999").getTime() - parseDate(a.endDate || "Dec 9999").getTime(); // Treat no endDate as far future
-  });
-  
+import { formatDateSpan } from "@/content/dates";
+import { projects } from "@/content/projects";
 
 export default function MyProjects() {
     return (
@@ -136,7 +25,7 @@ export default function MyProjects() {
                                     </Link> : project.title}
                                 </div>
                                 <Separator orientation="vertical" className="h-5" />
-                                <p className="font-normal text-sm text-gray-600">{project.startDate === project.endDate ? project.startDate : `${project.startDate} - ${project.endDate ? project.endDate : "Present"}`}</p>
+                                <p className="font-normal text-sm text-gray-600">{formatDateSpan(project)}</p>
                             </div>
                         </div>
                         

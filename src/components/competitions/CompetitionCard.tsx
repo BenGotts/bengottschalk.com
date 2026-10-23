@@ -3,17 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import "@cubing/icons";
 import { ReactCountryFlag } from "react-country-flag";
 import { WCA_ID } from "@/consts";
-import type { WcaCompetition } from "@/lib/types";
+import { eventIconClass, hasStaffRole, type Competition } from "@/lib/wca";
 
 interface CompetitionCardProps {
-    competition: WcaCompetition;
+    competition: Competition;
     isOngoing?: boolean;
 }
 
 export default function CompetitionCard({ competition, isOngoing = false }: CompetitionCardProps) {
     // Check if I'm a delegate or organizer for this competition
-    const isMyDelegate = competition.delegates?.some(delegate => delegate.wca_id === WCA_ID);
-    const isMyOrganizer = competition.organizers?.some(organizer => organizer.wca_id === WCA_ID);
+    const { isDelegate: isMyDelegate, isOrganizer: isMyOrganizer } = hasStaffRole(competition, WCA_ID);
 
     return (
         <Card className={`relative border transition-all cursor-pointer group bg-white hover:bg-gray-50 ${
@@ -70,7 +69,7 @@ export default function CompetitionCard({ competition, isOngoing = false }: Comp
                         {competition.event_ids.map((id) => (
                             <span
                                 key={id}
-                                className={`text-lg sm:text-xl cubing-icon event-${id} text-gray-700`}
+                                className={`text-lg sm:text-xl ${eventIconClass(id)} text-gray-700`}
                                 title={id}
                             ></span>
                         ))}
