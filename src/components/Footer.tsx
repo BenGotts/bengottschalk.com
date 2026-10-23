@@ -4,9 +4,11 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="sticky bottom-0 bg-blue-600 text-white p-4 z-10">
-      <div className="max-w-screen-xl mx-auto px-4">
+      <div className="max-w-(--breakpoint-xl) mx-auto px-4">
         <div className="flex flex-wrap justify-between items-center">
           <div className="text-center md:text-left md:flex-1">
+            {/* Server component: the year is fixed at render time, which is intended. */}
+            {/* oxlint-disable-next-line react/purity */}
             <p>&copy; {new Date().getFullYear()} Ben Gottschalk</p>
           </div>
           <div className="flex justify-center md:justify-end items-center gap-4 mt-4 md:mt-0">
