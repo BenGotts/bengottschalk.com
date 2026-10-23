@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityName, getPersonSchedule } from "./schedule";
+import { activityName, assignmentLabel, formatScheduleTime, getPersonSchedule, groupScheduleByDay } from "./schedule";
 import type { Wcif, WcifActivity } from "./schemas";
 
 function activity(id: number, activityCode: string, startTime: string, children: WcifActivity[] = []): WcifActivity {
@@ -65,6 +65,21 @@ describe("getPersonSchedule", () => {
 
   it("returns null for someone not at the competition", () => {
     expect(getPersonSchedule(wcif, "2099NOPE01")).toBeNull();
+  });
+});
+
+describe("schedule display helpers", () => {
+  it("labels assignments", () => {
+    expect(assignmentLabel("competitor")).toBe("Competing");
+    expect(assignmentLabel("staff-judge")).toBe("Judging");
+    expect(assignmentLabel("staff-stage-lead")).toBe("Stage lead");
+  });
+
+  it("formats times and days in the venue's timezone", () => {
+    const entries = getPersonSchedule(wcif, "2016GOTT01")?.entries ?? [];
+    // 16:00Z is 9:00 AM in Portland during daylight time.
+    expect(formatScheduleTime(entries[0])).toBe("9:00 AM");
+    expect(groupScheduleByDay(entries).map((d) => [d.day, d.entries.length])).toEqual([["Saturday, Oct 24", 3]]);
   });
 });
 

@@ -4,19 +4,23 @@ import { FaGithub, FaLinkedin, FaTiktok, FaYoutube } from "react-icons/fa";
 export interface NavLink {
   label: string;
   href: string;
-  external?: boolean;
 }
 
+/** Every page: the footer and the mobile menu list all of them. */
 export const NAV_LINKS: NavLink[] = [
   { label: "Home", href: "/" },
   { label: "Competitions", href: "/competitions" },
-  { label: "Projects", href: "https://github.com/BenGotts?tab=repositories", external: true },
-  { label: "WCA", href: "https://www.worldcubeassociation.org/persons/2016GOTT01", external: true },
+  { label: "Results", href: "/results" },
+  { label: "Videos", href: "/videos" },
+  { label: "Projects", href: "/projects" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
 
-export const DONATE_URL = "https://ko-fi.com/bengottschalk";
+/** The desktop header leaves out Home (the logo links there) and Contact (shown as a button). */
+export const HEADER_LINKS: NavLink[] = NAV_LINKS.filter((link) => link.href !== "/" && link.href !== "/contact");
+
+export const WCA_PROFILE_URL = "https://www.worldcubeassociation.org/persons/2016GOTT01";
 
 export interface SocialLink {
   label: string;

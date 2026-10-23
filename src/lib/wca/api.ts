@@ -3,7 +3,15 @@ import { z } from "zod";
 import { WCA_ID, WCA_USER_ID } from "@/consts";
 import { fail, ok, type Result } from "@/lib/result";
 import { fetchWca } from "./client";
-import { mergeCompetitions, utcDateString, type CompetitionsOverview } from "./competitions";
+import {
+  buildCompetitionHistory,
+  historyStats,
+  mergeCompetitions,
+  utcDateString,
+  type CompetitionsOverview,
+  type HistoryEntry,
+  type HistoryStats,
+} from "./competitions";
 import { getPersonSchedule, type PersonSchedule } from "./schedule";
 import {
   CompetitionSchema,
@@ -81,6 +89,23 @@ export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCo
     result.ok ? ok(result.data.toSorted((a, b) => b.start_date.localeCompare(a.start_date))) : result,
     "days",
   );
+}
+
+/** Finished competitions the person competed in or delegated, with lifetime stats. */
+export async function getCompetitionHistory(
+  wcaId = WCA_ID,
+): Promise<Result<{ history: HistoryEntry[]; stats: HistoryStats }>> {
+  "use cache";
+  cacheTag("wca", `wca-history-${wcaId}`);
+  const today = utcDateString(new Date());
+  const [competed, delegated] = await Promise.all([
+    fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
+    fetchDelegatedCompetitions(wcaId),
+  ]);
+  if (!competed.ok) return settle(competed, "days");
+  if (!delegated.ok) return settle(delegated, "days");
+  const history = buildCompetitionHistory(competed.data, delegated.data, today);
+  return settle(ok({ history, stats: historyStats(history) }), "days");
 }
 
 /** Every competition the person has delegated, past and future. */

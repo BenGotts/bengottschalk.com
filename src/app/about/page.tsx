@@ -3,7 +3,6 @@ import AboutMe from "@/components/about/AboutMe";
 import Connect from "@/components/about/Connect";
 import Experience from "@/components/about/Experience";
 import HobbiesInterests from "@/components/about/HobbiesInterests";
-import MyProjects from "@/components/about/MyProjects";
 
 export const metadata: Metadata = {
   title: 'About Me | bengottschalk.com',
@@ -16,7 +15,6 @@ export default function About() {
       <AboutMe />
       <HobbiesInterests />
       <Experience />
-      <MyProjects />
       <Connect />
     </div>
   )

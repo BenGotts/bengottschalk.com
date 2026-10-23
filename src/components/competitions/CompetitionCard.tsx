@@ -1,7 +1,7 @@
 import "@cubing/icons";
-import { ReactCountryFlag } from "react-country-flag";
 import { LuArrowUpRight } from "react-icons/lu";
 import { WCA_ID } from "@/consts";
+import CompetitionLocation from "./CompetitionLocation";
 import { eventIconClass, eventName, hasStaffRole, sortEventIds, type Competition } from "@/lib/wca";
 
 interface CompetitionCardProps {
@@ -36,10 +36,7 @@ export default function CompetitionCard({ competition, isOngoing = false }: Comp
                     <span className="shrink-0 text-sm text-muted">{competition.date_range}</span>
                 </div>
 
-                <p className="flex items-center gap-1.5 text-sm text-muted">
-                    {competition.city}
-                    <ReactCountryFlag countryCode={competition.country_iso2} svg aria-label={competition.country_iso2} />
-                </p>
+                <CompetitionLocation city={competition.city} countryIso2={competition.country_iso2} />
 
                 {(isDelegate || isOrganizer) && (
                     <div className="flex gap-2">
