@@ -4,24 +4,14 @@ import { WCA_ID } from "@/consts";
 import CompetitionLocation from "./CompetitionLocation";
 import { eventIconClass, eventName, hasStaffRole, sortEventIds, type Competition } from "@/lib/wca";
 
-interface CompetitionCardProps {
-    competition: Competition;
-    isOngoing?: boolean;
-}
-
-export default function CompetitionCard({ competition, isOngoing = false }: CompetitionCardProps) {
+export default function CompetitionCard({ competition }: { competition: Competition }) {
     const { isDelegate, isOrganizer } = hasStaffRole(competition, WCA_ID);
 
     return (
-        <article
-            className={`card group relative border bg-base-200 transition-colors ${
-                isOngoing ? "border-2 border-error" : "border-base-300 hover:border-primary"
-            }`}
-        >
+        <article className="card group relative border border-base-300 bg-base-200 transition-colors hover:border-primary">
             <div className="card-body gap-3 p-5">
                 <div className="flex items-start justify-between gap-3">
                     <h3 className="card-title text-lg leading-snug">
-                        {isOngoing && <span className="status status-error animate-pulse" aria-hidden="true" />}
                         {/* Stretched link: the whole card opens the competition. */}
                         <a
                             href={competition.url}
@@ -30,7 +20,6 @@ export default function CompetitionCard({ competition, isOngoing = false }: Comp
                             className="after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
                         >
                             {competition.name}
-                            {isOngoing && <span className="sr-only"> (happening now)</span>}
                         </a>
                     </h3>
                     <span className="shrink-0 text-sm text-muted">{competition.date_range}</span>
@@ -54,28 +43,16 @@ export default function CompetitionCard({ competition, isOngoing = false }: Comp
                     ))}
                 </ul>
 
-                {(isOngoing || competition.results_posted_at) && (
+                {competition.results_posted_at && (
                     <div className="flex gap-4 border-t border-base-300 pt-3 text-sm font-medium">
-                        {isOngoing && (
-                            <a
-                                href={`https://live.worldcubeassociation.org/link/competitions/${competition.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="link link-hover relative z-10 inline-flex items-center gap-1 text-error"
-                            >
-                                Live results <LuArrowUpRight aria-hidden="true" />
-                            </a>
-                        )}
-                        {competition.results_posted_at && (
-                            <a
-                                href={`https://www.worldcubeassociation.org/competitions/${competition.id}/results/all`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="link link-hover relative z-10 inline-flex items-center gap-1 text-success"
-                            >
-                                View results <LuArrowUpRight aria-hidden="true" />
-                            </a>
-                        )}
+                        <a
+                            href={`https://www.worldcubeassociation.org/competitions/${competition.id}/results/all`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="link link-hover relative z-10 inline-flex items-center gap-1 text-success"
+                        >
+                            View results <LuArrowUpRight aria-hidden="true" />
+                        </a>
                     </div>
                 )}
             </div>

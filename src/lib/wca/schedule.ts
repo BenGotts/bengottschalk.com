@@ -22,20 +22,32 @@ export interface PersonSchedule {
 
 /**
  * Readable name for a WCIF activity code, e.g. `333-r1-g2` →
- * `3x3x3 Cube, Round 1, Group 2`. Non-event activities (`other-lunch`) use the
- * name from the schedule.
+ * `3x3x3 Cube, Round 1, Group 2`. An event's last round is `Final`, as on WCA
+ * Live, when `roundCounts` (rounds per event) is given. Non-event activities
+ * (`other-lunch`) use the name from the schedule.
  */
-export function activityName(activityCode: string, scheduleName: string): string {
+export function activityName(activityCode: string, scheduleName: string, roundCounts?: Map<string, number>): string {
   if (activityCode.startsWith("other-")) return scheduleName;
   try {
     const { eventId, roundNumber, groupNumber, attemptNumber } = parseActivityCode(activityCode);
     const parts = [eventName(eventId)];
-    if (roundNumber) parts.push(`Round ${roundNumber}`);
+    if (roundNumber) parts.push(roundNumber === roundCounts?.get(eventId) ? "Final" : `Round ${roundNumber}`);
     if (groupNumber) parts.push(`Group ${groupNumber}`);
     if (attemptNumber) parts.push(`Attempt ${attemptNumber}`);
     return parts.join(", ");
   } catch {
     return scheduleName;
+  }
+}
+
+/** `333-r1-g5` → `{ eventId: "333", roundNumber: 1 }`; `null` for non-event activities. */
+export function activityRound(activityCode: string): { eventId: string; roundNumber: number } | null {
+  if (activityCode.startsWith("other-")) return null;
+  try {
+    const { eventId, roundNumber } = parseActivityCode(activityCode);
+    return roundNumber ? { eventId, roundNumber } : null;
+  } catch {
+    return null;
   }
 }
 
@@ -95,12 +107,31 @@ export function formatScheduleTime(entry: Pick<ScheduleEntry, "startTime" | "tim
     .format(new Date(entry.startTime));
 }
 
+export type ScheduleStatus = "done" | "now" | "next" | null;
+
+/**
+ * Where each entry stands at `now` (ms since epoch): finished, happening, the
+ * next to start (several if they start together), or later (`null`).
+ */
+export function scheduleStatuses(entries: Pick<ScheduleEntry, "startTime" | "endTime">[], now: number): ScheduleStatus[] {
+  const starts = entries.map((entry) => Date.parse(entry.startTime));
+  const ends = entries.map((entry) => Date.parse(entry.endTime));
+  const upcomingStarts = starts.filter((start) => start > now);
+  const nextStart = upcomingStarts.length > 0 ? Math.min(...upcomingStarts) : null;
+  return entries.map((_, i) => {
+    if (ends[i] <= now) return "done";
+    if (starts[i] <= now) return "now";
+    return starts[i] === nextStart ? "next" : null;
+  });
+}
+
 /** One person's roles, events and assignments at a competition, sorted by time. */
 export function getPersonSchedule(wcif: Wcif, wcaId: string): PersonSchedule | null {
   const person = wcif.persons.find((p) => p.wcaId === wcaId);
   if (!person) return null;
 
   const activities = indexActivities(wcif);
+  const roundCounts = new Map((wcif.events ?? []).map((event) => [event.id, event.rounds.length]));
   const entries: ScheduleEntry[] = [];
   for (const assignment of person.assignments ?? []) {
     const located = activities.get(assignment.activityId);
@@ -108,7 +139,7 @@ export function getPersonSchedule(wcif: Wcif, wcaId: string): PersonSchedule | n
     entries.push({
       activityId: assignment.activityId,
       activityCode: located.activity.activityCode,
-      name: activityName(located.activity.activityCode, located.activity.name),
+      name: activityName(located.activity.activityCode, located.activity.name, roundCounts),
       assignmentCode: assignment.assignmentCode,
       stationNumber: assignment.stationNumber,
       startTime: located.activity.startTime,
