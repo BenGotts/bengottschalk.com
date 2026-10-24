@@ -3,6 +3,7 @@ import { pageMetadata } from "@/lib/metadata";
 import { FaYoutube } from "react-icons/fa";
 import VideoCard from "@/components/videos/VideoCard";
 import { getLatestVideos } from "@/lib/youtube";
+import ExternalLink from "@/components/ExternalLink";
 
 export const metadata: Metadata = pageMetadata({
   title: "Videos",
@@ -22,9 +23,9 @@ export default async function VideosPage() {
           <h1 className="text-4xl font-bold">Videos</h1>
           <p className="mt-2 text-lg text-muted">My latest uploads on YouTube.</p>
         </div>
-        <a href={CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+        <ExternalLink href={CHANNEL_URL} className="btn btn-primary">
           <FaYoutube aria-hidden="true" /> Subscribe on YouTube
-        </a>
+        </ExternalLink>
       </header>
 
       {videos.ok && videos.data.length > 0 ? (
@@ -36,7 +37,7 @@ export default async function VideosPage() {
       ) : (
         <div role="alert" className="alert alert-warning">
           Videos couldn&apos;t be loaded right now.{" "}
-          <a href={CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="link">Watch on YouTube</a> instead.
+          <ExternalLink href={CHANNEL_URL} className="link">Watch on YouTube</ExternalLink> instead.
         </div>
       )}
     </div>

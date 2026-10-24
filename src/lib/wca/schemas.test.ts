@@ -24,7 +24,7 @@ describe("PersonSchema", () => {
       total_solves: 5000,
     });
     expect(parsed.person).not.toHaveProperty("email");
-    expect(parsed.person.avatar).toEqual({ url: "a", thumb_url: "b" });
+    expect(parsed.person.avatar).toEqual({ url: "a", thumb_url: "b", is_default: false });
     expect(parsed.personal_records["222"].single).toEqual(rank);
   });
 });

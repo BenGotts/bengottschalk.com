@@ -9,6 +9,7 @@ import { THEMES } from "@/lib/theme";
 import { useTheme } from "@/lib/useTheme";
 // Import the pure module directly: the wca index also exports server-only API code.
 import { mostCurrentStatus, type MapLocation, type MapStatus } from "@/lib/wca/competitions";
+import ExternalLink from "@/components/ExternalLink";
 
 const HOME_CENTER: [number, number] = [45.5, -122.7]; // Portland
 const HOME_ZOOM = 5;
@@ -214,7 +215,7 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
                 <ul className="mt-2 space-y-1">
                   {location.competitions.slice(0, POPUP_LIMIT).map((competition) => (
                     <li key={competition.id}>
-                      <a href={competition.url} target="_blank" rel="noopener noreferrer">{competition.name}</a>
+                      <ExternalLink href={competition.url}>{competition.name}</ExternalLink>
                       <span className="text-muted"> · {competition.dateLabel}</span>
                     </li>
                   ))}

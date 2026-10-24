@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
-import { LuArrowRight, LuArrowUpRight } from "react-icons/lu";
+import { LuArrowRight } from "react-icons/lu";
 import StatTile from "@/components/StatTile";
+import WcaAvatar from "@/components/WcaAvatar";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
-import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
+import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import VideoCard from "@/components/videos/VideoCard";
 import { experience } from "@/content/experience";
 import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@/content/links";
@@ -12,6 +13,7 @@ import { SITE_URL } from "@/consts";
 import {
   formatDelegateStatus,
   finishedCompetitions,
+  getAvatar,
   getCompetitionHistory,
   getCompetitionsOverview,
   getDelegateRole,
@@ -19,6 +21,7 @@ import {
   historyStats,
 } from "@/lib/wca";
 import { getLatestVideos } from "@/lib/youtube";
+import ExternalLink from "@/components/ExternalLink";
 
 export const metadata: Metadata = {
   ...pageMetadata({
@@ -42,8 +45,9 @@ function SectionHeader({ id, title, href, linkLabel }: { id: string; title: stri
 }
 
 export default async function Home() {
-  const [person, role, competitions, history, videos] = await Promise.all([
+  const [person, avatar, role, competitions, history, videos] = await Promise.all([
     getPerson(),
+    getAvatar(),
     getDelegateRole(),
     getCompetitionsOverview(),
     getCompetitionHistory(),
@@ -79,29 +83,30 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd).replace(/</g, "\\u003c") }}
       />
       <section className="space-y-6 pt-4">
-        {role.ok && role.data && (
-          <p className="text-sm font-semibold uppercase tracking-widest text-secondary">
-            WCA {formatDelegateStatus(role.data.status)} · {role.data.region}
-          </p>
-        )}
-        <h1 className="max-w-3xl text-5xl font-bold leading-tight sm:text-6xl">
-          Competitive cuber, delegate, and software developer.
-        </h1>
-        <p className="max-w-2xl text-lg text-muted">
-          I&apos;m Ben Gottschalk. I compete in and help run World Cube Association competitions across the
-          Pacific Northwest, and I build software for a living.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/competitions" className="btn btn-primary">Upcoming competitions</Link>
-          <Link href="/videos" className="btn btn-secondary">Latest videos</Link>
-          <a
-            href={WCA_PROFILE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn border-base-300 bg-base-200 hover:border-primary"
-          >
-            WCA profile <LuArrowUpRight aria-hidden="true" />
-          </a>
+        {/* The photo sits beside the intro on wide screens and above it on phones. */}
+        <div className="flex flex-col gap-8 lg:flex-row-reverse lg:items-center lg:justify-between lg:gap-12">
+          {avatar.ok && avatar.data && <WcaAvatar avatar={avatar.data} alt="Ben Gottschalk" />}
+          <div className="space-y-6">
+            {role.ok && role.data && (
+              <p className="text-sm font-semibold uppercase tracking-widest text-secondary">
+                WCA {formatDelegateStatus(role.data.status)} · {role.data.region}
+              </p>
+            )}
+            <h1 className="max-w-3xl text-5xl font-bold leading-tight sm:text-6xl">
+              Competitive cuber, delegate, and software developer.
+            </h1>
+            <p className="max-w-2xl text-lg text-muted">
+              I&apos;m Ben Gottschalk. I compete in and help run World Cube Association competitions across the
+              Pacific Northwest, and I build software for a living.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/competitions" className="btn btn-primary">Upcoming competitions</Link>
+              <Link href="/videos" className="btn btn-secondary">Latest videos</Link>
+              <ExternalLink href={WCA_PROFILE_URL} className="btn border-base-300 bg-base-200 hover:border-primary" arrow iconClassName="-ml-1 size-[0.9em]">
+                WCA profile
+              </ExternalLink>
+            </div>
+          </div>
         </div>
 
         {person.ok && (
@@ -135,7 +140,11 @@ export default async function Home() {
             linkLabel="All competitions"
           />
           {ongoing.length > 0 ? (
-            <OngoingCompetitions competitions={ongoing} />
+            <div className="space-y-4">
+              {ongoing.map((competition) => (
+                <LiveCompetitionSummary key={competition.id} competition={competition} />
+              ))}
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {nextUp.map((competition) => (

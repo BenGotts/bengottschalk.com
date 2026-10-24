@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
-import { LuArrowUpRight } from "react-icons/lu";
 import StatTile from "@/components/StatTile";
 import PrTable from "@/components/results/PrTable";
 import { eventName, formatIsoDate, formatResult, getPerson, getRegionalRecords } from "@/lib/wca";
+import ExternalLink from "@/components/ExternalLink";
 
 export const metadata: Metadata = pageMetadata({
   title: "Results",
@@ -38,9 +38,9 @@ export default async function ResultsPage() {
           <h1 className="text-4xl font-bold">Results</h1>
           <p className="mt-2 text-lg text-muted">My official WCA personal records. Pick an event to see how its PRs improved.</p>
         </div>
-        <a href={profile.url} target="_blank" rel="noopener noreferrer" className="btn border-base-300 bg-base-200 hover:border-primary">
-          WCA profile <LuArrowUpRight aria-hidden="true" />
-        </a>
+        <ExternalLink href={profile.url} className="btn border-base-300 bg-base-200 hover:border-primary" arrow iconClassName="-ml-1 size-[0.9em]">
+          WCA profile
+        </ExternalLink>
       </header>
 
       <section aria-label="Career stats" className="grid grid-cols-2 gap-4 lg:grid-cols-4">

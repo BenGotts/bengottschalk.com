@@ -5,8 +5,12 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   images: {
-    // YouTube video thumbnails.
-    remotePatterns: [{ protocol: "https", hostname: "i.ytimg.com", pathname: "/vi/**" }],
+    remotePatterns: [
+      // YouTube video thumbnails.
+      { protocol: "https", hostname: "i.ytimg.com", pathname: "/vi/**" },
+      // WCA profile photos.
+      { protocol: "https", hostname: "avatars.worldcubeassociation.org" },
+    ],
   },
 };
 

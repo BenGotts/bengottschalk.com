@@ -33,6 +33,42 @@ function StatusIcon({ status }: { status: ScheduleStatus | undefined }) {
   return <LuCircle className="text-base-content/30" aria-hidden="true" />;
 }
 
+/** The current user's result for a competing group's round, once any attempts are in. */
+export function useResultFor(): (item: ScheduleItem) => LiveResult | undefined {
+  const { results } = useLiveResults();
+  return ({ round }) =>
+    round
+      ? results?.find((r) => r.round.competitionEvent.event.id === round.eventId && r.round.number === round.roundNumber && r.attempts.length > 0)
+      : undefined;
+}
+
+/** The assignment ("Competing", "Judging"), replaced by my result once it's entered; green when advancing. */
+export function ItemBadge({ item, status, result }: { item: ScheduleItem; status: ScheduleStatus | undefined; result: LiveResult | undefined }) {
+  if (result) {
+    return (
+      <span
+        className={`badge badge-sm font-mono ${
+          result.advancing ? "border-success bg-success/10 text-success" : "border-base-content/30 bg-transparent text-base-content"
+        }`}
+      >
+        {liveResultSummary(result)}
+        {result.advancing && <span className="sr-only"> (advancing)</span>}
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`badge badge-sm ${
+        status === "done"
+          ? "border-base-300 bg-transparent"
+          : item.isStaff ? "border-secondary bg-secondary/10" : "border-primary bg-primary/10"
+      }`}
+    >
+      {item.label}
+    </span>
+  );
+}
+
 /**
  * The schedule, with "Now" and "Up next" badges from the visitor's clock.
  * Pages are prebuilt, so the server can't know the current time; the badges
@@ -40,11 +76,7 @@ function StatusIcon({ status }: { status: ScheduleStatus | undefined }) {
  */
 export default function ScheduleList({ days }: { days: ScheduleDay[] }) {
   const now = useNow();
-  const { results } = useLiveResults();
-  const resultFor = ({ round }: ScheduleItem): LiveResult | undefined =>
-    round
-      ? results?.find((r) => r.round.competitionEvent.event.id === round.eventId && r.round.number === round.roundNumber && r.attempts.length > 0)
-      : undefined;
+  const resultFor = useResultFor();
   const items = days.flatMap((day) => day.items);
   const statuses = now === null ? null : scheduleStatuses(items, now);
   const statusOf = new Map(items.map((item, i) => [item.key, statuses?.[i] ?? null]));
@@ -93,27 +125,7 @@ export default function ScheduleList({ days }: { days: ScheduleDay[] }) {
                       <span className="badge badge-sm border-error bg-error/10 font-semibold">Now</span>
                     )}
                     {status === "next" && <span className="badge badge-sm border-accent bg-accent/10 font-semibold">Up next</span>}
-                    {result ? (
-                      // Once my attempts are in, the result replaces "Competing"; green when advancing.
-                      <span
-                        className={`badge badge-sm font-mono ${
-                          result.advancing ? "border-success bg-success/10 text-success" : "border-base-content/30 bg-transparent text-base-content"
-                        }`}
-                      >
-                        {liveResultSummary(result)}
-                        {result.advancing && <span className="sr-only"> (advancing)</span>}
-                      </span>
-                    ) : (
-                      <span
-                        className={`badge badge-sm ${
-                          status === "done"
-                            ? "border-base-300 bg-transparent"
-                            : item.isStaff ? "border-secondary bg-secondary/10" : "border-primary bg-primary/10"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-                    )}
+                    <ItemBadge item={item} status={status} result={result} />
                   </div>
                 </li>
               );

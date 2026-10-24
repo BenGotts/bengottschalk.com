@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 import { WCA_ID, WCA_USER_ID } from "@/consts";
+import { imageSize, type ImageSize } from "@/lib/imageSize";
 import { fail, ok, type Result } from "@/lib/result";
 import { fetchWca } from "./client";
 import {
@@ -63,6 +64,37 @@ export async function getPerson(wcaId = WCA_ID): Promise<Result<Person>> {
   "use cache";
   cacheTag("wca", `wca-person-${wcaId}`);
   return settle(await fetchWca(`/v0/persons/${wcaId}`, PersonSchema), "hours");
+}
+
+export interface Avatar extends ImageSize {
+  url: string;
+  /** The square the person picked for their WCA thumbnail, in pixels of the photo. */
+  crop: { x: number; y: number; size: number } | null;
+}
+
+/**
+ * The person's WCA profile photo with its size, so it can be shown with the
+ * same crop as their WCA thumbnail. `null` without a photo of their own.
+ */
+export async function getAvatar(wcaId = WCA_ID): Promise<Result<Avatar | null>> {
+  "use cache";
+  cacheTag("wca", `wca-avatar-${wcaId}`);
+  const person = await getPerson(wcaId);
+  if (!person.ok) return settle(person, "days");
+  const avatar = person.data.person.avatar;
+  if (!avatar || avatar.is_default) return settle(ok(null), "days");
+
+  try {
+    // The WCA API doesn't give the photo's size, so read it from the file.
+    const response = await fetch(avatar.url, { signal: AbortSignal.timeout(15_000) });
+    const size = response.ok ? imageSize(new Uint8Array(await response.arrayBuffer())) : null;
+    if (!size) return settle(fail(`Couldn't read the avatar's size (${response.status})`), "days");
+    const { thumbnail_crop_x: x, thumbnail_crop_y: y, thumbnail_crop_w: w } = avatar;
+    const crop = x != null && y != null && w ? { x, y, size: w } : null;
+    return settle(ok({ url: avatar.url, ...size, crop }), "days");
+  } catch {
+    return settle(fail("Avatar request failed"), "days");
+  }
 }
 
 /** Ongoing and upcoming competitions, as a competitor or as a delegate. */

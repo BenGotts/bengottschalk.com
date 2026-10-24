@@ -1,4 +1,5 @@
 import { SOCIAL_LINKS } from "@/content/links";
+import ExternalLink from "@/components/ExternalLink";
 
 export default function Connect() {
   return (
@@ -8,15 +9,13 @@ export default function Connect() {
       <ul className="flex flex-wrap justify-center gap-3">
         {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
           <li key={href}>
-            <a
+            <ExternalLink
               href={href}
-              target="_blank"
-              rel="noopener noreferrer"
               className="btn h-auto flex-col gap-2 border-base-300 bg-base-200 px-5 py-4 hover:border-primary"
             >
               <Icon className="size-7" aria-hidden="true" />
               {label}
-            </a>
+            </ExternalLink>
           </li>
         ))}
       </ul>

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { formatIsoDate } from "@/lib/wca/format";
 import type { Video } from "@/lib/youtube";
+import ExternalLink from "@/components/ExternalLink";
 
 interface VideoCardProps {
   video: Video;
@@ -27,14 +28,12 @@ export default function VideoCard({ video, priority = false, headingLevel: Headi
       <div className="card-body gap-1 p-4">
         <Heading className="line-clamp-2 font-semibold leading-snug">
           {/* Stretched link: the whole card opens the video. */}
-          <a
+          <ExternalLink
             href={`https://www.youtube.com/watch?v=${video.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
             className="after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
           >
             {video.title}
-          </a>
+          </ExternalLink>
         </Heading>
         <p className="text-sm text-muted">{formatIsoDate(video.publishedAt.slice(0, 10))}</p>
       </div>

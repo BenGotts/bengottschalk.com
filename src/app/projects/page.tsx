@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import ProjectList from "@/components/projects/ProjectList";
+import ExternalLink from "@/components/ExternalLink";
 
 export const metadata: Metadata = pageMetadata({
   title: "Projects",
@@ -15,9 +16,9 @@ export default function ProjectsPage() {
         <h1 className="text-4xl font-bold">Projects</h1>
         <p className="mt-2 text-lg text-muted">
           Things I&apos;ve built, from cubing tools to this website.{" "}
-          <a href="https://github.com/BenGotts?tab=repositories" target="_blank" rel="noopener noreferrer" className="link link-primary">
+          <ExternalLink href="https://github.com/BenGotts?tab=repositories" className="link link-primary">
             Everything is on GitHub
-          </a>
+          </ExternalLink>
           .
         </p>
       </header>
