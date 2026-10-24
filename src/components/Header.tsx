@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import BrandMark from "@/components/BrandMark";
+import LiveIndicator from "@/components/LiveIndicator";
 import SiteNav from "@/components/SiteNav";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -13,7 +15,11 @@ export default function Header() {
             Ben Gottschalk
           </Link>
         </div>
-        <SiteNav />
+        {/* The live dot streams in, so it never holds up the page. */}
+        <SiteNav
+          competitionsIndicator={<Suspense fallback={null}><LiveIndicator placement="inline" /></Suspense>}
+          menuIndicator={<Suspense fallback={null}><LiveIndicator placement="corner" /></Suspense>}
+        />
         <ThemeToggle />
       </nav>
     </header>

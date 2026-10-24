@@ -1,19 +1,16 @@
 import "@cubing/icons";
-import { LuArrowUpRight } from "react-icons/lu";
+import ExternalLink from "@/components/ExternalLink";
 import { WCA_ID } from "@/consts";
 import CompetitionLocation from "./CompetitionLocation";
 import LiveResults from "./LiveResults";
 import LiveResultsProvider from "./LiveResultsProvider";
-import ScheduleList, { type ScheduleDay } from "./ScheduleList";
+import ScheduleList from "./ScheduleList";
+import { scheduleDays } from "./scheduleDays";
 import {
-    activityRound,
-    assignmentLabel,
     eventIconClass,
     eventName,
-    formatScheduleTime,
     getCompetitionSchedule,
     getLivePerson,
-    groupScheduleByDay,
     hasStaffRole,
     sortEventIds,
     type Competition,
@@ -26,21 +23,7 @@ export default async function LiveCompetitionCard({ competition }: { competition
     const entries = schedule.ok && schedule.data ? schedule.data.entries : [];
     const competingIn = schedule.ok && schedule.data ? schedule.data.eventIds : [];
 
-    // Times and labels are formatted here so the browser renders exactly the same text.
-    const days: ScheduleDay[] = groupScheduleByDay(entries).map(({ day, entries: dayEntries }) => ({
-        day,
-        items: dayEntries.map((entry) => ({
-            key: `${entry.activityId}-${entry.assignmentCode}`,
-            time: formatScheduleTime(entry),
-            name: entry.name,
-            label: assignmentLabel(entry.assignmentCode) + (entry.stationNumber !== null ? ` · Station ${entry.stationNumber}` : ""),
-            isStaff: entry.assignmentCode !== "competitor",
-            // Competing groups show my result for the round once it's entered.
-            round: entry.assignmentCode === "competitor" ? activityRound(entry.activityCode) : null,
-            startTime: entry.startTime,
-            endTime: entry.endTime,
-        })),
-    }));
+    const days = scheduleDays(entries);
 
     const person = livePerson.ok ? livePerson.data : null;
 
@@ -56,9 +39,9 @@ export default async function LiveCompetitionCard({ competition }: { competition
                             <span className="status status-error animate-pulse" aria-hidden="true" /> Live
                         </p>
                         <h3 id={`live-${competition.id}`} className="text-2xl font-bold leading-tight">
-                            <a href={competition.url} target="_blank" rel="noopener noreferrer" className="link link-hover">
+                            <ExternalLink href={competition.url} className="link link-hover">
                                 {competition.name}
-                            </a>
+                            </ExternalLink>
                         </h3>
                         <p className="text-muted">{competition.date_range}</p>
                     </div>
@@ -85,17 +68,17 @@ export default async function LiveCompetitionCard({ competition }: { competition
                     </div>
 
                     <div className="mt-auto flex flex-wrap gap-3 pt-2">
-                        <a
+                        <ExternalLink
                             href={`https://live.worldcubeassociation.org/link/competitions/${competition.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="btn btn-error btn-sm"
+                            arrow
+                            iconClassName="-ml-1 size-[0.9em]"
                         >
-                            Live results <LuArrowUpRight aria-hidden="true" />
-                        </a>
-                        <a href={competition.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
-                            Competition page <LuArrowUpRight aria-hidden="true" />
-                        </a>
+                            Live results
+                        </ExternalLink>
+                        <ExternalLink href={competition.url} className="btn btn-ghost btn-sm" arrow iconClassName="-ml-1 size-[0.9em]">
+                            Competition page
+                        </ExternalLink>
                     </div>
                 </div>
 

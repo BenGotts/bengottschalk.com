@@ -70,7 +70,18 @@ export const PersonSchema = z.object({
     country_iso2: z.string(),
     country: z.object({ id: z.string(), name: z.string(), continent_id: z.string() }),
     delegate_status: z.string().nullable(),
-    avatar: z.object({ url: z.string(), thumb_url: z.string() }).nullable(),
+    avatar: z
+      .object({
+        url: z.string(),
+        thumb_url: z.string(),
+        is_default: z.boolean().optional(),
+        // The square the person picked for their thumbnail, in pixels of the full photo.
+        thumbnail_crop_x: z.number().nullish(),
+        thumbnail_crop_y: z.number().nullish(),
+        thumbnail_crop_w: z.number().nullish(),
+        thumbnail_crop_h: z.number().nullish(),
+      })
+      .nullable(),
   }),
   competition_count: z.number().int(),
   personal_records: z.record(

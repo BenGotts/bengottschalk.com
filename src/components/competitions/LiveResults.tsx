@@ -1,12 +1,12 @@
 "use client";
 
 import "@cubing/icons";
-import { LuArrowUpRight } from "react-icons/lu";
 // Import pure modules directly: the wca index also exports server-only API code.
 import { eventIconClass } from "@/lib/wca/events";
 import { formatResult } from "@/lib/wca/format";
 import { livePersonUrl, type LivePerson, type LiveResult } from "@/lib/wca/live";
 import { useLiveResults } from "./LiveResultsProvider";
+import ExternalLink from "@/components/ExternalLink";
 
 // DNF and DNS rank worst.
 const attemptRank = (value: number) => (value > 0 ? value : Number.POSITIVE_INFINITY);
@@ -95,9 +95,9 @@ export default function LiveResults({ person }: { person: LivePerson }) {
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 px-3 sm:px-0">
         <h4 className="text-lg font-bold">My results</h4>
-        <a href={livePersonUrl(person)} target="_blank" rel="noopener noreferrer" className="link link-hover inline-flex items-center gap-1 text-sm">
-          On WCA Live <LuArrowUpRight aria-hidden="true" />
-        </a>
+        <ExternalLink href={livePersonUrl(person)} className="link link-hover text-sm" arrow>
+          On WCA Live
+        </ExternalLink>
       </div>
       <div className="mt-3" aria-live="polite">
         {results === null ? (

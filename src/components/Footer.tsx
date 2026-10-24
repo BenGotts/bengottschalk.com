@@ -1,9 +1,9 @@
 import "@cubing/icons";
 import Link from "next/link";
 import { cacheLife } from "next/cache";
-import { LuArrowUpRight } from "react-icons/lu";
 import StickerLogo from "@/components/StickerLogo";
 import { NAV_LINKS, SOCIAL_LINKS, WCA_PROFILE_URL } from "@/content/links";
+import ExternalLink from "@/components/ExternalLink";
 
 // Cached so the static shell can include it; refreshed daily for the new year.
 async function CopyrightYear() {
@@ -45,17 +45,17 @@ export default function Footer() {
           <FooterHeading id="footer-elsewhere">Elsewhere</FooterHeading>
           <ul className="space-y-2 text-sm">
             <li>
-              <a href={WCA_PROFILE_URL} target="_blank" rel="noopener noreferrer" className="link link-hover inline-flex items-center gap-2">
+              <ExternalLink href={WCA_PROFILE_URL} className="link link-hover inline-flex items-center gap-2">
                 <span className="cubing-icon event-333 text-base" aria-hidden="true" />
                 WCA profile
-              </a>
+              </ExternalLink>
             </li>
             {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
               <li key={href}>
-                <a href={href} target="_blank" rel="noopener noreferrer" className="link link-hover inline-flex items-center gap-2">
+                <ExternalLink href={href} className="link link-hover inline-flex items-center gap-2">
                   <Icon className="size-4" aria-hidden="true" />
                   {label}
-                </a>
+                </ExternalLink>
               </li>
             ))}
           </ul>
@@ -67,14 +67,9 @@ export default function Footer() {
           <p>&copy; <CopyrightYear /> Ben Gottschalk</p>
           <p>
             Competition data from the{" "}
-            <a
-              href="https://www.worldcubeassociation.org/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link link-hover inline-flex items-center gap-0.5"
-            >
-              World Cube Association <LuArrowUpRight className="size-3.5" aria-hidden="true" />
-            </a>
+            <ExternalLink href="https://www.worldcubeassociation.org/" className="link link-hover" arrow iconClassName="ml-1 size-3.5">
+              World Cube Association
+            </ExternalLink>
           </p>
         </div>
       </div>
