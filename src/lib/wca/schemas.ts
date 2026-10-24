@@ -158,6 +158,8 @@ const WcifActivitySchema: z.ZodType<WcifActivity> = z.object({
 export const WcifSchema = z.object({
   id: z.string(),
   name: z.string(),
+  // Each event's rounds, e.g. `333-r1`; used to name the last round "Final".
+  events: z.array(z.object({ id: z.string(), rounds: z.array(z.object({ id: z.string() })) })).optional(),
   persons: z.array(
     z.object({
       wcaId: z.string().nullish(),

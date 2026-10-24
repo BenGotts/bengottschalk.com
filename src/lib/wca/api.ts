@@ -13,6 +13,7 @@ import {
   type CompetitionsOverview,
   type HistoryEntry,
 } from "./competitions";
+import { findLivePerson, type LivePerson } from "./live";
 import { getPersonSchedule, type PersonSchedule } from "./schedule";
 import {
   CompetitionScheduleSchema,
@@ -200,6 +201,15 @@ export async function getCompetitionSchedule(
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/wcif/public`, WcifSchema);
   cacheLife("minutes");
   return result.ok ? ok(getPersonSchedule(result.data, wcaId)) : result;
+}
+
+/** The person's WCA Live ids at a competition, for polling live results from the browser. */
+export async function getLivePerson(competitionId: string, wcaId = WCA_ID): Promise<Result<LivePerson | null>> {
+  "use cache";
+  cacheTag("wca", `wca-live-${competitionId}`);
+  const result = await findLivePerson(competitionId, wcaId);
+  // Competitors are imported into WCA Live shortly before the competition, so keep checking until found.
+  return settle(result, result.ok && result.data ? "hours" : "minutes");
 }
 
 export function pickDelegateRole(roles: UserRole[]): DelegateRole | null {

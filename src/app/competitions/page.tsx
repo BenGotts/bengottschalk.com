@@ -3,7 +3,6 @@ import { pageMetadata } from "@/lib/metadata";
 import StatTile from "@/components/StatTile";
 import CompetitionHistory from "@/components/competitions/CompetitionHistory";
 import CompetitionMapLoader from "@/components/competitions/CompetitionMapLoader";
-import CompetitionSchedule from "@/components/competitions/CompetitionSchedule";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
 import {
@@ -51,9 +50,6 @@ export default async function CompetitionsPage() {
             <section aria-labelledby="ongoing-heading" className="space-y-4">
               <h2 id="ongoing-heading" className="text-2xl font-bold">Happening now</h2>
               <OngoingCompetitions competitions={ongoing} />
-              {ongoing.map((competition) => (
-                <CompetitionSchedule key={competition.id} competitionId={competition.id} competitionName={competition.name} />
-              ))}
             </section>
           )}
           <section aria-labelledby="upcoming-heading" className="space-y-4">

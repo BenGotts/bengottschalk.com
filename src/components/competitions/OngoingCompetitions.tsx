@@ -1,11 +1,11 @@
-import CompetitionCard from "./CompetitionCard";
+import LiveCompetitionCard from "./LiveCompetitionCard";
 import type { Competition } from "@/lib/wca";
 
 export default function OngoingCompetitions({ competitions }: { competitions: Competition[] }) {
     return (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
             {competitions.map((comp) => (
-                <CompetitionCard key={comp.id} competition={comp} isOngoing={true} />
+                <LiveCompetitionCard key={comp.id} competition={comp} />
             ))}
         </div>
     );

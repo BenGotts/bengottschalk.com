@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LuArrowRight, LuArrowUpRight } from "react-icons/lu";
 import StatTile from "@/components/StatTile";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
-import CompetitionSchedule from "@/components/competitions/CompetitionSchedule";
+import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import VideoCard from "@/components/videos/VideoCard";
 import { experience } from "@/content/experience";
 import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@/content/links";
@@ -134,17 +134,15 @@ export default async function Home() {
             href="/competitions"
             linkLabel="All competitions"
           />
-          <div className="grid gap-4 md:grid-cols-2">
-            {ongoing.map((competition) => (
-              <CompetitionCard key={competition.id} competition={competition} isOngoing />
-            ))}
-            {ongoing.length === 0 && nextUp.map((competition) => (
-              <CompetitionCard key={competition.id} competition={competition} />
-            ))}
-          </div>
-          {ongoing.map((competition) => (
-            <CompetitionSchedule key={competition.id} competitionId={competition.id} competitionName={competition.name} />
-          ))}
+          {ongoing.length > 0 ? (
+            <OngoingCompetitions competitions={ongoing} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {nextUp.map((competition) => (
+                <CompetitionCard key={competition.id} competition={competition} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
