@@ -11,10 +11,12 @@ import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@/content/links";
 import { SITE_URL } from "@/consts";
 import {
   formatDelegateStatus,
+  finishedCompetitions,
   getCompetitionHistory,
   getCompetitionsOverview,
   getDelegateRole,
   getPerson,
+  historyStats,
 } from "@/lib/wca";
 import { getLatestVideos } from "@/lib/youtube";
 
@@ -51,6 +53,9 @@ export default async function Home() {
   const ongoing = competitions.ok ? competitions.data.ongoing : [];
   const nextUp = competitions.ok ? competitions.data.upcoming.slice(0, 2) : [];
   const currentJob = experience.find((job) => job.end === null);
+  const delegatedCount = history.ok
+    ? historyStats(finishedCompetitions(history.data.history, competitions.ok ? competitions.data : null, history.data.utcToday)).delegated
+    : null;
 
   // schema.org Person, so search engines can connect the site to these profiles.
   const personJsonLd = {
@@ -102,7 +107,7 @@ export default async function Home() {
         {person.ok && (
           <div className="grid grid-cols-2 gap-4 pt-4 lg:grid-cols-4">
             <StatTile value={person.data.competition_count} label="Competitions" />
-            {history.ok && <StatTile value={history.data.stats.delegated} label="Delegated" />}
+            {delegatedCount !== null && <StatTile value={delegatedCount} label="Delegated" />}
             <StatTile
               value={person.data.medals.total}
               label={

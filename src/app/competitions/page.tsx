@@ -6,7 +6,15 @@ import CompetitionMapLoader from "@/components/competitions/CompetitionMapLoader
 import CompetitionSchedule from "@/components/competitions/CompetitionSchedule";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import { formatIsoDate, getCompetitionHistory, getCompetitionsOverview, groupMapLocations, type MapStatus } from "@/lib/wca";
+import {
+  finishedCompetitions,
+  formatIsoDate,
+  getCompetitionHistory,
+  getCompetitionsOverview,
+  groupMapLocations,
+  historyStats,
+  type MapStatus,
+} from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
@@ -18,7 +26,11 @@ export default async function CompetitionsPage() {
   const [competitions, historyResult] = await Promise.all([getCompetitionsOverview(), getCompetitionHistory()]);
   const ongoing = competitions.ok ? competitions.data.ongoing : [];
   const upcoming = competitions.ok ? competitions.data.upcoming : [];
-  const history = historyResult.ok ? historyResult.data.history : [];
+  // Competitions still running at their venue stay out of the past list.
+  const history = historyResult.ok
+    ? finishedCompetitions(historyResult.data.history, competitions.ok ? competitions.data : null, historyResult.data.utcToday)
+    : [];
+  const stats = historyStats(history);
 
   const mapLocations = groupMapLocations([
     ...ongoing.map((competition) => ({ competition, status: "ongoing" as MapStatus })),
@@ -60,10 +72,10 @@ export default async function CompetitionsPage() {
           <section aria-labelledby="stats-heading" className="space-y-4">
             <h2 id="stats-heading" className="text-2xl font-bold">By the numbers</h2>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatTile value={historyResult.data.stats.competed} label="Competed in" />
-              <StatTile value={historyResult.data.stats.delegated} label="Delegated" />
-              <StatTile value={historyResult.data.stats.countries} label="Countries" />
-              <StatTile value={historyResult.data.stats.usStates} label="US states" />
+              <StatTile value={stats.competed} label="Competed in" />
+              <StatTile value={stats.delegated} label="Delegated" />
+              <StatTile value={stats.countries} label="Countries" />
+              <StatTile value={stats.usStates} label="US states" />
             </div>
           </section>
 

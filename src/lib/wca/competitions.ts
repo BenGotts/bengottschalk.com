@@ -10,6 +10,27 @@ export function utcDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** `date` as `YYYY-MM-DD` in an IANA time zone, e.g. a competition venue's. */
+export function localDateString(date: Date, timeZone: string): string {
+  // en-CA formats dates as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+/** `"2026-10-24"` plus `days` (may be negative). */
+export function addDays(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return utcDateString(date);
+}
+
+/**
+ * Whether a competition could be underway somewhere on Earth today. Local
+ * dates run from UTC−12 to UTC+14, so they span yesterday to tomorrow in UTC.
+ */
+export function isNearToday(competition: { start_date: string; end_date: string }, utcToday: string): boolean {
+  return competition.start_date <= addDays(utcToday, 1) && competition.end_date >= addDays(utcToday, -1);
+}
+
 function byDate(a: Competition, b: Competition): number {
   return a.start_date.localeCompare(b.start_date) || a.end_date.localeCompare(b.end_date);
 }
@@ -18,12 +39,15 @@ function byDate(a: Competition, b: Competition): number {
  * Combines the competitions the user is registered for with the ones they
  * delegate. The users endpoint only lists competitions where the person is an
  * accepted competitor, so delegate-only competitions would otherwise be missing.
- * Ongoing means `start_date <= today <= end_date`, matching the WCA's own check.
+ *
+ * Ongoing means `start_date <= today <= end_date` where "today" is the date at
+ * the competition's venue (`todayFor`). The WCA decides with UTC dates, which
+ * would end a competition in Oregon at 5 PM on its last day.
  */
 export function mergeCompetitions(
   registered: UserCompetitions,
   delegated: Competition[],
-  today: string,
+  todayFor: (competition: Competition) => string,
 ): CompetitionsOverview {
   const byId = new Map<string, Competition>();
   for (const competition of [
@@ -39,6 +63,7 @@ export function mergeCompetitions(
   const ongoing: Competition[] = [];
   const upcoming: Competition[] = [];
   for (const competition of byId.values()) {
+    const today = todayFor(competition);
     if (competition.end_date < today) continue;
     (competition.start_date <= today ? ongoing : upcoming).push(competition);
   }
@@ -65,18 +90,22 @@ export interface HistoryEntry extends CompetitionBase {
 }
 
 /**
- * Every finished competition the person competed in or delegated, newest
- * first. `persons/{id}/competitions` only lists competitions with results for
- * the person, so delegate-only competitions come from the delegate search.
+ * Competitions the person competed in or delegated that may have finished,
+ * newest first. `persons/{id}/competitions` only lists competitions with
+ * results for the person, so delegate-only competitions come from the delegate
+ * search. Anything ending by tomorrow (UTC) is included, because a venue ahead
+ * of UTC can finish before the UTC date catches up; use `finishedCompetitions`
+ * to drop the ones still running.
  */
 export function buildCompetitionHistory(
   competed: PastCompetition[],
   delegated: Competition[],
-  today: string,
+  utcToday: string,
 ): HistoryEntry[] {
+  const lastEndDate = addDays(utcToday, 1);
   const byId = new Map<string, HistoryEntry>();
   const add = (competition: PastCompetition | Competition, role: "competed" | "delegated") => {
-    if (competition.cancelled_at !== null || competition.end_date >= today) return;
+    if (competition.cancelled_at !== null || competition.end_date > lastEndDate) return;
     const existing = byId.get(competition.id);
     if (existing) {
       existing[role] = true;
@@ -106,6 +135,21 @@ export function buildCompetitionHistory(
   return [...byId.values()].toSorted(
     (a, b) => b.start_date.localeCompare(a.start_date) || a.name.localeCompare(b.name),
   );
+}
+
+/**
+ * The finished part of the history: everything not currently ongoing or
+ * upcoming at its venue. Without an overview (the WCA lookup failed), falls
+ * back to competitions that ended before today in UTC.
+ */
+export function finishedCompetitions(
+  history: HistoryEntry[],
+  overview: CompetitionsOverview | null,
+  utcToday: string,
+): HistoryEntry[] {
+  if (!overview) return history.filter((entry) => entry.end_date < utcToday);
+  const active = new Set([...overview.ongoing, ...overview.upcoming].map((competition) => competition.id));
+  return history.filter((entry) => !active.has(entry.id));
 }
 
 export interface HistoryStats {

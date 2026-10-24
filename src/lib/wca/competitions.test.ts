@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDays,
   buildCompetitionHistory,
+  finishedCompetitions,
   groupByYear,
   groupMapLocations,
   hasStaffRole,
   historyStats,
   isMultiLocation,
+  isNearToday,
+  localDateString,
   mergeCompetitions,
   utcDateString,
 } from "./competitions";
@@ -43,7 +47,7 @@ describe("mergeCompetitions", () => {
     const overview = mergeCompetitions(
       { ongoing_competitions: [], upcoming_competitions: [registered] },
       [competition("DelegateOnly2026", "2026-10-30", "2026-10-31"), registered],
-      today,
+      () => today,
     );
     expect(overview.upcoming.map((c) => c.id)).toEqual(["DelegateOnly2026", "Registered2026"]);
     expect(overview.ongoing).toEqual([]);
@@ -58,7 +62,7 @@ describe("mergeCompetitions", () => {
         competition("Tomorrow", "2026-10-25", "2026-10-25"),
         competition("Yesterday", "2026-10-23", "2026-10-23"),
       ],
-      today,
+      () => today,
     );
     expect(overview.ongoing.map((c) => c.id)).toEqual(["EndsToday", "StartsToday"]);
     expect(overview.upcoming.map((c) => c.id)).toEqual(["Tomorrow"]);
@@ -68,7 +72,7 @@ describe("mergeCompetitions", () => {
     const overview = mergeCompetitions(
       { ongoing_competitions: [], upcoming_competitions: [competition("Cancelled", "2026-12-01", "2026-12-01", { cancelled_at: "2026-10-01T00:00:00Z" })] },
       [],
-      today,
+      () => today,
     );
     expect(overview.upcoming).toEqual([]);
   });
@@ -149,5 +153,60 @@ describe("groupMapLocations", () => {
 describe("utcDateString", () => {
   it("uses the UTC date", () => {
     expect(utcDateString(new Date("2026-10-24T23:30:00-07:00"))).toBe("2026-10-25");
+  });
+});
+
+describe("local dates", () => {
+  it("formats a date in a venue's time zone", () => {
+    // 5:30 PM Saturday in Oregon is already Sunday in UTC.
+    expect(localDateString(new Date("2026-10-25T00:30:00Z"), "America/Los_Angeles")).toBe("2026-10-24");
+    // 1 AM Saturday in Seoul is still Friday in UTC.
+    expect(localDateString(new Date("2026-10-23T16:00:00Z"), "Asia/Seoul")).toBe("2026-10-24");
+  });
+
+  it("adds days across month boundaries", () => {
+    expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  it("knows which competitions could be underway somewhere today", () => {
+    expect(isNearToday({ start_date: "2026-10-24", end_date: "2026-10-24" }, "2026-10-25")).toBe(true);
+    expect(isNearToday({ start_date: "2026-10-26", end_date: "2026-10-26" }, "2026-10-25")).toBe(true);
+    expect(isNearToday({ start_date: "2026-10-27", end_date: "2026-10-27" }, "2026-10-25")).toBe(false);
+    expect(isNearToday({ start_date: "2026-10-23", end_date: "2026-10-23" }, "2026-10-25")).toBe(false);
+  });
+});
+
+/** "Today" for a competition, as seen in Oregon at a given UTC instant. */
+const inOregon = (now: string) => () => localDateString(new Date(now), "America/Los_Angeles");
+
+describe("Oregon City Spooktacular across UTC midnight", () => {
+  // One-day competition in Oregon on Saturday, Oct 24.
+  const spooktacular = competition("OregonCitySpooktacular2026", "2026-10-24", "2026-10-24");
+
+  it("is upcoming on Friday evening, even though UTC has reached Saturday", () => {
+    const overview = mergeCompetitions({ ongoing_competitions: [], upcoming_competitions: [] }, [spooktacular], inOregon("2026-10-24T00:30:00Z"));
+    expect(overview.upcoming.map((c) => c.id)).toEqual(["OregonCitySpooktacular2026"]);
+    expect(overview.ongoing).toEqual([]);
+  });
+
+  it("is still happening on Saturday evening, after UTC has reached Sunday", () => {
+    const overview = mergeCompetitions({ ongoing_competitions: [], upcoming_competitions: [] }, [spooktacular], inOregon("2026-10-25T00:30:00Z"));
+    expect(overview.ongoing.map((c) => c.id)).toEqual(["OregonCitySpooktacular2026"]);
+  });
+
+  it("is finished once Saturday ends in Oregon", () => {
+    const overview = mergeCompetitions({ ongoing_competitions: [], upcoming_competitions: [] }, [spooktacular], inOregon("2026-10-25T07:30:00Z"));
+    expect(overview.ongoing).toEqual([]);
+    expect(overview.upcoming).toEqual([]);
+  });
+
+  it("only moves into the past list once it is no longer running", () => {
+    const history = buildCompetitionHistory([], [spooktacular], "2026-10-25");
+    const running = { ongoing: [spooktacular], upcoming: [] };
+    expect(finishedCompetitions(history, running, "2026-10-25")).toEqual([]);
+    expect(finishedCompetitions(history, { ongoing: [], upcoming: [] }, "2026-10-25").map((h) => h.id)).toEqual(["OregonCitySpooktacular2026"]);
+    // Without an overview, fall back to the UTC date.
+    expect(finishedCompetitions(history, null, "2026-10-24")).toEqual([]);
   });
 });

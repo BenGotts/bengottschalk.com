@@ -43,6 +43,11 @@ export type Competition = z.infer<typeof CompetitionSchema>;
 export const PastCompetitionSchema = CompetitionBaseSchema;
 export type PastCompetition = z.infer<typeof PastCompetitionSchema>;
 
+/** `competitions/{id}/schedule`, reduced to each venue's time zone. */
+export const CompetitionScheduleSchema = z.object({
+  venues: z.array(z.object({ timezone: z.string() })),
+});
+
 export const UserCompetitionsSchema = z.object({
   upcoming_competitions: z.array(CompetitionSchema),
   ongoing_competitions: z.array(CompetitionSchema),

@@ -4,16 +4,18 @@ import { WCA_ID, WCA_USER_ID } from "@/consts";
 import { fail, ok, type Result } from "@/lib/result";
 import { fetchWca } from "./client";
 import {
+  addDays,
   buildCompetitionHistory,
-  historyStats,
+  isNearToday,
+  localDateString,
   mergeCompetitions,
   utcDateString,
   type CompetitionsOverview,
   type HistoryEntry,
-  type HistoryStats,
 } from "./competitions";
 import { getPersonSchedule, type PersonSchedule } from "./schedule";
 import {
+  CompetitionScheduleSchema,
   CompetitionSchema,
   PastCompetitionSchema,
   PersonResultSchema,
@@ -67,17 +69,44 @@ export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<Co
   "use cache";
   cacheTag("wca", `wca-competitions-${wcaId}`);
 
-  const today = utcDateString(new Date());
+  const now = new Date();
+  const utcToday = utcDateString(now);
   const [registered, delegated] = await Promise.all([
     fetchWca(`/v0/users/${wcaId}?upcoming_competitions=true&ongoing_competitions=true`, UserCompetitionsSchema),
-    fetchDelegatedCompetitions(wcaId, { ongoingAndFuture: today }),
+    // The WCA filters with UTC dates; asking from yesterday keeps a competition
+    // that is still running at its venue after UTC midnight.
+    fetchDelegatedCompetitions(wcaId, { ongoingAndFuture: addDays(utcToday, -1) }),
   ]);
 
   if (!registered.ok) return settle(registered, "hours");
+  const delegatedData = delegated.ok ? delegated.data : [];
+
+  // Only competitions near today need a venue time zone to classify.
+  const near = new Map<string, Competition>();
+  for (const competition of [...registered.data.ongoing_competitions, ...registered.data.upcoming_competitions, ...delegatedData]) {
+    if (isNearToday(competition, utcToday)) near.set(competition.id, competition);
+  }
+  const timezones = new Map(
+    await Promise.all([...near.keys()].map(async (id) => [id, await getCompetitionTimezone(id)] as const)),
+  );
+  const todayFor = (competition: Competition) => {
+    const timezone = timezones.get(competition.id);
+    return timezone?.ok && timezone.data ? localDateString(now, timezone.data) : utcToday;
+  };
+
   // Still show registered competitions if only the delegate lookup failed.
-  const overview = mergeCompetitions(registered.data, delegated.ok ? delegated.data : [], today);
-  cacheFor(delegated.ok ? "hours" : "minutes");
+  const overview = mergeCompetitions(registered.data, delegatedData, todayFor);
+  // Around a competition day the status can change at any local midnight.
+  cacheFor(!delegated.ok || near.size > 0 ? "minutes" : "hours");
   return ok(overview);
+}
+
+/** The time zone of a competition's (first) venue, from its public schedule. */
+export async function getCompetitionTimezone(competitionId: string): Promise<Result<string | null>> {
+  "use cache";
+  cacheTag("wca", `wca-timezone-${competitionId}`);
+  const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/schedule`, CompetitionScheduleSchema);
+  return settle(result.ok ? ok(result.data.venues[0]?.timezone ?? null) : result, "days");
 }
 
 /** Every competition the person has competed in, newest first. */
@@ -91,21 +120,29 @@ export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCo
   );
 }
 
-/** Finished competitions the person competed in or delegated, with lifetime stats. */
+/**
+ * Competitions the person competed in or delegated that may have finished.
+ * Pass the result through `finishedCompetitions` with the overview, which drops
+ * the ones still running at their venue.
+ */
 export async function getCompetitionHistory(
   wcaId = WCA_ID,
-): Promise<Result<{ history: HistoryEntry[]; stats: HistoryStats }>> {
+): Promise<Result<{ history: HistoryEntry[]; utcToday: string }>> {
   "use cache";
   cacheTag("wca", `wca-history-${wcaId}`);
-  const today = utcDateString(new Date());
+  const utcToday = utcDateString(new Date());
   const [competed, delegated] = await Promise.all([
     fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
     fetchDelegatedCompetitions(wcaId),
   ]);
   if (!competed.ok) return settle(competed, "days");
   if (!delegated.ok) return settle(delegated, "days");
-  const history = buildCompetitionHistory(competed.data, delegated.data, today);
-  return settle(ok({ history, stats: historyStats(history) }), "days");
+  // Refresh often around a competition so it moves into history soon after it ends.
+  const nearCompetition = [...competed.data, ...delegated.data].some((c) => isNearToday(c, utcToday));
+  return settle(
+    ok({ history: buildCompetitionHistory(competed.data, delegated.data, utcToday), utcToday }),
+    nearCompetition ? "minutes" : "days",
+  );
 }
 
 /** Every competition the person has delegated, past and future. */
