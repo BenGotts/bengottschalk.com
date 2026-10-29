@@ -4,9 +4,10 @@ import * as React from "react";
 interface ContactEmailProps {
   name: string;
   message: string;
+  topic?: string;
 }
 
-export default function ContactEmailTemplate({ name, message }: ContactEmailProps) {
+export default function ContactEmailTemplate({ name, message, topic }: ContactEmailProps) {
   return (
     <Html>
       <Head />
@@ -21,6 +22,11 @@ export default function ContactEmailTemplate({ name, message }: ContactEmailProp
               <Text className="text-base mb-4 text-blue-800">
                 <strong>Name:</strong> {name}
               </Text>
+              {topic && (
+                <Text className="text-base mb-4 text-blue-800">
+                  <strong>Topic:</strong> {topic}
+                </Text>
+              )}
               <Text className="text-base mb-2 text-blue-800">
                 <strong>Message:</strong>
               </Text>

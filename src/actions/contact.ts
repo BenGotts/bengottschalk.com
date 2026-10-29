@@ -23,15 +23,15 @@ export async function contact(formData: unknown) {
     return { success: false, error: "Contact form is not configured" };
   }
 
-  const { name, email, message } = parsed.data;
+  const { name, email, message, topic } = parsed.data;
 
   try {
     const { data, error } = await resend.emails.send({
       from: 'no-reply@bengottschalk.com',
       to: sendTo,
       replyTo: email,
-      subject: `Contact Form from ${name}`,
-      react: ContactEmailTemplate({ name, message })
+      subject: topic ? `${topic}: message from ${name}` : `Contact Form from ${name}`,
+      react: ContactEmailTemplate({ name, message, topic })
     })
     if (error) {
       console.error(error);
