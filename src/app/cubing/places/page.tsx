@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import CompetitionMapLoader from "@/components/competitions/CompetitionMapLoader";
-import { CountryList, StateProgress } from "@/components/competitions/PlaceProgress";
+import { CountryProgress, StateProgress } from "@/components/competitions/PlaceProgress";
 import TravelStats from "@/components/competitions/TravelStats";
 import {
   countryGoals,
@@ -47,9 +47,9 @@ export default async function PlacesPage() {
             <CompetitionMapLoader locations={locations} />
           </section>
 
-          <div className="grid items-start gap-4 lg:grid-cols-[3fr_2fr]">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
             <StateProgress states={stateGoals(history, comingUp)} />
-            <CountryList countries={countryGoals(history, comingUp)} />
+            <CountryProgress countries={countryGoals(history, comingUp)} />
           </div>
 
           {history.length > 1 && <TravelStats stats={travelStats(history)} />}

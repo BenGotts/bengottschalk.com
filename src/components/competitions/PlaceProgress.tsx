@@ -1,21 +1,25 @@
 // Where I've competed: delegating somewhere doesn't count as competing there,
 // so it's shown apart, and upcoming competitions mark the places coming up next.
 import { ReactCountryFlag } from "react-country-flag";
+import { US_STATE_SHAPES, VIEW_BOX as US_VIEW_BOX } from "@/content/maps/usStates";
+import { COUNTRY_SHAPES, VIEW_BOX as WORLD_VIEW_BOX } from "@/content/maps/worldCountries";
 import { formatIsoDate, type CountryGoal, type GoalStatus, type StateGoal } from "@/lib/wca";
 
-const TILE: Record<GoalStatus, string> = {
-  competed: "bg-secondary text-secondary-content",
-  delegated: "border border-primary/60 bg-primary/15",
-  upcoming: "border-2 border-dashed border-secondary text-secondary",
-  none: "bg-base-300/70 text-muted",
+// Map fills; "upcoming" uses the striped pattern below.
+const FILL: Record<GoalStatus, string> = {
+  competed: "fill-secondary",
+  delegated: "fill-primary/50",
+  upcoming: "",
+  none: "fill-base-300",
 };
 
-const CHIP: Record<GoalStatus, string> = {
-  competed: "border-secondary/60 bg-secondary/10",
-  delegated: "border-primary/50 bg-primary/10 text-muted",
-  upcoming: "border-dashed border-secondary text-muted",
-  none: "",
+const SWATCH: Record<Exclude<GoalStatus, "none">, string> = {
+  competed: "bg-secondary",
+  delegated: "bg-primary/50",
+  upcoming: "bg-[repeating-linear-gradient(135deg,var(--color-secondary)_0_2px,transparent_2px_5px)] ring-1 ring-secondary ring-inset",
 };
+
+const LABEL: Record<Exclude<GoalStatus, "none">, string> = { competed: "Competed", delegated: "Delegated only", upcoming: "Coming up" };
 
 function describe(goal: { status: GoalStatus; competition: StateGoal["competition"] }): string {
   const at = goal.competition ? ` at ${goal.competition.name}, ${formatIsoDate(goal.competition.start_date)}` : "";
@@ -30,36 +34,45 @@ function Legend() {
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
       {(["competed", "delegated", "upcoming"] as const).map((status) => (
         <li key={status} className="flex items-center gap-1.5">
-          <span className={`size-3 rounded-[3px] ${TILE[status]}`} aria-hidden="true" />
-          {status === "competed" ? "Competed" : status === "delegated" ? "Delegated only" : "Coming up"}
+          <span className={`size-3 rounded-[3px] ${SWATCH[status]}`} aria-hidden="true" />
+          {LABEL[status]}
         </li>
       ))}
     </ul>
   );
 }
 
-/** A tile map of the 50 states, coloured by progress. */
-function StateMap({ states }: { states: StateGoal[] }) {
+/** Diagonal stripes in the secondary colour, for places coming up. */
+function Stripes({ id }: { id: string }) {
   return (
-    <ul className="grid grid-cols-11 gap-1" aria-label="US states">
-      {states.map((state) => (
-        <li
-          key={state.code}
-          title={`${state.name}: ${describe(state)}`}
-          style={{ gridColumnStart: state.col + 1, gridRowStart: state.row + 1 }}
-          className={`flex aspect-square items-center justify-center rounded-md text-[0.625rem] font-semibold sm:text-xs ${TILE[state.status]}`}
-        >
-          <span aria-hidden="true">{state.code}</span>
-          <span className="sr-only">{`${state.name}: ${describe(state)}`}</span>
-        </li>
-      ))}
-    </ul>
+    <defs>
+      <pattern id={id} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="6" height="6" className="fill-secondary/15" />
+        <rect width="2.5" height="6" className="fill-secondary/70" />
+      </pattern>
+    </defs>
   );
 }
 
-/** Progress towards competing in all 50 states, with a tile map. */
+function Shape({ d, status, label, strokeWidth, stripesId }: { d: string; status: GoalStatus; label: string; strokeWidth: number; stripesId: string }) {
+  return (
+    <path
+      d={d}
+      className={`stroke-base-200 transition-opacity hover:opacity-75 ${FILL[status]}`}
+      fill={status === "upcoming" ? `url(#${stripesId})` : undefined}
+      strokeWidth={strokeWidth}
+      strokeLinejoin="round"
+    >
+      <title>{label}</title>
+    </path>
+  );
+}
+
+const STATE_BY_NAME = new Map<string, string>(US_STATE_SHAPES.map((shape) => [shape.name, shape.d]));
+
+/** Progress towards competing in all 50 states, on a map. */
 export function StateProgress({ states }: { states: StateGoal[] }) {
-  const competed = states.filter((state) => state.status === "competed").length;
+  const competed = states.filter((state) => state.status === "competed");
   const next = states
     .filter((state) => state.status === "upcoming" && state.competition)
     .toSorted((a, b) => a.competition!.start_date.localeCompare(b.competition!.start_date))[0];
@@ -69,7 +82,7 @@ export function StateProgress({ states }: { states: StateGoal[] }) {
       <h2 id="states-heading" className="scroll-mt-24 text-xl font-bold">US states</h2>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <p>
-          <span className="font-display text-4xl font-bold text-secondary">{competed}</span>
+          <span className="font-display text-4xl font-bold text-secondary">{competed.length}</span>
           <span className="font-display text-xl font-semibold text-muted"> / 50</span>
           <span className="block text-sm text-muted">states competed in</span>
         </p>
@@ -79,16 +92,30 @@ export function StateProgress({ states }: { states: StateGoal[] }) {
           </p>
         )}
       </div>
-      <progress className="progress progress-secondary w-full" value={competed} max={50} aria-label="US states competed in" />
-      <StateMap states={states} />
+      <progress className="progress progress-secondary w-full" value={competed.length} max={50} aria-label="US states competed in" />
+      <svg viewBox={US_VIEW_BOX} className="w-full" aria-hidden="true">
+        <Stripes id="state-stripes" />
+        {states.map((state) => {
+          const d = STATE_BY_NAME.get(state.name);
+          return d && <Shape key={state.code} d={d} status={state.status} label={`${state.name}: ${describe(state)}`} strokeWidth={1} stripesId="state-stripes" />;
+        })}
+      </svg>
+      {/* The map is hidden from screen readers; this says the same. */}
+      <ul className="sr-only">
+        {states.filter((state) => state.status !== "none").map((state) => (
+          <li key={state.code}>{`${state.name}: ${describe(state)}`}</li>
+        ))}
+      </ul>
       <Legend />
     </section>
   );
 }
 
-/** Every country with a competition, as flag chips. */
-export function CountryList({ countries }: { countries: CountryGoal[] }) {
+/** Countries on a world map, with a list (small countries can be hard to spot on the map). */
+export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
   const competed = countries.filter((country) => country.status === "competed").length;
+  const byIso2 = new Map(countries.map((country) => [country.iso2, country]));
+
   return (
     <section aria-labelledby="countries-heading" className="space-y-4 rounded-box border border-base-300 bg-base-200 p-5">
       <h2 id="countries-heading" className="scroll-mt-24 text-xl font-bold">Countries</h2>
@@ -96,17 +123,39 @@ export function CountryList({ countries }: { countries: CountryGoal[] }) {
         <span className="font-display text-4xl font-bold text-primary">{competed}</span>
         <span className="block text-sm text-muted">{competed === 1 ? "country" : "countries"} competed in</span>
       </p>
-      <ul className="flex flex-wrap gap-2" aria-label="Countries">
+      <svg viewBox={WORLD_VIEW_BOX} className="w-full" aria-hidden="true">
+        <Stripes id="country-stripes" />
+        {COUNTRY_SHAPES.map((shape) => {
+          const country = byIso2.get(shape.iso2);
+          return (
+            <Shape
+              key={shape.iso2}
+              d={shape.d}
+              status={country?.status ?? "none"}
+              label={country ? `${country.name}: ${describe(country)}` : ""}
+              strokeWidth={0.5}
+              stripesId="country-stripes"
+            />
+          );
+        })}
+      </svg>
+      <ul className="grid gap-x-6 sm:grid-cols-2">
         {countries.map((country) => (
-          <li
-            key={country.iso2}
-            title={`${country.name}: ${describe(country)}`}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${CHIP[country.status]}`}
-          >
-            <ReactCountryFlag countryCode={country.iso2} svg aria-hidden="true" />
-            {country.name}
-            {country.count > 1 && <span className="text-xs text-muted">×{country.count}</span>}
-            <span className="sr-only">{`: ${describe(country)}`}</span>
+          <li key={country.iso2} className="flex items-center gap-3 border-b border-base-300 py-2 last:border-b-0 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
+            <ReactCountryFlag countryCode={country.iso2} svg aria-hidden="true" className="shrink-0 rounded-[2px]" style={{ width: "1.5em", height: "1.125em" }} />
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium">{country.name}</span>
+              <span className="block text-xs text-muted">
+                {country.status === "upcoming" && country.competition
+                  ? `Coming up: ${country.competition.name}, ${formatIsoDate(country.competition.start_date)}`
+                  : `${country.count} ${country.count === 1 ? "competition" : "competitions"} · since ${country.competition?.start_date.slice(0, 4)}`}
+              </span>
+            </span>
+            {country.status !== "competed" && (
+              <span className={`badge badge-sm whitespace-nowrap ${country.status === "delegated" ? "border-primary/60 bg-primary/10" : "border-secondary border-dashed"}`}>
+                {LABEL[country.status as Exclude<GoalStatus, "none" | "competed">]}
+              </span>
+            )}
           </li>
         ))}
       </ul>

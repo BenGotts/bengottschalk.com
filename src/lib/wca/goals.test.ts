@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HistoryEntry } from "./competitions";
+import { US_STATE_SHAPES } from "@/content/maps/usStates";
 import { countryGoals, stateGoals, US_STATES, usStateCode } from "./goals";
 
 function entry(id: string, date: string, city: string, roles: { competed?: boolean; delegated?: boolean } = { competed: true }, countryIso2 = "US"): HistoryEntry {
@@ -25,9 +26,9 @@ function entry(id: string, date: string, city: string, roles: { competed?: boole
 const upcoming = (id: string, date: string, city: string, countryIso2 = "US") => ({ id, name: id, start_date: date, city, country_iso2: countryIso2 });
 
 describe("US_STATES", () => {
-  it("has all 50 states, each on its own tile", () => {
+  it("has all 50 states, each with a shape on the map", () => {
     expect(new Set(US_STATES.map((state) => state.code)).size).toBe(50);
-    expect(new Set(US_STATES.map((state) => `${state.col},${state.row}`)).size).toBe(50);
+    expect(US_STATE_SHAPES.map((shape) => shape.name).toSorted()).toEqual(US_STATES.map((state) => state.name).toSorted());
   });
 });
 
