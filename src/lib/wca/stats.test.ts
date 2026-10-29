@@ -81,7 +81,7 @@ describe("podiumStats", () => {
     expect(stats.events).toBe(3);
     expect(stats.topEvent).toEqual({ eventId: "333", count: 2 });
     expect(stats.bestCompetition).toMatchObject({ id: "Comp2019-01-01", count: 2 });
-    expect(stats.bestYear).toEqual({ year: "2019", count: 2 });
+    expect(stats.bestYear).toEqual({ year: "2019", count: 2, events: 2 });
     expect(stats.firstPodium?.result.competition_start_date).toBe("2019-01-01");
     // 2022 and 2021 had podiums; 2020 didn't.
     expect(stats.currentStreak).toBe(2);

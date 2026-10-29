@@ -56,7 +56,8 @@ export interface PodiumStats {
   topEvent: { eventId: string; count: number } | null;
   /** The competition with the most podiums (the newest of a tie). */
   bestCompetition: { id: string; name: string; startDate: string; count: number } | null;
-  bestYear: { year: string; count: number } | null;
+  /** The year with the most podiums (the earliest of a tie), and in how many events. */
+  bestYear: { year: string; count: number; events: number } | null;
   firstPodium: Podium | null;
   /** Competitions in a row, from the latest one with a final, that ended with a podium. */
   currentStreak: number;
@@ -104,7 +105,11 @@ export function podiumStats(results: PersonResult[]): PodiumStats {
       startDate: competition.competition_start_date,
       count: byCompetition[1],
     },
-    bestYear: byYear && { year: byYear[0], count: byYear[1] },
+    bestYear: byYear && {
+      year: byYear[0],
+      count: byYear[1],
+      events: new Set(list.filter((podium) => podium.result.competition_start_date.startsWith(byYear[0])).map((podium) => podium.result.event_id)).size,
+    },
     firstPodium: list.at(-1) ?? null,
     currentStreak: firstMiss === -1 ? competitions.length : firstMiss,
   };
