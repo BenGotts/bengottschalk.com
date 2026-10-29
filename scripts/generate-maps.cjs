@@ -32,12 +32,12 @@ function write(file, comment, typeName, items, viewBox) {
   let topo = require("us-atlas/states-albers-10m.json");
   topo = presimplify(topo);
   topo = simplify(topo, quantile(topo, 0.08));
-  const path_ = geoPath();
+  const toPath = geoPath();
   const states = feature(topo, topo.objects.states).features
     .filter((f) => f.properties.name !== "District of Columbia")
-    .map((f) => ({ name: f.properties.name, d: round(path_(f), 1) }))
+    .map((f) => ({ name: f.properties.name, d: round(toPath(f), 1) }))
     .filter((s) => s.d)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .toSorted((a, b) => a.name.localeCompare(b.name));
   write("usStates.ts", "The 50 US states as SVG paths (Albers USA projection, from us-atlas).", "US_STATE_SHAPES", states, "0 0 975 610");
 }
 
@@ -49,12 +49,12 @@ function write(file, comment, typeName, items, viewBox) {
   const features = feature(topo, topo.objects.countries).features.filter((f) => f.id !== "010" && f.properties.name !== "Antarctica");
   const width = 960;
   const projection = geoEqualEarth().fitWidth(width, { type: "FeatureCollection", features });
-  const path_ = geoPath(projection);
-  const [[, y0], [, y1]] = path_.bounds({ type: "FeatureCollection", features });
+  const toPath = geoPath(projection);
+  const [[, y0], [, y1]] = toPath.bounds({ type: "FeatureCollection", features });
   const shapes = features
-    .map((f) => ({ iso2: f.id ? countries.numericToAlpha2(f.id) : undefined, name: f.properties.name, d: round(path_(f) ?? "", 0) }))
+    .map((f) => ({ iso2: f.id ? countries.numericToAlpha2(f.id) : undefined, name: f.properties.name, d: round(toPath(f) ?? "", 0) }))
     .filter((c) => c.iso2 && c.d)
     .map(({ iso2, d }) => ({ iso2, d }))
-    .sort((a, b) => a.iso2.localeCompare(b.iso2));
+    .toSorted((a, b) => a.iso2.localeCompare(b.iso2));
   write("worldCountries.ts", "Countries as SVG paths (Equal Earth projection, from world-atlas).", "COUNTRY_SHAPES", shapes, `0 ${Math.floor(y0)} ${width} ${Math.ceil(y1 - y0)}`);
 }
