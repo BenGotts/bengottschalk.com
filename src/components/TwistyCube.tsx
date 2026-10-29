@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PR_SCRAMBLE } from "@/content/prScramble";
+import { invert, parseScramble, type Axis, type Turn } from "@/lib/cube/notation";
 
-// A 3×3 cube that scrambles itself, then solves by undoing the scramble.
-// Cubies are positioned with CSS 3D transforms; each turn is a CSS
-// transition on the turning layer, baked into the cubies' rotations after.
+// A 3×3 cube that plays a scramble (by default my PR scramble), then solves
+// by undoing it, and loops. Cubies are positioned with CSS 3D transforms;
+// each turn is a CSS transition on the turning layer, baked into the cubies'
+// rotations after.
 
-type Axis = 0 | 1 | 2; // x, y, z (CSS axes: y points down, z toward the viewer)
 type Matrix = number[][];
-interface Move { axis: Axis; layer: -1 | 0 | 1; dir: 1 | -1 }
+
+/** Where the cube is: turning move `index` of the scramble (or undoing it), or resting. */
+export type CubeStep =
+  | { phase: "scrambling" | "solving"; index: number }
+  | { phase: "scrambled" | "solved" };
 
 const TURN_MS = 320;
+const HALF_TURN_MS = 450;
 const PAUSE_MS = 90;
-const SCRAMBLE_LENGTH = 10;
 
 // Sticker colors, matching StickerLogo and src/app/icon.svg.
 const COLORS = { right: "#C41E3A", left: "#FF5800", top: "#F4F4F4", bottom: "#FFD500", front: "#009E60", back: "#0051BA" };
@@ -42,37 +48,36 @@ const apply = (m: Matrix, v: number[]) => m.map((row) => row.reduce((sum, value,
 // matrix3d() is column-major.
 const matrix3d = (m: Matrix) => `matrix3d(${m[0][0]},${m[1][0]},${m[2][0]},0,${m[0][1]},${m[1][1]},${m[2][1]},0,${m[0][2]},${m[1][2]},${m[2][2]},0,0,0,0,1)`;
 
-function scramble(length: number): Move[] {
-  const moves: Move[] = [];
-  while (moves.length < length) {
-    const axis = Math.floor(Math.random() * 3) as Axis;
-    // Never turn the same axis twice in a row, so every move reads as a new twist.
-    if (moves.at(-1)?.axis === axis) continue;
-    moves.push({ axis, layer: Math.random() < 0.5 ? -1 : 1, dir: Math.random() < 0.5 ? -1 : 1 });
-  }
-  return moves;
-}
-
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export default function TwistyCube({ className }: { className?: string }) {
+export default function TwistyCube({ className, scramble = PR_SCRAMBLE, onStep }: {
+  className?: string;
+  /** In WCA notation, e.g. "R U' F2". */
+  scramble?: string;
+  /** Called as each move starts and when the cube rests scrambled or solved. */
+  onStep?: (step: CubeStep) => void;
+}) {
   const [rotations, setRotations] = useState<Matrix[]>(() => CUBIES.map(() => IDENTITY));
-  const [move, setMove] = useState<Move | null>(null);
+  const [move, setMove] = useState<Turn | null>(null);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const controller = new AbortController();
     const { signal } = controller;
+    const moves = parseScramble(scramble);
 
-    async function play(moves: Move[]) {
-      for (const next of moves) {
+    async function play(turns: Turn[], phase: "scrambling" | "solving") {
+      for (const [i, next] of turns.entries()) {
         if (signal.aborted) return;
+        // While solving, point at the scramble move being undone.
+        onStep?.({ phase, index: phase === "solving" ? turns.length - 1 - i : i });
         setMove(next);
-        await wait(TURN_MS);
+        await wait(next.amount === 2 ? HALF_TURN_MS : TURN_MS);
         if (signal.aborted) return;
-        const turn = quarterTurn(next.axis, next.dir);
-        setRotations((current) => current.map((rotation, i) =>
-          apply(rotation, CUBIES[i])[next.axis] === next.layer ? multiply(turn, rotation) : rotation));
+        const quarter = quarterTurn(next.axis, next.dir);
+        const turn = next.amount === 2 ? multiply(quarter, quarter) : quarter;
+        setRotations((current) => current.map((rotation, c) =>
+          apply(rotation, CUBIES[c])[next.axis] === next.layer ? multiply(turn, rotation) : rotation));
         setMove(null);
         await wait(PAUSE_MS);
       }
@@ -81,15 +86,18 @@ export default function TwistyCube({ className }: { className?: string }) {
     (async () => {
       await wait(800);
       while (!signal.aborted) {
-        const moves = scramble(SCRAMBLE_LENGTH);
-        await play(moves);
-        await wait(1200);
-        await play(moves.toReversed().map((m) => ({ ...m, dir: m.dir === 1 ? -1 : 1 }) as Move));
+        await play(moves, "scrambling");
+        if (signal.aborted) return;
+        onStep?.({ phase: "scrambled" });
+        await wait(1500);
+        await play(invert(moves), "solving");
+        if (signal.aborted) return;
+        onStep?.({ phase: "solved" });
         await wait(2400);
       }
     })();
     return () => controller.abort();
-  }, []);
+  }, [scramble, onStep]);
 
   return (
     <div className={`twisty-cube ${className ?? ""}`}>
@@ -97,14 +105,14 @@ export default function TwistyCube({ className }: { className?: string }) {
         {CUBIES.map((home, i) => {
           const rotation = rotations[i];
           const turning = move !== null && apply(rotation, home)[move.axis] === move.layer;
-          const angle = turning ? move.dir * 90 : 0;
+          const angle = turning ? move.dir * 90 * move.amount : 0;
           return (
             <div
               key={home.join()}
               className="twisty-cubie"
               style={{
                 transform: `rotate3d(${AXIS_VECTORS[move?.axis ?? 0]},${angle}deg) ${matrix3d(rotation)} translate3d(calc(${home[0]} * var(--cubie)), calc(${home[1]} * var(--cubie)), calc(${home[2]} * var(--cubie)))`,
-                transition: turning ? `transform ${TURN_MS}ms ease-in-out` : "none",
+                transition: turning ? `transform ${move.amount === 2 ? HALF_TURN_MS : TURN_MS}ms ease-in-out` : "none",
               }}
             >
               {FACES.map((face) => (
