@@ -10,7 +10,8 @@ import type { TimelineItem, TimelineRow } from "./timelineRows";
 /**
  * One PR, aligned towards the centre line: right-aligned on the singles side.
  * A PR that was also a record (NR, CR, WR) is highlighted with its badge, and
- * one that broke a barrier gets a milestone badge (e.g. "Sub-10").
+ * one that broke a barrier gets a milestone badge (e.g. "Sub-10"). An event's
+ * first result gets a "First" badge.
  */
 function Pr({ item, side, showEvent }: { item: TimelineItem; side: "left" | "right"; showEvent: boolean }) {
   const name = (
@@ -29,15 +30,12 @@ function Pr({ item, side, showEvent }: { item: TimelineItem; side: "left" | "rig
       {showEvent && (item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name)}
       <span className={`flex items-baseline gap-2 ${side === "left" ? "flex-row-reverse" : ""}`}>
         <span className="font-mono text-lg font-medium">{item.value}</span>
-        {item.first ? (
-          // "First success" already says it for Blindfolded.
-          !item.milestone && <span className="text-xs text-muted">first</span>
-        ) : (
-          item.improvement && <span className="font-mono text-xs text-success">{item.improvement}</span>
-        )}
+        {item.improvement && <span className="font-mono text-xs text-success">{item.improvement}</span>}
       </span>
-      {(item.record || item.milestone) && (
+      {/* "First success" already says it for Blindfolded, so it replaces the "First" badge. */}
+      {(item.record || item.milestone || item.first) && (
         <span className={`flex flex-wrap gap-1 ${side === "left" ? "justify-end" : ""}`}>
+          {item.first && !item.milestone && <span className="badge badge-sm border-secondary bg-secondary/15 font-semibold">First</span>}
           {item.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{item.record}</span>}
           {item.milestone && <span className="badge badge-sm border-primary bg-primary/15 font-semibold whitespace-nowrap">{item.milestone}</span>}
         </span>
