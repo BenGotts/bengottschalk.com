@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Data is cached with "use cache" + cacheLife in src/lib (see src/lib/wca/api.ts).
   cacheComponents: true,
   partialPrefetching: true,
+  // A page waits on the WCA API, retrying slow requests (see src/lib/wca/client.ts);
+  // all of a person's results can take well over the default 60 seconds.
+  staticPageGenerationTimeout: 180,
   // Competitions and results moved under one Cubing section.
   redirects() {
     return [

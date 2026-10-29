@@ -37,6 +37,12 @@ import {
 // Every function caches its own result. On success the result lives for the
 // given profile; on failure it is kept for minutes so the next attempt comes
 // soon without hammering the API. All entries share the "wca" tag.
+//
+// "use cache: remote" keeps entries in the host's shared cache (Vercel's
+// runtime cache) rather than one server's memory, which on serverless rarely
+// outlives a request. So a page refreshing in the background reuses fresh data
+// instead of asking the WCA again, and the WCA's rate limit is safe however
+// much traffic the site gets.
 
 type CacheProfile = "minutes" | "hours" | "days";
 
@@ -61,7 +67,7 @@ function settle<T>(result: Result<T>, profile: CacheProfile): Result<T> {
 }
 
 export async function getPerson(wcaId = WCA_ID): Promise<Result<Person>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-person-${wcaId}`);
   return settle(await fetchWca(`/v0/persons/${wcaId}`, PersonSchema), "hours");
 }
@@ -77,7 +83,7 @@ export interface Avatar extends ImageSize {
  * same crop as their WCA thumbnail. `null` without a photo of their own.
  */
 export async function getAvatar(wcaId = WCA_ID): Promise<Result<Avatar | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-avatar-${wcaId}`);
   const person = await getPerson(wcaId);
   if (!person.ok) return settle(person, "days");
@@ -99,20 +105,24 @@ export async function getAvatar(wcaId = WCA_ID): Promise<Result<Avatar | null>> 
 
 /** Ongoing and upcoming competitions, as a competitor or as a delegate. */
 export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<CompetitionsOverview>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-competitions-${wcaId}`);
 
   const now = new Date();
   const utcToday = utcDateString(now);
   const [registered, delegated] = await Promise.all([
     fetchWca(`/v0/users/${wcaId}?upcoming_competitions=true&ongoing_competitions=true`, UserCompetitionsSchema),
-    // The WCA filters with UTC dates; asking from yesterday keeps a competition
-    // that is still running at its venue after UTC midnight.
-    fetchDelegatedCompetitions(wcaId, { ongoingAndFuture: addDays(utcToday, -1) }),
+    // Shared with the history, so a build or refresh asks the WCA once.
+    getDelegatedCompetitions(wcaId),
   ]);
 
   if (!registered.ok) return settle(registered, "hours");
-  const delegatedData = delegated.ok ? delegated.data : [];
+  // From yesterday (UTC), so a competition still running at its venue after
+  // UTC midnight stays in.
+  const since = addDays(utcToday, -1);
+  const delegatedData = delegated.ok
+    ? delegated.data.filter((competition) => competition.end_date >= since)
+    : [];
 
   // Only competitions near today need a venue time zone to classify.
   const near = new Map<string, Competition>();
@@ -136,15 +146,45 @@ export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<Co
 
 /** The time zone of a competition's (first) venue, from its public schedule. */
 export async function getCompetitionTimezone(competitionId: string): Promise<Result<string | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-timezone-${competitionId}`);
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/schedule`, CompetitionScheduleSchema);
   return settle(result.ok ? ok(result.data.venues[0]?.timezone ?? null) : result, "days");
 }
 
+export interface LiveWindow {
+  id: string;
+  start_date: string;
+  end_date: string;
+  /** The venue's IANA time zone; null when the WCA doesn't have one (then UTC). */
+  timezone: string | null;
+}
+
+/**
+ * Competitions that are on or start within two days, with their venue time
+ * zones, for the header's live dot. The browser compares these to the current
+ * time, so this can be cached for hours: the header (on every page) no longer
+ * needs the overview's minute-long cache around competition days.
+ */
+export async function getLiveWindows(wcaId = WCA_ID): Promise<Result<LiveWindow[]>> {
+  "use cache: remote";
+  cacheTag("wca", `wca-live-windows-${wcaId}`);
+  const overview = await getCompetitionsOverview(wcaId);
+  if (!overview.ok) return settle(overview, "hours");
+  const soon = addDays(utcDateString(new Date()), 2);
+  const competitions = [...overview.data.ongoing, ...overview.data.upcoming].filter((c) => c.start_date <= soon);
+  const windows = await Promise.all(
+    competitions.map(async ({ id, start_date, end_date }) => {
+      const timezone = await getCompetitionTimezone(id);
+      return { id, start_date, end_date, timezone: timezone.ok ? timezone.data : null };
+    }),
+  );
+  return settle(ok(windows), "hours");
+}
+
 /** Every competition the person has competed in, newest first. */
 export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCompetition[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-past-competitions-${wcaId}`);
   const result = await fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema));
   return settle(
@@ -161,12 +201,12 @@ export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCo
 export async function getCompetitionHistory(
   wcaId = WCA_ID,
 ): Promise<Result<{ history: HistoryEntry[]; utcToday: string }>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-history-${wcaId}`);
   const utcToday = utcDateString(new Date());
   const [competed, delegated] = await Promise.all([
     fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
-    fetchDelegatedCompetitions(wcaId),
+    getDelegatedCompetitions(wcaId),
   ]);
   if (!competed.ok) return settle(competed, "days");
   if (!delegated.ok) return settle(delegated, "days");
@@ -178,31 +218,42 @@ export async function getCompetitionHistory(
   );
 }
 
-/** Every competition the person has delegated, past and future. */
+/**
+ * Every competition the person has delegated, past and future. Both the
+ * history and the overview use it; hours keeps new assignments showing soon.
+ */
 export async function getDelegatedCompetitions(wcaId = WCA_ID): Promise<Result<Competition[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-delegated-${wcaId}`);
-  return settle(await fetchDelegatedCompetitions(wcaId), "days");
+  return settle(await fetchDelegatedCompetitions(wcaId), "hours");
 }
 
-/** All results, or one event's results. Oldest first, as the API returns them. */
+/**
+ * All results, or one event's results. Oldest first, as the API returns them.
+ * One event's are picked from the cached full list rather than asked for
+ * separately, so a build makes one request instead of one per event page.
+ */
 export async function getResults(eventId?: string, wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-results-${wcaId}`);
-  const query = eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
-  return settle(await fetchWca(`/v1/persons/${wcaId}/results${query}`, z.array(PersonResultSchema)), "days");
+  if (eventId) {
+    const all = await getResults(undefined, wcaId);
+    return settle(all.ok ? ok(all.data.filter((result) => result.event_id === eventId)) : all, "days");
+  }
+  // Every result in every event is a large, slow response.
+  return settle(await fetchWca(`/v1/persons/${wcaId}/results`, z.array(PersonResultSchema), { timeoutMs: 40_000 }), "days");
 }
 
 /** Results that set a regional record (NR, CR or WR). */
 export async function getRegionalRecords(wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-records-${wcaId}`);
   return settle(await fetchWca(`/v1/persons/${wcaId}/records`, z.array(PersonResultSchema)), "days");
 }
 
 /** Current world, continental and national records for every event. */
 export async function getRecords(): Promise<Result<Records>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", "wca-global-records");
   return settle(await fetchWca("/v0/records", RecordsSchema), "days");
 }
@@ -215,7 +266,7 @@ export interface DelegateRole {
 
 /** The person's current Delegate role, if any. */
 export async function getDelegateRole(userId = WCA_USER_ID): Promise<Result<DelegateRole | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-roles-${userId}`);
   const result = await fetchWca(`/v0/user_roles?userId=${userId}&isActive=true`, z.array(UserRoleSchema));
   if (!result.ok) return settle(result, "days");
@@ -227,7 +278,7 @@ export async function getCompetitionSchedule(
   competitionId: string,
   wcaId = WCA_ID,
 ): Promise<Result<PersonSchedule | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-wcif-${competitionId}`);
   // The WCA caches public WCIF for 5 minutes and assignments can change on the day.
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/wcif/public`, WcifSchema);
@@ -237,7 +288,7 @@ export async function getCompetitionSchedule(
 
 /** The person's WCA Live ids at a competition, for polling live results from the browser. */
 export async function getLivePerson(competitionId: string, wcaId = WCA_ID): Promise<Result<LivePerson | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-live-${competitionId}`);
   const result = await findLivePerson(competitionId, wcaId);
   // Competitors are imported into WCA Live shortly before the competition, so keep checking until found.
@@ -255,12 +306,8 @@ export function pickDelegateRole(roles: UserRole[]): DelegateRole | null {
 
 const PAGE_SIZE = 1000; // WCA API maximum
 
-async function fetchDelegatedCompetitions(
-  wcaId: string,
-  { ongoingAndFuture }: { ongoingAndFuture?: string } = {},
-): Promise<Result<Competition[]>> {
+async function fetchDelegatedCompetitions(wcaId: string): Promise<Result<Competition[]>> {
   const params = new URLSearchParams({ delegate: wcaId, per_page: String(PAGE_SIZE) });
-  if (ongoingAndFuture) params.set("ongoing_and_future", ongoingAndFuture);
 
   const competitions: Competition[] = [];
   for (let page = 1; ; page++) {

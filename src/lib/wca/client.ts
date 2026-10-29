@@ -7,7 +7,7 @@ export const WCA_API_URL = process.env.WCA_API_URL ?? "https://www.worldcubeasso
 // The WCA API allows 60 requests per minute per IP. Callers cache results, but
 // a build renders many pages at once, so slow or rate-limited responses are
 // retried a few times before giving up.
-const REQUEST_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 15_000;
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [1_000, 4_000];
 const MAX_RETRY_AFTER_MS = 15_000;
@@ -27,14 +27,14 @@ function retryAfterMs(response: Response): number | null {
   return Number.isFinite(ms) && ms > 0 ? Math.min(ms, MAX_RETRY_AFTER_MS) : null;
 }
 
-async function fetchWithRetry(url: string, path: string): Promise<Result<Response>> {
+async function fetchWithRetry(url: string, path: string, timeoutMs: number): Promise<Result<Response>> {
   for (let attempt = 1; ; attempt++) {
     const lastAttempt = attempt >= MAX_ATTEMPTS;
     const backoff = RETRY_DELAYS_MS[attempt - 1] ?? RETRY_DELAYS_MS.at(-1)!;
     try {
       const response = await fetch(url, {
         headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (response.ok) return ok(response);
       if (lastAttempt || !isRetryableStatus(response.status)) {
@@ -52,12 +52,16 @@ async function fetchWithRetry(url: string, path: string): Promise<Result<Respons
   }
 }
 
-/** Fetches a WCA API path (e.g. `/v0/persons/2016GOTT01`) and validates the JSON. */
+/**
+ * Fetches a WCA API path (e.g. `/v0/persons/2016GOTT01`) and validates the JSON.
+ * `timeoutMs` is per attempt; raise it for large responses.
+ */
 export async function fetchWca<S extends z.ZodType>(
   path: string,
   schema: S,
+  { timeoutMs = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {},
 ): Promise<Result<z.output<S>>> {
-  const response = await fetchWithRetry(`${WCA_API_URL}${path}`, path);
+  const response = await fetchWithRetry(`${WCA_API_URL}${path}`, path, timeoutMs);
   if (!response.ok) return response;
 
   let json: unknown;
