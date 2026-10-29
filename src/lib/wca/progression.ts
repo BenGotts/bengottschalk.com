@@ -1,3 +1,4 @@
+import { milestone } from "./milestones";
 import type { PersonResult } from "./schemas";
 
 export interface PrPoint {
@@ -63,6 +64,8 @@ export interface TimelinePr {
   previous?: number;
   /** "NR", "CR", "WR" etc. when the PR was also a regional record. */
   record?: string;
+  /** A barrier it broke, e.g. "Sub-10", or "First success" in Blindfolded. */
+  milestone?: string;
 }
 
 export interface TimelineEntry {
@@ -101,13 +104,17 @@ export function prTimeline(results: PersonResult[], eventOrder: (eventIds: strin
         if (existing) {
           existing.value = point.value;
           if (point.record) existing.record = point.record;
+          const reached = milestone(eventId, kind, existing.previous, point.value);
+          if (reached) existing.milestone = reached;
         } else {
+          const reached = milestone(eventId, kind, previous, point.value);
           const pr: TimelinePr = {
             eventId,
             kind,
             value: point.value,
             ...(previous !== undefined && { previous }),
             ...(point.record && { record: point.record }),
+            ...(reached && { milestone: reached }),
           };
           prsAt.set(key, pr);
           entry.prs.push(pr);
@@ -163,4 +170,28 @@ export function prStreaks(results: PersonResult[], timeline: TimelineEntry[]): P
     }
   });
   return { current: run, longest };
+}
+
+const DAY_MS = 86_400_000;
+const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
+
+export interface PrDroughts {
+  /** Days from the latest PR competition to `today`. */
+  daysSinceLast: number;
+  last: StreakCompetition;
+  /** The longest gap between two competitions with PRs (the earliest, if tied). */
+  longest: { days: number; from: StreakCompetition; to: StreakCompetition } | null;
+}
+
+/** Gaps between PRs in any event, measured between competition start dates. */
+export function prDroughts(timeline: TimelineEntry[], today: string): PrDroughts | null {
+  const oldestFirst = timeline.toReversed().map(({ competitionId, competitionName, date }) => ({ competitionId, competitionName, date }));
+  const last = oldestFirst.at(-1);
+  if (!last) return null;
+  let longest: PrDroughts["longest"] = null;
+  for (let index = 1; index < oldestFirst.length; index++) {
+    const days = daysBetween(oldestFirst[index - 1].date, oldestFirst[index].date);
+    if (!longest || days > longest.days) longest = { days, from: oldestFirst[index - 1], to: oldestFirst[index] };
+  }
+  return { daysSinceLast: Math.max(0, daysBetween(last.date, today)), last, longest };
 }

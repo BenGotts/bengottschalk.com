@@ -9,7 +9,8 @@ import type { TimelineItem, TimelineRow } from "./timelineRows";
 
 /**
  * One PR, aligned towards the centre line: right-aligned on the singles side.
- * A PR that was also a record (NR, CR, WR) is highlighted with its badge.
+ * A PR that was also a record (NR, CR, WR) is highlighted with its badge, and
+ * one that broke a barrier gets a milestone badge (e.g. "Sub-10").
  */
 function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
   const name = (
@@ -28,13 +29,19 @@ function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
       {item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name}
       <span className={`flex items-baseline gap-2 ${side === "left" ? "flex-row-reverse" : ""}`}>
         <span className="font-mono text-lg font-medium">{item.value}</span>
-        {item.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{item.record}</span>}
         {item.first ? (
-          <span className="text-xs text-muted">first</span>
+          // "First success" already says it for Blindfolded.
+          !item.milestone && <span className="text-xs text-muted">first</span>
         ) : (
           item.improvement && <span className="font-mono text-xs text-success">{item.improvement}</span>
         )}
       </span>
+      {(item.record || item.milestone) && (
+        <span className={`flex flex-wrap gap-1 ${side === "left" ? "justify-end" : ""}`}>
+          {item.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{item.record}</span>}
+          {item.milestone && <span className="badge badge-sm border-primary bg-primary/15 font-semibold whitespace-nowrap">{item.milestone}</span>}
+        </span>
+      )}
     </li>
   );
 }

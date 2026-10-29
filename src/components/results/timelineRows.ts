@@ -19,6 +19,8 @@ export interface TimelineItem {
   first: boolean;
   /** "NR", "CR", "WR" etc. when the PR was also a regional record. */
   record: string | null;
+  /** A barrier broken, e.g. "Sub-10", or "First success" in Blindfolded. */
+  milestone: string | null;
   /** The event's results page; null for retired events, which have none. */
   href: string | null;
 }
@@ -41,6 +43,7 @@ function item(pr: TimelinePr): TimelineItem {
     improvement: pr.previous === undefined ? null : formatImprovement(pr.eventId, pr.previous, pr.value, pr.kind),
     first: pr.previous === undefined,
     record: pr.record ?? null,
+    milestone: pr.milestone ?? null,
     href: isCurrentEvent(pr.eventId) ? `/cubing/results/${pr.eventId}` : null,
   };
 }

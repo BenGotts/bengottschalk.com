@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prProgression, prStreaks, prTimeline } from "./progression";
+import { prDroughts, prProgression, prStreaks, prTimeline } from "./progression";
 import type { PersonResult } from "./schemas";
 
 function result(date: string, competitionId: string, roundTypeId: string, best: number, average: number): PersonResult {
@@ -70,7 +70,7 @@ describe("prTimeline", () => {
     );
     expect(timeline.map((entry) => entry.competitionId)).toEqual(["C", "B", "A"]);
     expect(timeline[0].prs).toEqual([{ eventId: "222", kind: "average", value: 650 }]);
-    expect(timeline[1].prs).toEqual([{ eventId: "333", kind: "single", value: 1800, previous: 2000 }]);
+    expect(timeline[1].prs).toEqual([{ eventId: "333", kind: "single", value: 1800, previous: 2000, milestone: "Sub-20" }]);
     expect(timeline[2].prs.map((pr) => `${pr.eventId}-${pr.kind}`)).toEqual(["222-single", "333-single", "333-average"]);
   });
 
@@ -83,7 +83,7 @@ describe("prTimeline", () => {
       ],
       order,
     );
-    expect(timeline[0].prs).toEqual([{ eventId: "333", kind: "single", value: 1700, previous: 2000 }]);
+    expect(timeline[0].prs).toEqual([{ eventId: "333", kind: "single", value: 1700, previous: 2000, milestone: "Sub-20" }]);
   });
 });
 
@@ -98,7 +98,7 @@ describe("prTimeline records", () => {
       order,
     );
     expect(timeline[0].prs).toEqual([
-      { eventId: "333", kind: "single", value: 1700, previous: 2000, record: "NR" },
+      { eventId: "333", kind: "single", value: 1700, previous: 2000, record: "NR", milestone: "Sub-20" },
       { eventId: "333", kind: "average", value: 1800, record: "CR" },
     ]);
     expect(timeline[1].prs[0].record).toBeUndefined();
@@ -139,5 +139,43 @@ describe("prStreaks", () => {
 
   it("has no streak without results", () => {
     expect(streaks([])).toEqual({ current: 0, longest: null });
+  });
+});
+
+describe("prTimeline milestones", () => {
+  it("marks the barrier a PR broke, against the record it started from", () => {
+    const timeline = prTimeline(
+      [
+        at("2016-01-01", "A", "333", "f", 1100, 0),
+        at("2017-01-01", "B", "333", "1", 1050, 0),
+        at("2017-01-01", "B", "333", "f", 990, 0),
+      ],
+      order,
+    );
+    expect(timeline[0].prs[0].milestone).toBe("Sub-10");
+    expect(timeline[1].prs[0].milestone).toBeUndefined();
+  });
+});
+
+describe("prDroughts", () => {
+  it("finds the longest gap between PR competitions and the days since the last", () => {
+    const timeline = prTimeline(
+      [
+        at("2016-01-01", "A", "333", "f", 2000, 0),
+        at("2016-03-01", "B", "333", "f", 1900, 0),
+        at("2017-03-01", "C", "333", "f", 1950, 0), // no PR
+        at("2017-06-01", "D", "333", "f", 1800, 0),
+      ],
+      order,
+    );
+    const droughts = prDroughts(timeline, "2017-06-11");
+    expect(droughts?.daysSinceLast).toBe(10);
+    expect(droughts?.last.competitionId).toBe("D");
+    expect([droughts?.longest?.from.competitionId, droughts?.longest?.to.competitionId, droughts?.longest?.days]).toEqual(["B", "D", 457]);
+  });
+
+  it("has nothing without PRs, and no gap with only one", () => {
+    expect(prDroughts([], "2020-01-01")).toBeNull();
+    expect(prDroughts(prTimeline([at("2016-01-01", "A", "333", "f", 2000, 0)], order), "2016-01-01")?.longest).toBeNull();
   });
 });

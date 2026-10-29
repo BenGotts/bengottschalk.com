@@ -7,12 +7,15 @@ import SectionHeader from "@/components/SectionHeader";
 import CubingStats from "@/components/cubing/CubingStats";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
+import { Miles } from "@/components/competitions/TravelStats";
+import StatTile from "@/components/StatTile";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import PrCard from "@/components/results/PrCard";
 import PrTimeline from "@/components/results/PrTimeline";
 import { timelineRows } from "@/components/results/timelineRows";
 import {
   cubingStats,
+  eventName,
   finishedCompetitions,
   formatDelegateStatus,
   formatIsoDate,
@@ -22,8 +25,11 @@ import {
   getPerson,
   getResults,
   highlightEvents,
+  prDroughts,
+  prStreaks,
   prTimeline,
   sortEventIds,
+  travelStats,
 } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
@@ -49,7 +55,17 @@ export default async function CubingPage() {
   const stats = person.ok && historyResult.ok ? cubingStats(person.data, history) : null;
   const firstYear = history.findLast((entry) => entry.competed)?.start_date.slice(0, 4);
   const recent = history.slice(0, 4);
-  const latestPrs = results.ok ? prTimeline(results.data, sortEventIds).slice(0, 3) : [];
+  const timeline = results.ok ? prTimeline(results.data, sortEventIds) : [];
+  const latestPrs = timeline.slice(0, 3);
+
+  // Fun stats, each linking to where it's explained in full.
+  const travel = history.length > 1 ? travelStats(history) : null;
+  const streaks = results.ok && timeline.length > 0 ? prStreaks(results.data, timeline) : null;
+  const droughts = historyResult.ok ? prDroughts(timeline, historyResult.data.utcToday) : null;
+  const latestMilestone = timeline
+    .flatMap((entry) => entry.prs.filter((pr) => pr.milestone).map((pr) => ({ entry, pr })))
+    .at(0);
+  const hasFunStats = Boolean(travel || streaks || droughts || latestMilestone);
 
   return (
     <div className="space-y-14">
@@ -107,6 +123,32 @@ export default async function CubingPage() {
             {highlightEvents(person.data.personal_records, 4).map((eventId) => (
               <PrCard key={eventId} eventId={eventId} record={person.data.personal_records[eventId]} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {hasFunStats && (
+        <section aria-labelledby="fun-heading" className="space-y-4">
+          <h2 id="fun-heading" className="text-2xl font-bold">Fun stats</h2>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {travel && (
+              <div className="col-span-2 lg:col-span-1">
+                <StatTile value={<Miles miles={travel.totalMiles} />} label="Travelled between competitions" href="/cubing/competitions#travel-heading" />
+              </div>
+            )}
+            {streaks && <StatTile value={streaks.current} label="Current PR streak, in competitions" href="/cubing/timeline" />}
+            {droughts && <StatTile value={droughts.daysSinceLast.toLocaleString("en-US")} label="Days since my last PR" href="/cubing/timeline" />}
+            {latestMilestone?.pr.milestone && (
+              // Full width on phones (like the distance, which keeps the pairs below even):
+              // a label like "Sub-1:00" shouldn't break at its hyphen.
+              <div className="col-span-2 lg:col-span-1">
+                <StatTile
+                  value={<span className="whitespace-nowrap">{latestMilestone.pr.milestone}</span>}
+                  label={`Latest milestone: ${eventName(latestMilestone.pr.eventId)} ${latestMilestone.pr.kind} at ${latestMilestone.entry.competitionName}`}
+                  href="/cubing/timeline"
+                />
+              </div>
+            )}
           </div>
         </section>
       )}
