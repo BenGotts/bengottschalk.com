@@ -1,8 +1,8 @@
 // Where I've competed: delegating somewhere doesn't count as competing there,
 // so it's shown apart, and upcoming competitions mark the places coming up next.
-import { ReactCountryFlag } from "react-country-flag";
 import { US_STATE_SHAPES, VIEW_BOX as US_VIEW_BOX } from "@/content/maps/usStates";
 import { COUNTRY_SHAPES, VIEW_BOX as WORLD_VIEW_BOX } from "@/content/maps/worldCountries";
+import CountryList, { type CountryRow } from "./CountryList";
 import { formatIsoDate, type CountryGoal, type GoalStatus, type StateGoal } from "@/lib/wca";
 
 // Map fills; "upcoming" uses the striped pattern below.
@@ -111,6 +111,21 @@ export function StateProgress({ states }: { states: StateGoal[] }) {
   );
 }
 
+function countryRow(country: CountryGoal): CountryRow {
+  const upcoming = country.status === "upcoming" && country.competition;
+  return {
+    iso2: country.iso2,
+    name: country.name,
+    detail: upcoming
+      ? `Coming up: ${country.competition!.name}, ${formatIsoDate(country.competition!.start_date)}`
+      : `${country.count} ${country.count === 1 ? "competition" : "competitions"} · since ${country.competition?.start_date.slice(0, 4)}`,
+    badge:
+      country.status === "delegated" ? { label: LABEL.delegated, className: "border-primary/60 bg-primary/10" }
+      : country.status === "upcoming" ? { label: LABEL.upcoming, className: "border-dashed border-secondary" }
+      : null,
+  };
+}
+
 /** Countries on a world map, with a list (small countries can be hard to spot on the map). */
 export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
   const competed = countries.filter((country) => country.status === "competed").length;
@@ -139,26 +154,7 @@ export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
           );
         })}
       </svg>
-      <ul className="grid gap-x-6 sm:grid-cols-2">
-        {countries.map((country) => (
-          <li key={country.iso2} className="flex items-center gap-3 border-b border-base-300 py-2 last:border-b-0 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
-            <ReactCountryFlag countryCode={country.iso2} svg aria-hidden="true" className="shrink-0 rounded-[2px]" style={{ width: "1.5em", height: "1.125em" }} />
-            <span className="min-w-0 flex-1">
-              <span className="block font-medium">{country.name}</span>
-              <span className="block text-xs text-muted">
-                {country.status === "upcoming" && country.competition
-                  ? `Coming up: ${country.competition.name}, ${formatIsoDate(country.competition.start_date)}`
-                  : `${country.count} ${country.count === 1 ? "competition" : "competitions"} · since ${country.competition?.start_date.slice(0, 4)}`}
-              </span>
-            </span>
-            {country.status !== "competed" && (
-              <span className={`badge badge-sm whitespace-nowrap ${country.status === "delegated" ? "border-primary/60 bg-primary/10" : "border-secondary border-dashed"}`}>
-                {LABEL[country.status as Exclude<GoalStatus, "none" | "competed">]}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+      <CountryList rows={countries.map(countryRow)} />
       <Legend />
     </section>
   );

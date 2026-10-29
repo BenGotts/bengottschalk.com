@@ -74,10 +74,11 @@ describe("stateGoals", () => {
 });
 
 describe("countryGoals", () => {
-  it("lists countries competed in first, by when, and leaves out multi-location competitions", () => {
+  it("lists countries competed in first, most competitions first, and leaves out multi-location competitions", () => {
     const goals = countryGoals([
-      entry("Canada", "2019-01-01", "Vancouver, British Columbia", { competed: true }, "CA"),
+      entry("Canada", "2014-01-01", "Vancouver, British Columbia", { competed: true }, "CA"),
       entry("Usa", "2016-01-01", "Portland, Oregon"),
+      entry("Usa2", "2020-01-01", "Seattle, Washington"),
       entry("Mexico", "2015-01-01", "Mexico City", { delegated: true }, "MX"),
       entry("Fmc", "2017-01-01", "Multiple Cities", { competed: true }, "XW"),
     ], [upcoming("Japan", "2027-01-01", "Tokyo", "JP")]);

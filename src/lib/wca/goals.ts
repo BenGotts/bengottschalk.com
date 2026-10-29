@@ -132,7 +132,7 @@ export interface CountryGoal extends GoalPlace {
 
 const regionNames = new Intl.DisplayNames("en", { type: "region" });
 
-/** Countries with any competition, competed first, then by when they were first reached. */
+/** Countries with any competition: competed first, then most competitions, then earliest. */
 export function countryGoals(history: HistoryEntry[], upcoming: Parameters<typeof goalPlaces>[1]): CountryGoal[] {
   const places = goalPlaces(history, upcoming, (place) => place.country_iso2);
   return [...places]
@@ -140,6 +140,7 @@ export function countryGoals(history: HistoryEntry[], upcoming: Parameters<typeo
     .toSorted(
       (a, b) =>
         RANK[b.status] - RANK[a.status] ||
+        b.count - a.count ||
         (a.competition?.start_date ?? "").localeCompare(b.competition?.start_date ?? "") ||
         a.name.localeCompare(b.name),
     );
