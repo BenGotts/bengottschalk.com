@@ -13,6 +13,11 @@ describe("ContactFormSchema", () => {
     expect(ContactFormSchema.parse({ ...valid, website: "spam.example" }).website).toBe("spam.example");
   });
 
+  it("accepts a known topic, or none", () => {
+    expect(ContactFormSchema.parse({ ...valid, topic: "Competitions" }).topic).toBe("Competitions");
+    expect(ContactFormSchema.safeParse({ ...valid, topic: "Spam" }).success).toBe(false);
+  });
+
   it("rejects missing or invalid fields", () => {
     expect(ContactFormSchema.safeParse({ ...valid, email: "not-an-email" }).success).toBe(false);
     expect(ContactFormSchema.safeParse({ ...valid, message: "" }).success).toBe(false);
