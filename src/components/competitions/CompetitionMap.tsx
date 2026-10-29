@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import { latLngBounds, type Map as LeafletMap } from "leaflet";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { LuFocus, LuHouse, LuMaximize, LuMinimize, LuMinus, LuPlus } from "react-icons/lu";
+import { LuFocus, LuHouse, LuMaximize, LuMinus, LuPlus, LuX } from "react-icons/lu";
 import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import { THEMES } from "@/lib/theme";
 import { useTheme } from "@/lib/useTheme";
@@ -39,6 +39,9 @@ const DRAW_ORDER: Record<MapStatus, number> = { past: 0, upcoming: 1, ongoing: 2
 // tapped, so a finger drag over it always scrolls the page.
 const TOUCH_QUERY = "(pointer: coarse)";
 
+// Marks the history entry added while the map is expanded, so Back collapses it.
+const HISTORY_KEY = "competitionMapExpanded";
+
 function MapButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -71,8 +74,12 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
   const [engaged, setEngaged] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [mapInstance, setMapInstance] = useState(0);
+  // Whether the history entry for the expanded map is still there to go back from.
+  const historyEntryRef = useRef(false);
   // Only rendered in the browser (see CompetitionMapLoader), so matchMedia is safe here.
   const [touch, setTouch] = useState(() => window.matchMedia(TOUCH_QUERY).matches);
+  // Set while expanded, by the effect that owns collapsing.
+  const collapseRef = useRef(() => {});
 
   // Next.js keeps pages hidden with React <Activity> after navigating away,
   // running effect cleanups but keeping the DOM. react-leaflet destroys its map
@@ -142,27 +149,41 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
     return () => observer.disconnect();
   }, [map]);
 
-  // Leaving native fullscreen (e.g. the browser's own Esc) also collapses the map.
-  useEffect(() => {
-    const onChange = () => {
-      if (!document.fullscreenElement) setExpanded(false);
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  // While expanded: Esc collapses, and the page behind doesn't scroll.
+  // While expanded: Back (including Android's), Esc and leaving native
+  // fullscreen all collapse it, and the page behind doesn't scroll.
   useEffect(() => {
     if (!expanded) return () => {};
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpanded(false);
+    const collapse = () => {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+      // Going back fires popstate, which finishes collapsing.
+      if (historyEntryRef.current) {
+        historyEntryRef.current = false;
+        history.back();
+      } else {
+        setExpanded(false);
+      }
     };
+    const onPopState = () => {
+      historyEntryRef.current = false;
+      collapse();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") collapse();
+    };
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) collapse();
+    };
+    collapseRef.current = collapse;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    window.addEventListener("popstate", onPopState);
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
     return () => {
       document.body.style.overflow = previousOverflow;
+      window.removeEventListener("popstate", onPopState);
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
   }, [expanded]);
 
@@ -174,38 +195,48 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
   };
 
   // Expanding covers the window with CSS, which works everywhere (including
-  // iPhones, which don't support element fullscreen), and also asks for native
-  // fullscreen where the browser allows it.
-  const toggleExpanded = () => {
-    if (expanded) {
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-      setExpanded(false);
-      return;
-    }
+  // iPhones, which don't support element fullscreen). Computers also get native
+  // fullscreen where the browser allows it; phones don't, since it hides the
+  // status bar and puts the camera cutout over the map's controls.
+  const expand = () => {
     setExpanded(true);
-    if (document.fullscreenEnabled) void widgetRef.current?.requestFullscreen().catch(() => {});
+    history.pushState({ [HISTORY_KEY]: true }, "");
+    historyEntryRef.current = true;
+    if (!touch && document.fullscreenEnabled) void widgetRef.current?.requestFullscreen().catch(() => {});
   };
 
   return (
     <div
       ref={widgetRef}
-      className={expanded ? "fixed inset-0 z-[2000] flex flex-col gap-3 bg-base-100 p-4" : "space-y-3"}
+      className={
+        expanded
+          ? "fixed inset-0 z-[2000] flex flex-col gap-3 bg-base-100 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]"
+          : "space-y-3"
+      }
     >
-      <fieldset className="flex flex-wrap gap-2">
-        <legend className="sr-only">Show on map</legend>
-        {FILTERS.filter((f) => counts[f.status] > 0).map((f) => (
-          <button
-            key={f.status}
-            type="button"
-            aria-pressed={shown[f.status]}
-            onClick={() => setShown((s) => ({ ...s, [f.status]: !s[f.status] }))}
-            className={`btn btn-sm gap-2 ${shown[f.status] ? f.active : "border-base-300 bg-base-200 text-muted"}`}
-          >
-            <span className={`size-2.5 rounded-full ${shown[f.status] ? f.dot : "border border-current"}`} aria-hidden="true" />
-            {f.label} <span className="text-muted">{counts[f.status]}</span>
+      <div className="flex items-start gap-2">
+        <fieldset className="flex flex-1 flex-wrap gap-2">
+          <legend className="sr-only">Show on map</legend>
+          {FILTERS.filter((f) => counts[f.status] > 0).map((f) => (
+            <button
+              key={f.status}
+              type="button"
+              aria-pressed={shown[f.status]}
+              onClick={() => setShown((s) => ({ ...s, [f.status]: !s[f.status] }))}
+              className={`btn btn-sm gap-2 ${shown[f.status] ? f.active : "border-base-300 bg-base-200 text-muted"}`}
+            >
+              <span className={`size-2.5 rounded-full ${shown[f.status] ? f.dot : "border border-current"}`} aria-hidden="true" />
+              {f.label} <span className="text-muted">{counts[f.status]}</span>
+            </button>
+          ))}
+        </fieldset>
+        {expanded && (
+          <button type="button" onClick={() => collapseRef.current()} className="btn btn-sm btn-neutral shrink-0 gap-1.5">
+            <LuX className="size-4" aria-hidden="true" />
+            Close
           </button>
-        ))}
-      </fieldset>
+        )}
+      </div>
 
       {/* The height lives here: MapContainer keeps the className it first rendered with.
           `isolate` keeps Leaflet's internal z-indexes (up to 1000) from stacking over the sticky header. */}
@@ -259,9 +290,9 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           <div className="join join-vertical shadow-sm">
             <MapButton label="Back to the Pacific Northwest" onClick={() => map?.setView(HOME_CENTER, HOME_ZOOM)}><LuHouse className="size-4" /></MapButton>
             <MapButton label="Fit all venues" onClick={fitAll}><LuFocus className="size-4" /></MapButton>
-            <MapButton label={expanded ? "Exit fullscreen" : "Fullscreen"} onClick={toggleExpanded}>
-              {expanded ? <LuMinimize className="size-4" /> : <LuMaximize className="size-4" />}
-            </MapButton>
+            {!expanded && (
+              <MapButton label="Fullscreen" onClick={expand}><LuMaximize className="size-4" /></MapButton>
+            )}
           </div>
         </div>
 
@@ -270,7 +301,7 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           // through to the page and a tap opens the map fullscreen.
           <button
             type="button"
-            onClick={toggleExpanded}
+            onClick={expand}
             className="absolute inset-0 z-[1000] flex items-start justify-center rounded-box p-3"
           >
             <span className="inline-flex items-center gap-1.5 rounded-field border border-base-300 bg-base-200/90 px-3 py-1.5 text-sm shadow-sm">
