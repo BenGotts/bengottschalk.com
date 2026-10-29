@@ -37,6 +37,12 @@ import {
 // Every function caches its own result. On success the result lives for the
 // given profile; on failure it is kept for minutes so the next attempt comes
 // soon without hammering the API. All entries share the "wca" tag.
+//
+// "use cache: remote" keeps entries in the host's shared cache (Vercel's
+// runtime cache) rather than one server's memory, which on serverless rarely
+// outlives a request. So a page refreshing in the background reuses fresh data
+// instead of asking the WCA again, and the WCA's rate limit is safe however
+// much traffic the site gets.
 
 type CacheProfile = "minutes" | "hours" | "days";
 
@@ -61,7 +67,7 @@ function settle<T>(result: Result<T>, profile: CacheProfile): Result<T> {
 }
 
 export async function getPerson(wcaId = WCA_ID): Promise<Result<Person>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-person-${wcaId}`);
   return settle(await fetchWca(`/v0/persons/${wcaId}`, PersonSchema), "hours");
 }
@@ -77,7 +83,7 @@ export interface Avatar extends ImageSize {
  * same crop as their WCA thumbnail. `null` without a photo of their own.
  */
 export async function getAvatar(wcaId = WCA_ID): Promise<Result<Avatar | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-avatar-${wcaId}`);
   const person = await getPerson(wcaId);
   if (!person.ok) return settle(person, "days");
@@ -99,7 +105,7 @@ export async function getAvatar(wcaId = WCA_ID): Promise<Result<Avatar | null>> 
 
 /** Ongoing and upcoming competitions, as a competitor or as a delegate. */
 export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<CompetitionsOverview>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-competitions-${wcaId}`);
 
   const now = new Date();
@@ -140,15 +146,45 @@ export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<Co
 
 /** The time zone of a competition's (first) venue, from its public schedule. */
 export async function getCompetitionTimezone(competitionId: string): Promise<Result<string | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-timezone-${competitionId}`);
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/schedule`, CompetitionScheduleSchema);
   return settle(result.ok ? ok(result.data.venues[0]?.timezone ?? null) : result, "days");
 }
 
+export interface LiveWindow {
+  id: string;
+  start_date: string;
+  end_date: string;
+  /** The venue's IANA time zone; null when the WCA doesn't have one (then UTC). */
+  timezone: string | null;
+}
+
+/**
+ * Competitions that are on or start within two days, with their venue time
+ * zones, for the header's live dot. The browser compares these to the current
+ * time, so this can be cached for hours: the header (on every page) no longer
+ * needs the overview's minute-long cache around competition days.
+ */
+export async function getLiveWindows(wcaId = WCA_ID): Promise<Result<LiveWindow[]>> {
+  "use cache: remote";
+  cacheTag("wca", `wca-live-windows-${wcaId}`);
+  const overview = await getCompetitionsOverview(wcaId);
+  if (!overview.ok) return settle(overview, "hours");
+  const soon = addDays(utcDateString(new Date()), 2);
+  const competitions = [...overview.data.ongoing, ...overview.data.upcoming].filter((c) => c.start_date <= soon);
+  const windows = await Promise.all(
+    competitions.map(async ({ id, start_date, end_date }) => {
+      const timezone = await getCompetitionTimezone(id);
+      return { id, start_date, end_date, timezone: timezone.ok ? timezone.data : null };
+    }),
+  );
+  return settle(ok(windows), "hours");
+}
+
 /** Every competition the person has competed in, newest first. */
 export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCompetition[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-past-competitions-${wcaId}`);
   const result = await fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema));
   return settle(
@@ -165,7 +201,7 @@ export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCo
 export async function getCompetitionHistory(
   wcaId = WCA_ID,
 ): Promise<Result<{ history: HistoryEntry[]; utcToday: string }>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-history-${wcaId}`);
   const utcToday = utcDateString(new Date());
   const [competed, delegated] = await Promise.all([
@@ -187,7 +223,7 @@ export async function getCompetitionHistory(
  * history and the overview use it; hours keeps new assignments showing soon.
  */
 export async function getDelegatedCompetitions(wcaId = WCA_ID): Promise<Result<Competition[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-delegated-${wcaId}`);
   return settle(await fetchDelegatedCompetitions(wcaId), "hours");
 }
@@ -198,7 +234,7 @@ export async function getDelegatedCompetitions(wcaId = WCA_ID): Promise<Result<C
  * separately, so a build makes one request instead of one per event page.
  */
 export async function getResults(eventId?: string, wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-results-${wcaId}`);
   if (eventId) {
     const all = await getResults(undefined, wcaId);
@@ -210,14 +246,14 @@ export async function getResults(eventId?: string, wcaId = WCA_ID): Promise<Resu
 
 /** Results that set a regional record (NR, CR or WR). */
 export async function getRegionalRecords(wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-records-${wcaId}`);
   return settle(await fetchWca(`/v1/persons/${wcaId}/records`, z.array(PersonResultSchema)), "days");
 }
 
 /** Current world, continental and national records for every event. */
 export async function getRecords(): Promise<Result<Records>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", "wca-global-records");
   return settle(await fetchWca("/v0/records", RecordsSchema), "days");
 }
@@ -230,7 +266,7 @@ export interface DelegateRole {
 
 /** The person's current Delegate role, if any. */
 export async function getDelegateRole(userId = WCA_USER_ID): Promise<Result<DelegateRole | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-roles-${userId}`);
   const result = await fetchWca(`/v0/user_roles?userId=${userId}&isActive=true`, z.array(UserRoleSchema));
   if (!result.ok) return settle(result, "days");
@@ -242,7 +278,7 @@ export async function getCompetitionSchedule(
   competitionId: string,
   wcaId = WCA_ID,
 ): Promise<Result<PersonSchedule | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-wcif-${competitionId}`);
   // The WCA caches public WCIF for 5 minutes and assignments can change on the day.
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/wcif/public`, WcifSchema);
@@ -252,7 +288,7 @@ export async function getCompetitionSchedule(
 
 /** The person's WCA Live ids at a competition, for polling live results from the browser. */
 export async function getLivePerson(competitionId: string, wcaId = WCA_ID): Promise<Result<LivePerson | null>> {
-  "use cache";
+  "use cache: remote";
   cacheTag("wca", `wca-live-${competitionId}`);
   const result = await findLivePerson(competitionId, wcaId);
   // Competitors are imported into WCA Live shortly before the competition, so keep checking until found.
