@@ -40,6 +40,10 @@
   --depth: 0;
   --noise: 0;
   --muted: #9AA6BF;
+  /* The other cube colors, readable as text on these backgrounds. */
+  --ink-red: #FF6B81;
+  --ink-orange: #FF8A4C;
+  --ink-yellow: #FFD23F;
 }
 
 @plugin 'daisyui/theme' {
@@ -74,6 +78,9 @@
   --depth: 0;
   --noise: 0;
   --muted: #4A5873;
+  --ink-red: #C41E3A;
+  --ink-orange: #B84300;
+  --ink-yellow: #8A6100;
 }
 
 @theme inline {
@@ -85,6 +92,12 @@
 
   /* Secondary text, e.g. dates and labels: `text-muted`. */
   --color-muted: var(--muted);
+
+  /* Red, orange and yellow cube colors for text and borders, e.g. `text-ink-red`.
+     Blue and green are the theme's primary and secondary. */
+  --color-ink-red: var(--ink-red);
+  --color-ink-orange: var(--ink-orange);
+  --color-ink-yellow: var(--ink-yellow);
 }
 
 @theme {

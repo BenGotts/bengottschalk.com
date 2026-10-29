@@ -33,19 +33,21 @@ export default async function TimelinePage() {
 
       {streaks?.longest && (
         <section aria-label="PR stats" className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-          <StatTile value={prCount} label={`PRs at ${plural(timeline.length, "competition")} since ${firstYear}`} />
-          <StatTile value={milestoneCount} label="Milestones: barriers broken and first Blindfolded successes" />
+          <StatTile value={prCount} tone="blue" label={`PRs at ${plural(timeline.length, "competition")} since ${firstYear}`} />
+          <StatTile value={milestoneCount} tone="yellow" label="Milestones: barriers broken and first Blindfolded successes" />
           <StatTile
             value={streaks.current}
+            tone="red"
             label={streaks.current === 0 ? "Current PR streak (none at my latest competition)" : "Current PR streak (competitions in a row)"}
           />
           {droughts && (
-            <StatTile value={droughts.daysSinceLast.toLocaleString("en-US")} label={`Days since my last PR, at ${droughts.last.competitionName}`} />
+            <StatTile value={droughts.daysSinceLast.toLocaleString("en-US")} tone="orange" label={`Days since my last PR, at ${droughts.last.competitionName}`} />
           )}
           {/* The long ones span both columns on phones, where their ranges need the room. */}
           <div className="col-span-2 lg:col-span-1">
             <StatTile
               value={streaks.longest.length}
+              tone="green"
               label={`Longest PR streak, in competitions: ${range(streaks.longest.from.competitionName, streaks.longest.to.competitionName)}`}
             />
           </div>
@@ -53,6 +55,7 @@ export default async function TimelinePage() {
             <div className="col-span-2 lg:col-span-1">
               <StatTile
                 value={droughts.longest.days.toLocaleString("en-US")}
+                tone="blue"
                 label={`Longest PR drought, in days: ${range(droughts.longest.from.competitionName, droughts.longest.to.competitionName)}`}
               />
             </div>

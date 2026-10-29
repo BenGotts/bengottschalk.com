@@ -82,7 +82,8 @@ export default async function Home() {
               </p>
             )}
             <h1 className="max-w-3xl text-5xl font-bold leading-tight sm:text-6xl">
-              Competitive cuber, delegate, and software developer.
+              Competitive <span className="text-primary">cuber</span>, <span className="text-secondary">delegate</span>, and{" "}
+              <span className="text-ink-orange">software developer</span>.
             </h1>
             <p className="max-w-2xl text-lg text-muted">
               I&apos;m Ben Gottschalk. I compete in and help run World Cube Association competitions across the
