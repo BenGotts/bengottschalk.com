@@ -10,18 +10,21 @@ import { useState } from "react";
 // the 3:1 non-text contrast minimum.
 const fieldClass = "w-full border-muted bg-base-100";
 
+type Topic = (typeof CONTACT_TOPICS)[number];
+
 // Each topic lights up in its own cube color when picked.
-const TOPIC_CLASS: Record<(typeof CONTACT_TOPICS)[number], string> = {
-  Competitions: "has-checked:border-secondary has-checked:bg-secondary/15",
-  Cubing: "has-checked:border-primary has-checked:bg-primary/15",
-  Software: "has-checked:border-ink-orange has-checked:bg-ink-orange/15",
-  "Just saying hi": "has-checked:border-ink-yellow has-checked:bg-ink-yellow/15",
+const TOPIC_CLASS: Record<Topic, string> = {
+  Competitions: "aria-pressed:border-secondary aria-pressed:bg-secondary/15",
+  Cubing: "aria-pressed:border-primary aria-pressed:bg-primary/15",
+  Software: "aria-pressed:border-ink-orange aria-pressed:bg-ink-orange/15",
+  "Just saying hi": "aria-pressed:border-ink-yellow aria-pressed:bg-ink-yellow/15",
 };
 
 export default function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [topic, setTopic] = useState<Topic | null>(null);
 
   const clientAction = async (formData: FormData) => {
     setIsSubmitting(true);
@@ -31,7 +34,7 @@ export default function ContactForm() {
       name: formData.get('name'),
       email: formData.get('email'),
       message: formData.get('message'),
-      topic: formData.get('topic') ?? undefined,
+      topic: formData.get('topic') || undefined,
       website: formData.get('website') ?? undefined,
     }
 
@@ -46,6 +49,7 @@ export default function ContactForm() {
       const response = await contact(result.data);
       if (response.success) {
         setIsSubmitted(true);
+        setTopic(null);
       } else {
         setError("An error occurred while sending your message. Please try again.");
       }
@@ -72,17 +76,21 @@ export default function ContactForm() {
         </output>
       ) : (
         <form action={clientAction} className="space-y-5 p-6 sm:p-8">
-          <fieldset className="space-y-2">
+          {/* Toggle buttons rather than radios, so a picked topic can be unpicked. */}
+          <fieldset>
             <legend className="mb-2 text-sm font-medium">What&apos;s it about? <span className="font-normal text-muted">(optional)</span></legend>
+            <input type="hidden" name="topic" value={topic ?? ""} />
             <div className="grid grid-cols-2 gap-2">
-              {CONTACT_TOPICS.map((topic) => (
-                <label
-                  key={topic}
-                  className={`flex cursor-pointer items-center justify-center rounded-field border border-base-300 bg-base-100 px-3 py-2.5 text-center text-sm font-medium transition-colors hover:border-muted has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary ${TOPIC_CLASS[topic]}`}
+              {CONTACT_TOPICS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={topic === option}
+                  onClick={() => setTopic(topic === option ? null : option)}
+                  className={`rounded-field border border-base-300 bg-base-100 px-3 py-2.5 text-center text-sm font-medium transition-colors hover:border-muted ${TOPIC_CLASS[option]}`}
                 >
-                  <input type="radio" name="topic" value={topic} className="sr-only" />
-                  {topic}
-                </label>
+                  {option}
+                </button>
               ))}
             </div>
           </fieldset>
