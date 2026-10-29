@@ -1,9 +1,9 @@
 # Points preview.bengottschalk.com at the newest successful Vercel preview
 # deployment, from whichever branch it was built. Production deploys are ignored.
 #
-# Needs a VERCEL_TOKEN repository secret (vercel.com/account/tokens), and a
-# VERCEL_SCOPE repository variable with the team slug if the project belongs
-# to a Vercel team rather than a personal account.
+# Needs a VERCEL_TOKEN repository secret (vercel.com/account/tokens). The
+# project lives in the benjamin-gottschalks-projects Vercel team; a VERCEL_SCOPE
+# repository variable overrides that if it ever moves.
 name: Preview alias
 
 on: deployment_status
@@ -27,11 +27,15 @@ jobs:
       - name: Alias preview.bengottschalk.com
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE }}
+          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE || 'benjamin-gottschalks-projects' }}
           DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
-          BRANCH: ${{ github.event.deployment.ref }}
+          SHA: ${{ github.event.deployment.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # Vercel reports the commit, not the branch; look the branch up for the summary.
+          BRANCH=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/branches-where-head" --jq '.[0].name // empty' || true)
+          BRANCH=${BRANCH:-$SHA}
           echo "Aliasing $DEPLOYMENT_URL ($BRANCH)"
           npx --yes vercel@63.1.2 alias set "$DEPLOYMENT_URL" preview.bengottschalk.com \
-            --token "$VERCEL_TOKEN" ${VERCEL_SCOPE:+--scope "$VERCEL_SCOPE"}
+            --token "$VERCEL_TOKEN" --scope "$VERCEL_SCOPE"
           echo "preview.bengottschalk.com now shows \`$BRANCH\`: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
