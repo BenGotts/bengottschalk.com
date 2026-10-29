@@ -42,47 +42,55 @@ function Medal({ item }: { item: PodiumItem }) {
   );
 }
 
-type Placement = "all" | PodiumItem["medal"];
-const PLACEMENTS: Placement[] = ["all", "gold", "silver", "bronze"];
+type Medal = PodiumItem["medal"];
 
 
 /**
  * Podiums down a centre line, one node per competition with its medals below,
- * newest first, filterable by placement. More competitions load as you scroll.
+ * newest first, filterable by one or more placements. More competitions load
+ * as you scroll.
  */
 export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRow[]; pageSize?: number }) {
-  const [placement, setPlacement] = useState<Placement>("all");
+  // The placements picked; none picked shows them all.
+  const [picked, setPicked] = useState<ReadonlySet<Medal>>(new Set());
+  const toggle = (medal: Medal) => setPicked((current) => {
+    const next = new Set(current);
+    if (!next.delete(medal)) next.add(medal);
+    return next;
+  });
   const counts = useMemo(() => {
     const medals = rows.flatMap((row) => row.medals);
-    return Object.fromEntries(PLACEMENTS.map((p) => [p, p === "all" ? medals.length : medals.filter((m) => m.medal === p).length])) as Record<Placement, number>;
+    const count = (medal: Medal) => medals.filter((m) => m.medal === medal).length;
+    return { all: medals.length, gold: count("gold"), silver: count("silver"), bronze: count("bronze") };
   }, [rows]);
-  // Competitions without a podium of the chosen placement drop out.
+  // Competitions without a podium of a picked placement drop out.
   const filtered = useMemo(
     () =>
-      placement === "all"
+      picked.size === 0
         ? rows
-        : rows.map((row) => ({ ...row, medals: row.medals.filter((item) => item.medal === placement) })).filter((row) => row.medals.length > 0),
-    [rows, placement],
+        : rows.map((row) => ({ ...row, medals: row.medals.filter((item) => picked.has(item.medal)) })).filter((row) => row.medals.length > 0),
+    [rows, picked],
   );
+  const shown = picked.size === 0 ? counts.all : [...picked].reduce((sum, medal) => sum + counts[medal], 0);
   const { visible, hasMore, showMore, sentinelRef } = useIncrementalList(filtered, pageSize);
 
   return (
     <div className="space-y-6">
-      {/* A podium of the medal counts, which doubles as the filter: 2nd, 1st, 3rd, with 1st tallest. */}
+      {/* A podium of the medal counts, which doubles as the filter (pick one or more steps): 2nd, 1st, 3rd, with 1st tallest. */}
       <fieldset className="mx-auto w-full max-w-sm">
         <legend className="sr-only">Show podiums by placement</legend>
         <div className="flex items-end justify-center gap-2">
           {PODIUM_ORDER.map((medal) => {
             const style = MEDAL_STYLES[medal];
-            const selected = placement === medal;
+            const selected = picked.has(medal);
             return (
               <button
                 key={medal}
                 type="button"
                 aria-pressed={selected}
                 aria-label={`${style.label} place: ${counts[medal]} ${counts[medal] === 1 ? "podium" : "podiums"}`}
-                onClick={() => setPlacement(selected ? "all" : medal)}
-                className={`group flex flex-1 flex-col items-center gap-1.5 transition-opacity ${placement === "all" || selected ? "" : "opacity-45 hover:opacity-80"}`}
+                onClick={() => toggle(medal)}
+                className={`group flex flex-1 flex-col items-center gap-1.5 transition-opacity ${picked.size === 0 || selected ? "" : "opacity-45 hover:opacity-80"}`}
               >
                 <span className="font-display text-3xl font-bold">{counts[medal]}</span>
                 <span
@@ -97,11 +105,11 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
           })}
         </div>
         <div className="flex items-center justify-between border-t-2 border-base-300 pt-2 text-sm text-muted">
-          <span>{counts.all} podiums</span>
-          {placement === "all" ? (
-            <span>Tap a step to filter</span>
+          <span aria-live="polite">{picked.size === 0 ? `${counts.all} podiums` : `${shown} of ${counts.all} podiums`}</span>
+          {picked.size === 0 ? (
+            <span>Tap steps to filter</span>
           ) : (
-            <button type="button" onClick={() => setPlacement("all")} className="link link-primary">Show all</button>
+            <button type="button" onClick={() => setPicked(new Set())} className="link link-primary">Show all</button>
           )}
         </div>
       </fieldset>

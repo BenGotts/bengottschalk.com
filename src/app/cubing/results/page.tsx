@@ -4,6 +4,7 @@ import "@cubing/icons";
 import PodiumTimeline from "@/components/results/PodiumTimeline";
 import { podiumRows } from "@/components/results/podiumRows";
 import PrTable from "@/components/results/PrTable";
+import StatTile from "@/components/StatTile";
 import {
   competitionDateLabels,
   eventName,
@@ -13,6 +14,8 @@ import {
   getRegionalRecords,
   getResults,
   podiums,
+  podiumStats,
+  type PodiumStats,
 } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
 
@@ -38,6 +41,7 @@ export default async function ResultsPage() {
 
   const { personal_records, person: profile } = person.data;
   const podiumList = results.ok ? podiums(results.data) : [];
+  const podiumNumbers = results.ok ? podiumStats(results.data) : null;
   const recordRows = regionalRecords.ok
     ? regionalRecords.data.flatMap((result) => [
         ...(result.regional_single_record ? [{ result, kind: "single" as const, value: result.best, record: result.regional_single_record }] : []),
@@ -79,12 +83,46 @@ export default async function ResultsPage() {
       )}
 
       {podiumList.length > 0 && (
-        <section aria-labelledby="podiums-heading" className="space-y-4">
+        <section aria-labelledby="podiums-heading" className="space-y-6">
           {/* The placement filter below shows the medal counts. */}
           <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
+          {podiumNumbers && <PodiumStatTiles stats={podiumNumbers} dateLabel={dateLabel} />}
           <PodiumTimeline rows={podiumRows(podiumList, dateLabel)} />
         </section>
       )}
     </div>
   )
+}
+
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+/** Podium numbers beyond the medal counts: how often, where, and when. */
+function PodiumStatTiles({ stats, dateLabel }: { stats: PodiumStats; dateLabel: ReturnType<typeof competitionDateLabels> }) {
+  const { finals, podiums: total, topEvent, bestCompetition, bestYear, firstPodium, currentStreak } = stats;
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      {finals > 0 && (
+        <StatTile tone="blue" value={`${Math.round((total / finals) * 100)}%`} label={`Of my finals ended on the podium (${total} of ${finals})`} />
+      )}
+      <StatTile tone="red" value={currentStreak} label={currentStreak === 1 ? "Competition in a row with a podium" : "Competitions in a row with a podium"} />
+      {topEvent && (
+        <StatTile tone="green" value={topEvent.count} label={`Podiums in ${eventName(topEvent.eventId)}, my most in one event`} />
+      )}
+      {bestCompetition && (
+        <StatTile
+          tone="yellow"
+          value={bestCompetition.count}
+          label={`Podiums at ${bestCompetition.name}, my most at one competition (${dateLabel(bestCompetition.id, bestCompetition.startDate)})`}
+        />
+      )}
+      {bestYear && <StatTile tone="orange" value={bestYear.year} label={`My best year, with ${plural(bestYear.count, "podium")}`} />}
+      {firstPodium && (
+        <StatTile
+          tone="blue"
+          value={firstPodium.result.competition_start_date.slice(0, 4)}
+          label={`First podium: ${eventName(firstPodium.result.event_id)} at ${firstPodium.result.competition_short_name}`}
+        />
+      )}
+    </div>
+  );
 }
