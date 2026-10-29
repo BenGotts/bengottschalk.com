@@ -35,6 +35,9 @@ const FILTERS: { status: MapStatus; label: string; dot: string; active: string }
 
 const DRAW_ORDER: Record<MapStatus, number> = { past: 0, upcoming: 1, ongoing: 2 };
 
+// Phones and tablets: a finger drag scrolls the page, not the map.
+const TOUCH_QUERY = "(pointer: coarse)";
+
 function MapButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -49,6 +52,14 @@ function MapButton({ label, onClick, children }: { label: string; onClick: () =>
   );
 }
 
+function MapHint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-field bg-base-200/90 px-3 py-1.5 text-xs text-muted">
+      {children}
+    </p>
+  );
+}
+
 export default function CompetitionMap({ locations }: { locations: MapLocation[] }) {
   const theme = useTheme();
   // The whole widget (filters, controls, map, popups). Used for fullscreen and
@@ -59,6 +70,9 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
   const [engaged, setEngaged] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [mapInstance, setMapInstance] = useState(0);
+  // Only rendered in the browser (see CompetitionMapLoader), so matchMedia is safe here.
+  const [touch, setTouch] = useState(() => window.matchMedia(TOUCH_QUERY).matches);
+  const [touchHintSeen, setTouchHintSeen] = useState(false);
 
   // Next.js keeps pages hidden with React <Activity> after navigating away,
   // running effect cleanups but keeping the DOM. react-leaflet destroys its map
@@ -111,6 +125,28 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
       document.removeEventListener("focusin", onFocusIn);
     };
   }, [map]);
+
+  useEffect(() => {
+    const query = window.matchMedia(TOUCH_QUERY);
+    const onChange = () => setTouch(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  // On touch screens one finger scrolls the page past the map, and two fingers
+  // pinch to zoom and move it (Leaflet's touch zoom pans with the pinch). Once
+  // expanded there's no page to scroll, so one finger drags the map too.
+  useEffect(() => {
+    if (!map) return () => {};
+    if (touch && !expanded) map.dragging.disable();
+    else map.dragging.enable();
+    // Hide the two-finger hint once the visitor has moved the map.
+    const onMove = () => setTouchHintSeen(true);
+    map.on("zoomstart dragstart", onMove);
+    return () => {
+      map.off("zoomstart dragstart", onMove);
+    };
+  }, [map, touch, expanded]);
 
   // Leaflet only measures its container on load; re-measure whenever it resizes
   // (expanding, collapsing, rotating a phone) so tiles fill the whole map.
@@ -186,7 +222,7 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
 
       {/* The height lives here: MapContainer keeps the className it first rendered with.
           `isolate` keeps Leaflet's internal z-indexes (up to 1000) from stacking over the sticky header. */}
-      <div className={`relative isolate ${expanded ? "min-h-0 flex-1" : "h-[28rem]"}`}>
+      <div className={`relative isolate ${expanded ? "min-h-0 flex-1" : "h-80 sm:h-[28rem]"}`}>
         <MapContainer
           key={mapInstance}
           ref={setMap}
@@ -196,6 +232,7 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           maxZoom={MAX_ZOOM}
           zoomControl={false}
           scrollWheelZoom={false}
+          dragging={!touch}
           worldCopyJump
           className="h-full w-full rounded-box border border-base-300"
         >
@@ -242,11 +279,9 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           </div>
         </div>
 
-        {!engaged && (
-          <p className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-field bg-base-200/90 px-3 py-1.5 text-xs text-muted">
-            Click the map to zoom with scroll
-          </p>
-        )}
+        {touch
+          ? !expanded && !touchHintSeen && <MapHint>Use two fingers to move the map</MapHint>
+          : !engaged && <MapHint>Click the map to zoom with scroll</MapHint>}
       </div>
     </div>
   );
