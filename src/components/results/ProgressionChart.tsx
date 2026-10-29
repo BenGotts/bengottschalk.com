@@ -117,7 +117,6 @@ export default function ProgressionChart({ eventId, progression, dateLabel }: {
             {s.label}
           </span>
         ))}
-        <span>{isMoves ? "Lower is fewer moves." : "Lower is faster."}</span>
       </figcaption>
     </figure>
   );
