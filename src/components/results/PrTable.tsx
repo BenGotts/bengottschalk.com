@@ -1,7 +1,7 @@
 import "@cubing/icons";
 import Link from "next/link";
 import { LuChevronRight } from "react-icons/lu";
-import { eventIconClass, eventName, formatResult, sortEventIds, type Person, type Rank } from "@/lib/wca";
+import { currentEventIds, eventIconClass, eventName, formatResult, type Person, type Rank } from "@/lib/wca";
 
 function RankCells({ rank }: { rank?: Rank }) {
   if (!rank) return <><td className="text-muted">–</td><td className="text-muted">–</td><td className="text-muted">–</td></>;
@@ -28,11 +28,11 @@ function PrValue({ eventId, label, rank, kind }: { eventId: string; label: strin
 }
 
 /**
- * Personal records for every event, with national, continental and world ranks:
+ * Personal records for every current event, with national, continental and world ranks:
  * a stacked list on phones and a full table from tablet width up.
  */
 export default function PrTable({ records }: { records: Person["personal_records"] }) {
-  const eventIds = sortEventIds(Object.keys(records));
+  const eventIds = currentEventIds(Object.keys(records));
   return (
     <>
       <ul className="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200 md:hidden">

@@ -17,14 +17,15 @@ import {
   getResults,
   isKnownEvent,
   prProgression,
-  sortEventIds,
+  currentEventIds,
+  isCurrentEvent,
   type PrPoint,
   type Rank,
 } from "@/lib/wca";
 
 export async function generateStaticParams() {
   const person = await getPerson();
-  const events = person.ok ? Object.keys(person.data.personal_records) : [];
+  const events = person.ok ? currentEventIds(Object.keys(person.data.personal_records)) : [];
   // Cache Components needs at least one param; 333 is the safe fallback.
   return (events.length > 0 ? events : ["333"]).map((event) => ({ event }));
 }
@@ -117,14 +118,15 @@ export default function EventResultsPage({ params }: PageProps<"/cubing/results/
 
 async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]">, "params">) {
   const { event } = await params;
-  if (!isKnownEvent(event)) notFound();
+  // Retired events (e.g. 3x3x3 With Feet) aren't shown on the results pages.
+  if (!isKnownEvent(event) || !isCurrentEvent(event)) notFound();
 
   const [person, results] = await Promise.all([getPerson(), getResults(event)]);
   const pr = person.ok ? person.data.personal_records[event] : undefined;
   if (person.ok && !pr) notFound();
 
   const progression = results.ok ? prProgression(results.data) : null;
-  const eventIds = person.ok ? sortEventIds(Object.keys(person.data.personal_records)) : [];
+  const eventIds = person.ok ? currentEventIds(Object.keys(person.data.personal_records)) : [];
   const index = eventIds.indexOf(event);
   const previous = index > 0 ? eventIds[index - 1] : undefined;
   const next = index !== -1 && index < eventIds.length - 1 ? eventIds[index + 1] : undefined;

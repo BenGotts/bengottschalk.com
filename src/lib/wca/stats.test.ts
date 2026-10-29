@@ -53,6 +53,10 @@ describe("highlightEvents", () => {
     expect(highlightEvents(records, 3)).toEqual(["333", "pyram", "skewb"]);
   });
 
+  it("leaves out retired events", () => {
+    expect(highlightEvents({ "333ft": { single: rank(10) }, pyram: { single: rank(300) } }, 4)).toEqual(["pyram"]);
+  });
+
   it("works without a 3x3 result", () => {
     expect(highlightEvents({ "222": { single: rank(900) }, pyram: { single: rank(300) } }, 4)).toEqual(["pyram", "222"]);
   });

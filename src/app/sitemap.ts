@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/consts";
 import { NAV_LINKS } from "@/content/links";
-import { getPerson, sortEventIds } from "@/lib/wca";
+import { currentEventIds, getPerson } from "@/lib/wca";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const person = await getPerson();
-  const events = person.ok ? sortEventIds(Object.keys(person.data.personal_records)) : [];
+  const events = person.ok ? currentEventIds(Object.keys(person.data.personal_records)) : [];
 
   return [
     ...NAV_LINKS.map((link) => ({
