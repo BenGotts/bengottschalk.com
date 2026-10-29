@@ -1,9 +1,10 @@
 import StatTile from "@/components/StatTile";
 import type { CubingStats as Stats } from "@/lib/wca";
 
-export function MedalCounts({ medals }: { medals: Stats["medals"] }) {
+/** Gold, silver and bronze counts: in a row, or one per line with `stacked`. */
+export function MedalCounts({ medals, stacked = false }: { medals: Stats["medals"]; stacked?: boolean }) {
   return (
-    <span className="flex flex-wrap gap-x-3 gap-y-1">
+    <span className={stacked ? "flex flex-col gap-0.5" : "flex flex-wrap gap-x-3 gap-y-1"}>
       <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-medal-gold" aria-hidden="true" />{medals.gold} gold</span>
       <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-medal-silver" aria-hidden="true" />{medals.silver} silver</span>
       <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-medal-bronze" aria-hidden="true" />{medals.bronze} bronze</span>
@@ -23,7 +24,7 @@ export default function CubingStats({ stats }: { stats: Stats }) {
       <StatTile
         value={stats.medals.total}
         tone="yellow"
-        label={<MedalCounts medals={stats.medals} />}
+        label={<MedalCounts medals={stats.medals} stacked />}
         href={stats.medals.total > 0 ? "/cubing/results#podiums-heading" : undefined}
       />
       <StatTile
