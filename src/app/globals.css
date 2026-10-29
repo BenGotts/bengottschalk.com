@@ -46,25 +46,25 @@
   --ink-yellow: #FFD23F;
 }
 
-/* "Daylight": warm paper with the cube's own blue and green. All text/background pairs pass WCAG AA. */
+/* "Daylight": a soft blue-green tint, with the cube's own blue and green. All text/background pairs pass WCAG AA. */
 @plugin 'daisyui/theme' {
   name: 'midnight-light';
   color-scheme: light;
-  --color-base-100: #FBF8F3;
+  --color-base-100: #E6F0F1;
   --color-base-200: #FFFFFF;
-  --color-base-300: #E8E1D5;
-  --color-base-content: #1B2133;
+  --color-base-300: #C8DCDF;
+  --color-base-content: #0B2545;
   --color-primary: #0051BA;
   --color-primary-content: #FFFFFF;
-  --color-secondary: #007A4D;
+  --color-secondary: #00744A;
   --color-secondary-content: #FFFFFF;
   --color-accent: #8A6100;
   --color-accent-content: #FFFFFF;
-  --color-neutral: #1B2133;
-  --color-neutral-content: #FBF8F3;
+  --color-neutral: #0B2545;
+  --color-neutral-content: #E6F0F1;
   --color-info: #0369A1;
   --color-info-content: #FFFFFF;
-  --color-success: #007A4D;
+  --color-success: #00744A;
   --color-success-content: #FFFFFF;
   --color-warning: #8A6100;
   --color-warning-content: #FFFFFF;
@@ -78,7 +78,7 @@
   --border: 1px;
   --depth: 0;
   --noise: 0;
-  --muted: #5C6275;
+  --muted: #4A5E6B;
   --ink-red: #B8162F;
   --ink-orange: #B84300;
   --ink-yellow: #8A6100;
