@@ -27,8 +27,8 @@ interface Series {
 }
 
 /**
- * Step chart of PR history. Faster results sit higher, so the line climbs as
- * PRs improve. FMC averages (moves × 100) are plotted in moves to share the
+ * Step chart of PR history. Faster results sit lower, so the line steps down
+ * as PRs improve. FMC averages (moves × 100) are plotted in moves to share the
  * axis with singles. Not used for Multi-Blind, whose values aren't linear.
  */
 export default function ProgressionChart({ eventId, progression, dateLabel }: {
@@ -56,7 +56,7 @@ export default function ProgressionChart({ eventId, progression, dateLabel }: {
   const plotW = WIDTH - PAD.left - PAD.right;
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const x = (t: number) => PAD.left + ((t - tMin) / (tMax - tMin)) * plotW;
-  const y = (v: number) => PAD.top + ((v - vMin) / (vMax - vMin)) * plotH;
+  const y = (v: number) => PAD.top + ((vMax - v) / (vMax - vMin)) * plotH;
 
   const tickLabel = (v: number) => (isMoves ? v.toFixed(1).replace(/\.0$/, "") : formatResult(eventId, Math.round(v)));
   const firstYear = new Date(tMin).getUTCFullYear() + 1;
@@ -117,7 +117,7 @@ export default function ProgressionChart({ eventId, progression, dateLabel }: {
             {s.label}
           </span>
         ))}
-        <span>Higher is faster.</span>
+        <span>{isMoves ? "Lower is fewer moves." : "Lower is faster."}</span>
       </figcaption>
     </figure>
   );
