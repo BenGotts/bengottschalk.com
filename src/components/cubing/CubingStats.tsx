@@ -18,15 +18,17 @@ export function MedalCounts({ medals }: { medals: Stats["medals"] }) {
 export default function CubingStats({ stats }: { stats: Stats }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatTile value={stats.competed} label="Competed in" href="/cubing/competitions?role=competed#past-heading" />
-      <StatTile value={stats.delegated} label="Delegated" href="/cubing/competitions?role=delegated#past-heading" />
+      <StatTile value={stats.competed} label="Competed in" tone="blue" href="/cubing/competitions?role=competed#past-heading" />
+      <StatTile value={stats.delegated} label="Delegated" tone="green" href="/cubing/competitions?role=delegated#past-heading" />
       <StatTile
         value={stats.medals.total}
+        tone="yellow"
         label={<MedalCounts medals={stats.medals} />}
         href={stats.medals.total > 0 ? "/cubing/results#podiums-heading" : undefined}
       />
       <StatTile
         value={stats.records.total}
+        tone="red"
         label={stats.records.total === 1 ? "Regional record" : "Regional records"}
         href={stats.records.total > 0 ? "/cubing/results#records-heading" : undefined}
       />

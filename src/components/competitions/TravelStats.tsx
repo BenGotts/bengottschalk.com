@@ -26,6 +26,7 @@ export default function TravelStats({ stats }: { stats: Stats }) {
         <div className="col-span-2 lg:col-span-1">
           <StatTile
             value={<Miles miles={stats.totalMiles} />}
+            tone="orange"
             label={
               laps >= 0.1
                 ? `Travelled from competition to competition, about ${laps.toFixed(1)}× around the Earth`
@@ -37,16 +38,18 @@ export default function TravelStats({ stats }: { stats: Stats }) {
           <div className="col-span-2 lg:col-span-1">
             <StatTile
               value={<Miles miles={stats.farthest.miles} />}
+              tone="blue"
               label={`Farthest from ${HOME.name}: ${stats.farthest.entry.name}`}
             />
           </div>
         )}
         {stats.busiestYear && (
-          <StatTile value={stats.busiestYear.year} label={`Busiest year, with ${stats.busiestYear.count} competitions`} />
+          <StatTile value={stats.busiestYear.year} tone="green" label={`Busiest year, with ${stats.busiestYear.count} competitions`} />
         )}
         {stats.topCity && (
           <StatTile
             value={stats.topCity.count}
+            tone="red"
             label={`Competitions in ${stats.topCity.city}, my most-visited city`}
           />
         )}

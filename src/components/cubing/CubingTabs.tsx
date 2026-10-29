@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { TONE_BORDER, type Tone } from "@/lib/tones";
 
-const TABS = [
-  { label: "Overview", href: "/cubing" },
-  { label: "Competitions", href: "/cubing/competitions" },
-  { label: "Results", href: "/cubing/results" },
-  { label: "Timeline", href: "/cubing/timeline" },
+// Each tab underlines in its own cube color.
+const TABS: { label: string; href: string; tone: Tone }[] = [
+  { label: "Overview", href: "/cubing", tone: "blue" },
+  { label: "Competitions", href: "/cubing/competitions", tone: "green" },
+  { label: "Results", href: "/cubing/results", tone: "orange" },
+  { label: "Timeline", href: "/cubing/timeline", tone: "yellow" },
 ];
 
 /** The Cubing section's tabs. Event pages count as Results. */
@@ -30,7 +32,7 @@ export default function CubingTabs({ competitionsIndicator }: {
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
                 className={`inline-flex items-center gap-1.5 border-b-2 px-2 py-3 text-sm font-medium whitespace-nowrap transition-colors sm:px-4 sm:text-base ${
-                  active ? "border-primary text-base-content" : "border-transparent text-muted hover:border-base-300 hover:text-base-content"
+                  active ? `${TONE_BORDER[tab.tone]} text-base-content` : "border-transparent text-muted hover:border-base-300 hover:text-base-content"
                 }`}
               >
                 {tab.label}

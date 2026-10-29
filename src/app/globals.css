@@ -40,26 +40,31 @@
   --depth: 0;
   --noise: 0;
   --muted: #9AA6BF;
+  /* The other cube colors, readable as text on these backgrounds. */
+  --ink-red: #FF6B81;
+  --ink-orange: #FF8A4C;
+  --ink-yellow: #FFD23F;
 }
 
+/* "Daylight": a soft blue-green tint, with the cube's own blue and green. All text/background pairs pass WCAG AA. */
 @plugin 'daisyui/theme' {
   name: 'midnight-light';
   color-scheme: light;
-  --color-base-100: #F4F7FB;
+  --color-base-100: #E6F0F1;
   --color-base-200: #FFFFFF;
-  --color-base-300: #DCE3EE;
-  --color-base-content: #0F1A2E;
-  --color-primary: #1F5FD1;
+  --color-base-300: #C8DCDF;
+  --color-base-content: #0B2545;
+  --color-primary: #0051BA;
   --color-primary-content: #FFFFFF;
-  --color-secondary: #0F7A45;
+  --color-secondary: #00744A;
   --color-secondary-content: #FFFFFF;
   --color-accent: #8A6100;
   --color-accent-content: #FFFFFF;
-  --color-neutral: #1A2540;
-  --color-neutral-content: #F4F7FB;
+  --color-neutral: #0B2545;
+  --color-neutral-content: #E6F0F1;
   --color-info: #0369A1;
   --color-info-content: #FFFFFF;
-  --color-success: #0F7A45;
+  --color-success: #00744A;
   --color-success-content: #FFFFFF;
   --color-warning: #8A6100;
   --color-warning-content: #FFFFFF;
@@ -73,7 +78,10 @@
   --border: 1px;
   --depth: 0;
   --noise: 0;
-  --muted: #4A5873;
+  --muted: #4A5E6B;
+  --ink-red: #B8162F;
+  --ink-orange: #B84300;
+  --ink-yellow: #8A6100;
 }
 
 @theme inline {
@@ -85,6 +93,12 @@
 
   /* Secondary text, e.g. dates and labels: `text-muted`. */
   --color-muted: var(--muted);
+
+  /* Red, orange and yellow cube colors for text and borders, e.g. `text-ink-red`.
+     Blue and green are the theme's primary and secondary. */
+  --color-ink-red: var(--ink-red);
+  --color-ink-orange: var(--ink-orange);
+  --color-ink-yellow: var(--ink-yellow);
 }
 
 @theme {

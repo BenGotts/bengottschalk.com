@@ -134,17 +134,18 @@ export default async function CubingPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {travel && (
               <div className="col-span-2 lg:col-span-1">
-                <StatTile value={<Miles miles={travel.totalMiles} />} label="Travelled between competitions" href="/cubing/competitions#travel-heading" />
+                <StatTile value={<Miles miles={travel.totalMiles} />} label="Travelled between competitions" tone="orange" href="/cubing/competitions#travel-heading" />
               </div>
             )}
-            {streaks && <StatTile value={streaks.current} label="Current PR streak, in competitions" href="/cubing/timeline" />}
-            {droughts && <StatTile value={droughts.daysSinceLast.toLocaleString("en-US")} label="Days since my last PR" href="/cubing/timeline" />}
+            {streaks && <StatTile value={streaks.current} label="Current PR streak, in competitions" tone="red" href="/cubing/timeline" />}
+            {droughts && <StatTile value={droughts.daysSinceLast.toLocaleString("en-US")} label="Days since my last PR" tone="blue" href="/cubing/timeline" />}
             {latestMilestone?.pr.milestone && (
               // Full width on phones (like the distance, which keeps the pairs below even):
               // a label like "Sub-1:00" shouldn't break at its hyphen.
               <div className="col-span-2 lg:col-span-1">
                 <StatTile
                   value={<span className="whitespace-nowrap">{latestMilestone.pr.milestone}</span>}
+                  tone="green"
                   label={`Latest milestone: ${eventName(latestMilestone.pr.eventId)} ${latestMilestone.pr.kind} at ${latestMilestone.entry.competitionName}`}
                   href="/cubing/timeline"
                 />
