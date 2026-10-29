@@ -66,7 +66,7 @@ export default function ContactForm() {
       {isSubmitted ? (
         // <output> has the implicit "status" role, so screen readers announce the confirmation.
         <output className="flex flex-col items-center gap-5 px-6 py-12 text-center sm:px-8">
-          {/* The cube scrambles and solves itself: message solved. */}
+          {/* The cube plays my PR scramble, then solves it: message solved. */}
           <TwistyCube className="my-6" />
           <h2 className="text-3xl font-bold">Message sent!</h2>
           <p className="max-w-sm text-muted">Thanks for reaching out. I&apos;ll get back to you soon.</p>
