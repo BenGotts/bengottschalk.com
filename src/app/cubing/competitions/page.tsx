@@ -3,22 +3,12 @@ import { pageMetadata } from "@/lib/metadata";
 import BackToTop from "@/components/BackToTop";
 import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
-import TravelGoals from "@/components/competitions/TravelGoals";
-import TravelStats from "@/components/competitions/TravelStats";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import {
-  countryGoals,
-  finishedCompetitions,
-  formatDateRange,
-  getCompetitionHistory,
-  getCompetitionsOverview,
-  stateGoals,
-  travelStats,
-} from "@/lib/wca";
+import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
-  description: "Where Ben Gottschalk is competing, delegating, and organizing next, plus every WCA competition he has attended, on a map.",
+  description: "Where Ben Gottschalk is competing, delegating, and organizing next, plus every WCA competition he has attended.",
   path: "/cubing/competitions",
 });
 
@@ -58,14 +48,7 @@ export default async function CompetitionsPage() {
         </div>
       )}
 
-      {historyResult.ok && (
-        // Competitions underway count as coming up until they finish.
-        <TravelGoals states={stateGoals(history, [...ongoing, ...upcoming])} countries={countryGoals(history, [...ongoing, ...upcoming])} />
-      )}
-
-      {historyResult.ok && history.length > 1 && <TravelStats stats={travelStats(history)} />}
-
-      {historyResult.ok && <CompetitionExplorer ongoing={ongoing} upcoming={upcoming} history={history} />}
+      {historyResult.ok && <CompetitionExplorer history={history} />}
 
       <BackToTop />
     </div>

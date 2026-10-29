@@ -4,10 +4,8 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { LuSearch, LuX } from "react-icons/lu";
 // Import the pure module directly: the wca index also exports server-only API code.
-import { groupMapLocations, historyStats, type MapStatus } from "@/lib/wca/competitions";
-import type { Competition } from "@/lib/wca";
+import { historyStats } from "@/lib/wca/competitions";
 import CompetitionHistory, { type DatedHistoryEntry } from "./CompetitionHistory";
-import CompetitionMapLoader from "./CompetitionMapLoader";
 
 type Role = "all" | "competed" | "delegated";
 const ROLES: { role: Role; label: string }[] = [
@@ -30,16 +28,8 @@ function RoleFromUrl({ onRole }: { onRole: (role: Role) => void }) {
   return null;
 }
 
-/**
- * The map and the past competitions, filtered together by role and by a
- * search of names and cities. Upcoming and ongoing competitions always stay
- * on the map.
- */
-export default function CompetitionExplorer({ ongoing, upcoming, history }: {
-  ongoing: Competition[];
-  upcoming: Competition[];
-  history: DatedHistoryEntry[];
-}) {
+/** The past competitions, filtered by role and by a search of names and cities. */
+export default function CompetitionExplorer({ history }: { history: DatedHistoryEntry[] }) {
   const [role, setRole] = useState<Role>("all");
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -54,16 +44,6 @@ export default function CompetitionExplorer({ ongoing, upcoming, history }: {
   }, [history, role, deferredQuery]);
   const filtering = role !== "all" || deferredQuery.trim() !== "";
   const places = historyStats(filtered);
-
-  const locations = useMemo(
-    () =>
-      groupMapLocations([
-        ...ongoing.map((competition) => ({ competition, status: "ongoing" as MapStatus })),
-        ...upcoming.map((competition) => ({ competition, status: "upcoming" as MapStatus })),
-        ...filtered.map((competition) => ({ competition, status: "past" as MapStatus })),
-      ]),
-    [ongoing, upcoming, filtered],
-  );
 
   const chooseRole = (next: Role) => {
     setRole(next);
@@ -115,10 +95,6 @@ export default function CompetitionExplorer({ ongoing, upcoming, history }: {
             aria-label="Search past competitions by name or city"
           />
         </label>
-      </div>
-
-      <div id="map" className="scroll-mt-24">
-        <CompetitionMapLoader locations={locations} />
       </div>
 
       {filtered.length > 0 ? (

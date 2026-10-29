@@ -134,7 +134,7 @@ export default async function CubingPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {travel && (
               <div className="col-span-2 lg:col-span-1">
-                <StatTile value={<Miles miles={travel.totalMiles} />} label="Travelled between competitions" tone="orange" href="/cubing/competitions#travel-heading" />
+                <StatTile value={<Miles miles={travel.totalMiles} />} label="Travelled between competitions" tone="orange" href="/cubing/places#travel-heading" />
               </div>
             )}
             {streaks && <StatTile value={streaks.current} label="Current PR streak, in competitions" tone="red" href="/cubing/timeline" />}
@@ -184,7 +184,7 @@ export default async function CubingPage() {
               ))}
             </ul>
             <Link
-              href="/cubing/competitions#map"
+              href="/cubing/places#map"
               className="group flex flex-col justify-between gap-6 rounded-box border border-base-300 bg-base-200 p-5 transition-colors hover:border-primary focus-visible:border-primary"
             >
               <LuMap className="size-8 text-primary" aria-hidden="true" />
