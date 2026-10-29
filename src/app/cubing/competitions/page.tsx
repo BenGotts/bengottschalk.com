@@ -1,24 +1,14 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
-import StatTile from "@/components/StatTile";
-import CompetitionHistory from "@/components/competitions/CompetitionHistory";
-import CompetitionMapLoader from "@/components/competitions/CompetitionMapLoader";
+import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import {
-  finishedCompetitions,
-  formatIsoDate,
-  getCompetitionHistory,
-  getCompetitionsOverview,
-  groupMapLocations,
-  historyStats,
-  type MapStatus,
-} from "@/lib/wca";
+import { finishedCompetitions, formatIsoDate, getCompetitionHistory, getCompetitionsOverview } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
   description: "Where Ben Gottschalk is competing, delegating, and organizing next, plus every WCA competition he has attended, on a map.",
-  path: "/competitions",
+  path: "/cubing/competitions",
 });
 
 export default async function CompetitionsPage() {
@@ -28,14 +18,8 @@ export default async function CompetitionsPage() {
   // Competitions still running at their venue stay out of the past list.
   const history = historyResult.ok
     ? finishedCompetitions(historyResult.data.history, competitions.ok ? competitions.data : null, historyResult.data.utcToday)
+        .map((entry) => ({ ...entry, date_range: formatIsoDate(entry.start_date) }))
     : [];
-  const stats = historyStats(history);
-
-  const mapLocations = groupMapLocations([
-    ...ongoing.map((competition) => ({ competition, status: "ongoing" as MapStatus })),
-    ...upcoming.map((competition) => ({ competition, status: "upcoming" as MapStatus })),
-    ...history.map((entry) => ({ competition: { ...entry, date_range: formatIsoDate(entry.start_date) }, status: "past" as MapStatus })),
-  ]);
 
   return (
     <div className="space-y-14">
@@ -48,7 +32,7 @@ export default async function CompetitionsPage() {
         <>
           {ongoing.length > 0 && (
             <section aria-labelledby="ongoing-heading" className="space-y-4">
-              <h2 id="ongoing-heading" className="text-2xl font-bold">Happening now</h2>
+              <h2 id="ongoing-heading" className="scroll-mt-24 text-2xl font-bold">Happening now</h2>
               <OngoingCompetitions competitions={ongoing} />
             </section>
           )}
@@ -63,29 +47,7 @@ export default async function CompetitionsPage() {
         </div>
       )}
 
-      {historyResult.ok && (
-        <>
-          <section aria-labelledby="stats-heading" className="space-y-4">
-            <h2 id="stats-heading" className="text-2xl font-bold">By the numbers</h2>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatTile value={stats.competed} label="Competed in" />
-              <StatTile value={stats.delegated} label="Delegated" />
-              <StatTile value={stats.countries} label="Countries" />
-              <StatTile value={stats.usStates} label="US states" />
-            </div>
-          </section>
-
-          <section aria-labelledby="map-heading" className="space-y-4">
-            <h2 id="map-heading" className="text-2xl font-bold">Map</h2>
-            <CompetitionMapLoader locations={mapLocations} />
-          </section>
-
-          <section aria-labelledby="past-heading" className="space-y-4">
-            <h2 id="past-heading" className="text-2xl font-bold">Past competitions</h2>
-            <CompetitionHistory history={history} />
-          </section>
-        </>
-      )}
+      {historyResult.ok && <CompetitionExplorer ongoing={ongoing} upcoming={upcoming} history={history} />}
     </div>
   )
 }

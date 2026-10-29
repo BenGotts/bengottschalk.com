@@ -7,7 +7,7 @@ import { scheduleDays } from "./scheduleDays";
 import { getCompetitionSchedule, getLivePerson, type Competition } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
 
-/** A compact live competition for the home page; the full schedule and results are on /competitions. */
+/** A compact live competition for the home page; the full schedule and results are on /cubing/competitions. */
 export default async function LiveCompetitionSummary({ competition }: { competition: Competition }) {
     const [schedule, livePerson] = await Promise.all([getCompetitionSchedule(competition.id), getLivePerson(competition.id)]);
     const items = scheduleDays(schedule.ok && schedule.data ? schedule.data.entries : []).flatMap((day) => day.items);
@@ -32,7 +32,7 @@ export default async function LiveCompetitionSummary({ competition }: { competit
                         <CompetitionLocation city={competition.city} countryIso2={competition.country_iso2} />
                     </div>
                     <div className="mt-auto flex flex-wrap gap-2 pt-2">
-                        <Link href="/competitions#ongoing-heading" className="btn btn-error btn-sm">
+                        <Link href="/cubing/competitions#ongoing-heading" className="btn btn-error btn-sm">
                             Schedule &amp; results <LuArrowRight aria-hidden="true" />
                         </Link>
                         <ExternalLink

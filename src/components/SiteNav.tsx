@@ -31,16 +31,16 @@ function NavItem({ link, active, indicator, onClick }: {
   );
 }
 
-export default function SiteNav({ competitionsIndicator, menuIndicator }: {
-  /** Shown after the Competitions link while a competition is happening. */
-  competitionsIndicator: ReactNode;
+export default function SiteNav({ cubingIndicator, menuIndicator }: {
+  /** Shown after the Cubing link while a competition is happening. */
+  cubingIndicator: ReactNode;
   /** Shown on the phone menu button, since the link is hidden inside it. */
   menuIndicator: ReactNode;
 }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const contactActive = isActive("/contact");
-  const indicatorFor = (link: NavLink) => (link.href === "/competitions" ? competitionsIndicator : undefined);
+  const indicatorFor = (link: NavLink) => (link.href === "/cubing" ? cubingIndicator : undefined);
 
   const menuId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);

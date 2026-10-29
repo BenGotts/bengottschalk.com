@@ -17,7 +17,7 @@ export default function Header() {
         </div>
         {/* The live dot streams in, so it never holds up the page. */}
         <SiteNav
-          competitionsIndicator={<Suspense fallback={null}><LiveIndicator placement="inline" /></Suspense>}
+          cubingIndicator={<Suspense fallback={null}><LiveIndicator placement="inline" /></Suspense>}
           menuIndicator={<Suspense fallback={null}><LiveIndicator placement="corner" /></Suspense>}
         />
         <ThemeToggle />

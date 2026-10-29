@@ -9,8 +9,7 @@ export interface NavLink {
 /** Every page: the footer and the mobile menu list all of them. */
 export const NAV_LINKS: NavLink[] = [
   { label: "Home", href: "/" },
-  { label: "Competitions", href: "/competitions" },
-  { label: "Results", href: "/results" },
+  { label: "Cubing", href: "/cubing" },
   { label: "Videos", href: "/videos" },
   { label: "Projects", href: "/projects" },
   { label: "About", href: "/about" },

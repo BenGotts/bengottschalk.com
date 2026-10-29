@@ -13,8 +13,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: link.href === "/" ? 1 : 0.8,
     })),
+    ...["/cubing/competitions", "/cubing/results"].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
     ...events.map((event) => ({
-      url: `${SITE_URL}/results/${event}`,
+      url: `${SITE_URL}/cubing/results/${event}`,
       changeFrequency: "monthly" as const,
       priority: 0.5,
     })),

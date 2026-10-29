@@ -1,7 +1,7 @@
 import { getCompetitionsOverview } from "@/lib/wca";
 
 /**
- * A pulsing red dot while I'm at a competition, for the header's Competitions
+ * A pulsing red dot while I'm at a competition, for the header's Cubing
  * link (`inline`) or the phone menu button (`corner`). Renders nothing otherwise.
  */
 export default async function LiveIndicator({ placement }: { placement: "inline" | "corner" }) {

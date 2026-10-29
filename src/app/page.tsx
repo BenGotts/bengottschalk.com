@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
-import { LuArrowRight } from "react-icons/lu";
-import StatTile from "@/components/StatTile";
+import SectionHeader from "@/components/SectionHeader";
 import WcaAvatar from "@/components/WcaAvatar";
+import CubingStats from "@/components/cubing/CubingStats";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import VideoCard from "@/components/videos/VideoCard";
@@ -11,6 +11,7 @@ import { experience } from "@/content/experience";
 import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@/content/links";
 import { SITE_URL } from "@/consts";
 import {
+  cubingStats,
   formatDelegateStatus,
   finishedCompetitions,
   getAvatar,
@@ -18,7 +19,6 @@ import {
   getCompetitionsOverview,
   getDelegateRole,
   getPerson,
-  historyStats,
 } from "@/lib/wca";
 import { getLatestVideos } from "@/lib/youtube";
 import ExternalLink from "@/components/ExternalLink";
@@ -31,17 +31,6 @@ export const metadata: Metadata = {
   }),
   // The home page uses the full name as its whole title, without the template.
   title: { absolute: "Ben Gottschalk · Competitive cuber and WCA Delegate" },
-}
-
-function SectionHeader({ id, title, href, linkLabel }: { id: string; title: string; href: string; linkLabel: string }) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 id={id} className="text-2xl font-bold">{title}</h2>
-      <Link href={href} className="link link-primary inline-flex items-center gap-1 text-sm font-medium">
-        {linkLabel} <LuArrowRight aria-hidden="true" />
-      </Link>
-    </div>
-  );
 }
 
 export default async function Home() {
@@ -57,8 +46,8 @@ export default async function Home() {
   const ongoing = competitions.ok ? competitions.data.ongoing : [];
   const nextUp = competitions.ok ? competitions.data.upcoming.slice(0, 2) : [];
   const currentJob = experience.find((job) => job.end === null);
-  const delegatedCount = history.ok
-    ? historyStats(finishedCompetitions(history.data.history, competitions.ok ? competitions.data : null, history.data.utcToday)).delegated
+  const stats = person.ok && history.ok
+    ? cubingStats(person.data, finishedCompetitions(history.data.history, competitions.ok ? competitions.data : null, history.data.utcToday))
     : null;
 
   // schema.org Person, so search engines can connect the site to these profiles.
@@ -100,7 +89,7 @@ export default async function Home() {
               Pacific Northwest, and I build software for a living.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href="/competitions" className="btn btn-primary">Upcoming competitions</Link>
+              <Link href="/cubing" className="btn btn-primary">Cubing</Link>
               <Link href="/videos" className="btn btn-secondary">Latest videos</Link>
               <ExternalLink href={WCA_PROFILE_URL} className="btn border-base-300 bg-base-200 hover:border-primary" arrow iconClassName="-ml-1 size-[0.9em]">
                 WCA profile
@@ -109,24 +98,9 @@ export default async function Home() {
           </div>
         </div>
 
-        {person.ok && (
-          <div className="grid grid-cols-2 gap-4 pt-4 lg:grid-cols-4">
-            <StatTile value={person.data.competition_count} label="Competitions" />
-            {delegatedCount !== null && <StatTile value={delegatedCount} label="Delegated" />}
-            <StatTile
-              value={person.data.medals.total}
-              label={
-                <span className="flex flex-wrap gap-x-3 gap-y-1">
-                  <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-medal-gold" aria-hidden="true" />{person.data.medals.gold} gold</span>
-                  <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-medal-silver" aria-hidden="true" />{person.data.medals.silver} silver</span>
-                  <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-medal-bronze" aria-hidden="true" />{person.data.medals.bronze} bronze</span>
-                </span>
-              }
-            />
-            <StatTile
-              value={person.data.records.total}
-              label={person.data.records.total === 1 ? "Regional record" : "Regional records"}
-            />
+        {stats && (
+          <div className="pt-4">
+            <CubingStats stats={stats} />
           </div>
         )}
       </section>
@@ -136,7 +110,7 @@ export default async function Home() {
           <SectionHeader
             id="competitions-heading"
             title={ongoing.length > 0 ? "Happening now" : "Next up"}
-            href="/competitions"
+            href="/cubing/competitions"
             linkLabel="All competitions"
           />
           {ongoing.length > 0 ? (
