@@ -21,6 +21,15 @@ export function formatResult(eventId: string, value: number, kind: ResultKind = 
   return formatCentiseconds(value);
 }
 
+/**
+ * How much a PR beat the previous one, e.g. `"−0.64"` or `"−3"` moves.
+ * `null` for Multi-Blind, whose encoded values can't be subtracted.
+ */
+export function formatImprovement(eventId: string, previous: number, value: number, kind: ResultKind = "single"): string | null {
+  if (eventResultType(eventId) === "multi" || previous <= value) return null;
+  return `−${formatResult(eventId, previous - value, kind)}`;
+}
+
 const isoDateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 /** `"2025-05-01"` → `"May 1, 2025"`. WCA dates are calendar dates, so format them in UTC. */

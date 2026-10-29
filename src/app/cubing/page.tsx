@@ -9,6 +9,7 @@ import CompetitionCard from "@/components/competitions/CompetitionCard";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import PrCard from "@/components/results/PrCard";
+import { TimelineList } from "@/components/results/PrTimeline";
 import {
   cubingStats,
   finishedCompetitions,
@@ -18,7 +19,10 @@ import {
   getCompetitionsOverview,
   getDelegateRole,
   getPerson,
+  getResults,
   highlightEvents,
+  prTimeline,
+  sortEventIds,
 } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
@@ -28,11 +32,12 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function CubingPage() {
-  const [person, role, competitions, historyResult] = await Promise.all([
+  const [person, role, competitions, historyResult, results] = await Promise.all([
     getPerson(),
     getDelegateRole(),
     getCompetitionsOverview(),
     getCompetitionHistory(),
+    getResults(),
   ]);
 
   const ongoing = competitions.ok ? competitions.data.ongoing : [];
@@ -43,6 +48,7 @@ export default async function CubingPage() {
   const stats = person.ok && historyResult.ok ? cubingStats(person.data, history) : null;
   const firstYear = history.findLast((entry) => entry.competed)?.start_date.slice(0, 4);
   const recent = history.slice(0, 4);
+  const latestPrs = results.ok ? prTimeline(results.data, sortEventIds).slice(0, 2) : [];
 
   return (
     <div className="space-y-14">
@@ -101,6 +107,13 @@ export default async function CubingPage() {
               <PrCard key={eventId} eventId={eventId} record={person.data.personal_records[eventId]} />
             ))}
           </div>
+        </section>
+      )}
+
+      {latestPrs.length > 0 && (
+        <section aria-labelledby="latest-prs-heading" className="space-y-4">
+          <SectionHeader id="latest-prs-heading" title="Latest PRs" href="/cubing/timeline" linkLabel="PR timeline" />
+          <TimelineList entries={latestPrs} />
         </section>
       )}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDelegateStatus, formatResult } from "./format";
+import { formatDelegateStatus, formatImprovement, formatResult } from "./format";
 
 // Values are Ben's personal records as returned by the WCA API.
 describe("formatResult", () => {
@@ -40,5 +40,19 @@ describe("formatDelegateStatus", () => {
 
   it("title-cases unknown statuses", () => {
     expect(formatDelegateStatus("area_lead_delegate")).toBe("Area Lead Delegate");
+  });
+});
+
+describe("formatImprovement", () => {
+  it("formats the drop in each event's units", () => {
+    expect(formatImprovement("333", 985, 921)).toBe("−0.64");
+    expect(formatImprovement("333", 6100, 5900)).toBe("−2.00");
+    expect(formatImprovement("333fm", 31, 28)).toBe("−3");
+    expect(formatImprovement("333fm", 3133, 2900, "average")).toBe("−2.33");
+  });
+
+  it("has nothing for Multi-Blind or a non-improvement", () => {
+    expect(formatImprovement("333mbf", 970360001, 960161200)).toBeNull();
+    expect(formatImprovement("333", 900, 900)).toBeNull();
   });
 });

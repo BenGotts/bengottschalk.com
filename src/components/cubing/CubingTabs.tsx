@@ -8,6 +8,7 @@ const TABS = [
   { label: "Overview", href: "/cubing" },
   { label: "Competitions", href: "/cubing/competitions" },
   { label: "Results", href: "/cubing/results" },
+  { label: "Timeline", href: "/cubing/timeline" },
 ];
 
 /** The Cubing section's tabs. Event pages count as Results. */
@@ -20,7 +21,7 @@ export default function CubingTabs({ competitionsIndicator }: {
 
   return (
     <nav aria-label="Cubing" className="border-b border-base-300">
-      <ul className="-mb-px flex gap-1 overflow-x-auto">
+      <ul className="-mb-px flex gap-0.5 overflow-x-auto sm:gap-1">
         {TABS.map((tab) => {
           const active = isActive(tab.href);
           return (
@@ -28,7 +29,7 @@ export default function CubingTabs({ competitionsIndicator }: {
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-3 font-medium whitespace-nowrap transition-colors sm:px-4 ${
+                className={`inline-flex items-center gap-1.5 border-b-2 px-2 py-3 text-sm font-medium whitespace-nowrap transition-colors sm:px-4 sm:text-base ${
                   active ? "border-primary text-base-content" : "border-transparent text-muted hover:border-base-300 hover:text-base-content"
                 }`}
               >

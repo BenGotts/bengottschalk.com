@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prProgression } from "./progression";
+import { prProgression, prTimeline } from "./progression";
 import type { PersonResult } from "./schemas";
 
 function result(date: string, competitionId: string, roundTypeId: string, best: number, average: number): PersonResult {
@@ -48,5 +48,41 @@ describe("prProgression", () => {
     ]);
     expect(single.map((p) => p.value)).toEqual([900]);
     expect(average).toEqual([]);
+  });
+});
+
+const order = (ids: string[]) => ids.toSorted();
+const at = (date: string, competitionId: string, eventId: string, roundTypeId: string, best: number, average: number) => ({
+  ...result(date, competitionId, roundTypeId, best, average),
+  event_id: eventId,
+});
+
+describe("prTimeline", () => {
+  it("groups PRs by competition, newest first, with the record each one beat", () => {
+    const timeline = prTimeline(
+      [
+        at("2016-01-01", "A", "333", "f", 2000, 2200),
+        at("2016-01-01", "A", "222", "f", 600, 0),
+        at("2017-01-01", "B", "333", "f", 1800, 2300),
+        at("2018-01-01", "C", "222", "f", 700, 650),
+      ],
+      order,
+    );
+    expect(timeline.map((entry) => entry.competitionId)).toEqual(["C", "B", "A"]);
+    expect(timeline[0].prs).toEqual([{ eventId: "222", kind: "average", value: 650 }]);
+    expect(timeline[1].prs).toEqual([{ eventId: "333", kind: "single", value: 1800, previous: 2000 }]);
+    expect(timeline[2].prs.map((pr) => `${pr.eventId}-${pr.kind}`)).toEqual(["222-single", "333-single", "333-average"]);
+  });
+
+  it("lists a PR improved twice at one competition once, at its best", () => {
+    const timeline = prTimeline(
+      [
+        at("2016-01-01", "A", "333", "f", 2000, 0),
+        at("2017-01-01", "B", "333", "1", 1900, 0),
+        at("2017-01-01", "B", "333", "f", 1700, 0),
+      ],
+      order,
+    );
+    expect(timeline[0].prs).toEqual([{ eventId: "333", kind: "single", value: 1700, previous: 2000 }]);
   });
 });

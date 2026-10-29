@@ -47,3 +47,65 @@ export function prProgression(results: PersonResult[]): Progression {
   }
   return { single, average };
 }
+
+export interface TimelinePr {
+  eventId: string;
+  kind: "single" | "average";
+  value: number;
+  /** The record it beat; absent for the first result in that event. */
+  previous?: number;
+}
+
+export interface TimelineEntry {
+  competitionId: string;
+  competitionName: string;
+  date: string;
+  prs: TimelinePr[];
+}
+
+/**
+ * Every personal record across all events, grouped by the competition where
+ * it was set, newest competition first. Within a competition, PRs follow
+ * `eventOrder` (singles before averages); a PR improved twice there (say in
+ * round 1 and the final) is listed once, at its best, against the record it
+ * started from.
+ */
+export function prTimeline(results: PersonResult[], eventOrder: (eventIds: string[]) => string[]): TimelineEntry[] {
+  const byEvent = Map.groupBy(results, (result) => result.event_id);
+  const entries = new Map<string, TimelineEntry>();
+  const prsAt = new Map<string, TimelinePr>();
+
+  for (const [eventId, eventResults] of byEvent) {
+    const progression = prProgression(eventResults);
+    for (const kind of ["single", "average"] as const) {
+      let previous: number | undefined;
+      for (const point of progression[kind]) {
+        const entry = entries.get(point.competitionId) ?? {
+          competitionId: point.competitionId,
+          competitionName: point.competitionName,
+          date: point.date,
+          prs: [],
+        };
+        entries.set(point.competitionId, entry);
+        const key = `${point.competitionId}|${eventId}|${kind}`;
+        const existing = prsAt.get(key);
+        if (existing) {
+          existing.value = point.value;
+        } else {
+          const pr: TimelinePr = { eventId, kind, value: point.value, ...(previous !== undefined && { previous }) };
+          prsAt.set(key, pr);
+          entry.prs.push(pr);
+        }
+        previous = point.value;
+      }
+    }
+  }
+
+  for (const entry of entries.values()) {
+    const order = eventOrder([...new Set(entry.prs.map((pr) => pr.eventId))]);
+    entry.prs.sort((a, b) => order.indexOf(a.eventId) - order.indexOf(b.eventId) || (a.kind === "single" ? -1 : 1));
+  }
+  return [...entries.values()].toSorted(
+    (a, b) => b.date.localeCompare(a.date) || b.competitionId.localeCompare(a.competitionId),
+  );
+}
