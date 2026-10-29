@@ -35,7 +35,8 @@ const FILTERS: { status: MapStatus; label: string; dot: string; active: string }
 
 const DRAW_ORDER: Record<MapStatus, number> = { past: 0, upcoming: 1, ongoing: 2 };
 
-// Phones and tablets: a finger drag scrolls the page, not the map.
+// Phones and tablets: the inline map is a preview that opens fullscreen when
+// tapped, so a finger drag over it always scrolls the page.
 const TOUCH_QUERY = "(pointer: coarse)";
 
 function MapButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
@@ -72,7 +73,6 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
   const [mapInstance, setMapInstance] = useState(0);
   // Only rendered in the browser (see CompetitionMapLoader), so matchMedia is safe here.
   const [touch, setTouch] = useState(() => window.matchMedia(TOUCH_QUERY).matches);
-  const [touchHintSeen, setTouchHintSeen] = useState(false);
 
   // Next.js keeps pages hidden with React <Activity> after navigating away,
   // running effect cleanups but keeping the DOM. react-leaflet destroys its map
@@ -133,21 +133,6 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
     return () => query.removeEventListener("change", onChange);
   }, []);
 
-  // On touch screens one finger scrolls the page past the map, and two fingers
-  // pinch to zoom and move it (Leaflet's touch zoom pans with the pinch). Once
-  // expanded there's no page to scroll, so one finger drags the map too.
-  useEffect(() => {
-    if (!map) return () => {};
-    if (touch && !expanded) map.dragging.disable();
-    else map.dragging.enable();
-    // Hide the two-finger hint once the visitor has moved the map.
-    const onMove = () => setTouchHintSeen(true);
-    map.on("zoomstart dragstart", onMove);
-    return () => {
-      map.off("zoomstart dragstart", onMove);
-    };
-  }, [map, touch, expanded]);
-
   // Leaflet only measures its container on load; re-measure whenever it resizes
   // (expanding, collapsing, rotating a phone) so tiles fill the whole map.
   useEffect(() => {
@@ -180,6 +165,8 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [expanded]);
+
+  const preview = touch && !expanded;
 
   const fitAll = () => {
     if (!map || visible.length === 0) return;
@@ -232,7 +219,6 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           maxZoom={MAX_ZOOM}
           zoomControl={false}
           scrollWheelZoom={false}
-          dragging={!touch}
           worldCopyJump
           className="h-full w-full rounded-box border border-base-300"
         >
@@ -265,7 +251,7 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           ))}
         </MapContainer>
 
-        <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-2">
+        <div className={`absolute right-3 top-3 z-[1000] flex-col gap-2 ${preview ? "hidden" : "flex"}`}>
           <div className="join join-vertical shadow-sm">
             <MapButton label="Zoom in" onClick={() => map?.zoomIn()}><LuPlus className="size-4" /></MapButton>
             <MapButton label="Zoom out" onClick={() => map?.zoomOut()}><LuMinus className="size-4" /></MapButton>
@@ -279,9 +265,21 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           </div>
         </div>
 
-        {touch
-          ? !expanded && !touchHintSeen && <MapHint>Use two fingers to move the map</MapHint>
-          : !engaged && <MapHint>Click the map to zoom with scroll</MapHint>}
+        {preview && (
+          // Covers the map so it never receives a touch; a scroll gesture passes
+          // through to the page and a tap opens the map fullscreen.
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            className="absolute inset-0 z-[1000] flex items-start justify-center rounded-box p-3"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-field border border-base-300 bg-base-200/90 px-3 py-1.5 text-sm shadow-sm">
+              <LuMaximize className="size-3.5" aria-hidden="true" />
+              Tap to explore the map
+            </span>
+          </button>
+        )}
+        {!touch && !engaged && <MapHint>Click the map to zoom with scroll</MapHint>}
       </div>
     </div>
   );
