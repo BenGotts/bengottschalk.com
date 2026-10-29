@@ -98,12 +98,10 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 
 /** Podium numbers beyond the medal counts: how often, where, and when. */
 function PodiumStatTiles({ stats, dateLabel }: { stats: PodiumStats; dateLabel: ReturnType<typeof competitionDateLabels> }) {
-  const { finals, podiums: total, topEvent, bestCompetition, bestYear, firstPodium, currentStreak } = stats;
+  const { events, topEvent, bestCompetition, bestYear, firstPodium, currentStreak } = stats;
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-      {finals > 0 && (
-        <StatTile tone="blue" value={`${Math.round((total / finals) * 100)}%`} label={`Of my finals ended on the podium (${total} of ${finals})`} />
-      )}
+      <StatTile tone="blue" value={events} label={events === 1 ? "Event with a podium" : "Different events with a podium"} />
       <StatTile tone="red" value={currentStreak} label={currentStreak === 1 ? "Competition in a row with a podium" : "Competitions in a row with a podium"} />
       {topEvent && (
         <StatTile tone="green" value={topEvent.count} label={`Podiums in ${eventName(topEvent.eventId)}, my most in one event`} />

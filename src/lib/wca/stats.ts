@@ -50,8 +50,6 @@ export function highlightEvents(records: Person["personal_records"], count: numb
 }
 
 export interface PodiumStats {
-  /** Finals with a valid result, and how many ended on the podium. */
-  finals: number;
   podiums: number;
   /** Distinct events with a podium. */
   events: number;
@@ -77,7 +75,7 @@ function tally<T>(items: T[]): Map<T, number> {
   return counts;
 }
 
-/** More about the podiums: how often a final ends on one, and where they came from. */
+/** More about the podiums: where and when they came from. */
 export function podiumStats(results: PersonResult[]): PodiumStats {
   const finals = results.filter((result) => FINAL_ROUNDS.has(result.round_type_id) && result.best > 0);
   const list = podiums(results); // newest first
@@ -97,7 +95,6 @@ export function podiumStats(results: PersonResult[]): PodiumStats {
   const firstMiss = competitions.indexOf(false);
 
   return {
-    finals: finals.length,
     podiums: list.length,
     events: new Set(list.map((podium) => podium.result.event_id)).size,
     topEvent: byEvent && { eventId: byEvent[0], count: byEvent[1] },

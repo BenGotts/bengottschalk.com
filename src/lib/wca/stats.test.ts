@@ -68,7 +68,7 @@ const at = (date: string, eventId: string, roundTypeId: string, pos: number): Pe
 });
 
 describe("podiumStats", () => {
-  it("counts finals, podiums and where they came from", () => {
+  it("counts podiums and where they came from", () => {
     const stats = podiumStats([
       at("2019-01-01", "333", "f", 2),
       at("2019-01-01", "222", "f", 1),
@@ -77,7 +77,6 @@ describe("podiumStats", () => {
       at("2021-03-01", "333", "1", 1), // not a final
       at("2022-02-01", "pyram", "c", 3),
     ]);
-    expect(stats.finals).toBe(5);
     expect(stats.podiums).toBe(4);
     expect(stats.events).toBe(3);
     expect(stats.topEvent).toEqual({ eventId: "333", count: 2 });
@@ -90,6 +89,6 @@ describe("podiumStats", () => {
 
   it("handles no podiums", () => {
     const stats = podiumStats([at("2020-01-01", "333", "f", 4)]);
-    expect(stats).toMatchObject({ finals: 1, podiums: 0, topEvent: null, bestCompetition: null, firstPodium: null, currentStreak: 0 });
+    expect(stats).toMatchObject({ podiums: 0, topEvent: null, bestCompetition: null, firstPodium: null, currentStreak: 0 });
   });
 });
