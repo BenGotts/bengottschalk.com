@@ -1,7 +1,13 @@
 import Image from "next/image";
+import { localDateString } from "@/lib/wca/competitions";
 import { formatIsoDate } from "@/lib/wca/format";
 import type { Video } from "@/lib/youtube";
 import ExternalLink from "@/components/ExternalLink";
+import LocalDate from "@/components/LocalDate";
+
+// YouTube gives upload times in UTC. Each viewer sees the date in their own time
+// zone; before the page hydrates, it's the date where the videos are made.
+const UPLOAD_TIME_ZONE = "America/Los_Angeles";
 
 interface VideoCardProps {
   video: Video;
@@ -35,7 +41,9 @@ export default function VideoCard({ video, priority = false, headingLevel: Headi
             {video.title}
           </ExternalLink>
         </Heading>
-        <p className="text-sm text-muted">{formatIsoDate(video.publishedAt.slice(0, 10))}</p>
+        <p className="text-sm text-muted">
+          <LocalDate iso={video.publishedAt} fallback={formatIsoDate(localDateString(new Date(video.publishedAt), UPLOAD_TIME_ZONE))} />
+        </p>
       </div>
     </article>
   );

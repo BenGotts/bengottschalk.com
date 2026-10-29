@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
+import BackToTop from "@/components/BackToTop";
 import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import TravelStats from "@/components/competitions/TravelStats";
@@ -51,6 +52,8 @@ export default async function CompetitionsPage() {
       {historyResult.ok && history.length > 1 && <TravelStats stats={travelStats(history)} />}
 
       {historyResult.ok && <CompetitionExplorer ongoing={ongoing} upcoming={upcoming} history={history} />}
+
+      <BackToTop />
     </div>
   )
 }
