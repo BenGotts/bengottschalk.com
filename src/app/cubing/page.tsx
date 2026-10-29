@@ -9,7 +9,8 @@ import CompetitionCard from "@/components/competitions/CompetitionCard";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import PrCard from "@/components/results/PrCard";
-import { TimelineList } from "@/components/results/PrTimeline";
+import PrTimeline from "@/components/results/PrTimeline";
+import { timelineRows } from "@/components/results/timelineRows";
 import {
   cubingStats,
   finishedCompetitions,
@@ -113,7 +114,7 @@ export default async function CubingPage() {
       {latestPrs.length > 0 && (
         <section aria-labelledby="latest-prs-heading" className="space-y-4">
           <SectionHeader id="latest-prs-heading" title="Latest PRs" href="/cubing/timeline" linkLabel="PR timeline" />
-          <TimelineList entries={latestPrs} />
+          <PrTimeline rows={timelineRows(latestPrs)} compact />
         </section>
       )}
 

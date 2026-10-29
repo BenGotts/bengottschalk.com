@@ -1,97 +1,108 @@
+"use client";
+
 import "@cubing/icons";
 import Link from "next/link";
+import { Fragment } from "react";
 import ExternalLink from "@/components/ExternalLink";
-import {
-  eventIconClass,
-  eventName,
-  formatImprovement,
-  formatIsoDate,
-  formatResult,
-  groupByYear,
-  isCurrentEvent,
-  type TimelineEntry,
-} from "@/lib/wca";
+import { useIncrementalList } from "@/lib/useIncrementalList";
+import type { TimelineItem, TimelineRow } from "./timelineRows";
 
-/** One competition on the timeline: where and when, and each PR set there. */
-function TimelineCompetition({ entry, nested }: { entry: TimelineEntry; nested: boolean }) {
+/** One PR, aligned towards the centre line: right-aligned on the singles side. */
+function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
+  const name = (
+    <span className={`flex items-start gap-1.5 text-sm ${side === "left" ? "flex-row-reverse text-right" : ""}`}>
+      <span className={`${item.iconClass} mt-0.5 shrink-0`} aria-hidden="true" />
+      {item.eventName}
+    </span>
+  );
   return (
-    <li className="relative pl-7">
-      {/* A dot on the line drawn by the list's left border. */}
-      <span className={`absolute top-1.5 -left-[7px] size-3 rounded-full border-2 bg-primary ${nested ? "border-base-200" : "border-base-100"}`} aria-hidden="true" />
-      <p className="text-sm text-muted">{formatIsoDate(entry.date)}</p>
-      <h3 className="font-semibold">
-        <ExternalLink href={`https://www.worldcubeassociation.org/competitions/${entry.competitionId}`} className="link link-hover">
-          {entry.competitionName}
-        </ExternalLink>
-      </h3>
-      <ul className={`mt-2 divide-y divide-base-300 rounded-box border border-base-300 ${nested ? "bg-base-100" : "bg-base-200"}`}>
-        {entry.prs.map((pr) => {
-          const improvement = pr.previous === undefined ? null : formatImprovement(pr.eventId, pr.previous, pr.value, pr.kind);
-          const name = (
-            <span className="flex min-w-0 items-start gap-2">
-              <span className={`${eventIconClass(pr.eventId)} mt-1 shrink-0`} aria-hidden="true" />
-              <span>
-                {eventName(pr.eventId)}
-                <span className="block text-xs text-muted capitalize">{pr.kind}</span>
-              </span>
-            </span>
-          );
-          return (
-            <li key={`${pr.eventId}-${pr.kind}`} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              {/* Retired events have no results page to link to. */}
-              {isCurrentEvent(pr.eventId) ? (
-                <Link href={`/cubing/results/${pr.eventId}`} className="min-w-0 hover:text-primary">{name}</Link>
-              ) : (
-                name
-              )}
-              <span className="flex shrink-0 items-baseline gap-2">
-                <span className="font-mono font-medium">{formatResult(pr.eventId, pr.value, pr.kind)}</span>
-                <span className="w-14 text-right font-mono text-xs text-success">
-                  {pr.previous === undefined ? <span className="font-sans text-muted">first</span> : improvement}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+    <li className={`flex flex-col gap-0.5 ${side === "left" ? "items-end" : "items-start"}`}>
+      {/* Retired events have no results page to link to. */}
+      {item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name}
+      <span className={`flex items-baseline gap-2 ${side === "left" ? "flex-row-reverse" : ""}`}>
+        <span className="font-mono text-lg font-medium">{item.value}</span>
+        {item.first ? (
+          <span className="text-xs text-muted">first</span>
+        ) : (
+          item.improvement && <span className="font-mono text-xs text-success">{item.improvement}</span>
+        )}
+      </span>
     </li>
   );
 }
 
-/**
- * Competitions with PRs along a vertical line, newest first. `nested` is for
- * inside a panel, where the PR boxes need the page colour to stand out.
- */
-export function TimelineList({ entries, nested = false }: { entries: TimelineEntry[]; nested?: boolean }) {
+function Side({ items, side, label }: { items: TimelineItem[]; side: "left" | "right"; label: string }) {
   return (
-    <ol className="ml-1.5 space-y-6 border-l-2 border-base-300">
-      {entries.map((entry) => (
-        <TimelineCompetition key={entry.competitionId} entry={entry} nested={nested} />
-      ))}
-    </ol>
+    <ul aria-label={label} className={`space-y-3 ${side === "left" ? "pr-4 sm:pr-8" : "pl-4 sm:pl-8"}`}>
+      {items.map((item) => <Pr key={item.key} item={item} side={side} />)}
+    </ul>
   );
 }
 
-/** The full timeline, one collapsible section per year; the newest year starts open. */
-export default function PrTimeline({ entries }: { entries: TimelineEntry[] }) {
+/**
+ * PRs down a centre line, singles on the left and averages on the right, one
+ * node per competition. More competitions load as you scroll. With `compact`
+ * (the Overview's teaser) the column labels aren't pinned and there are no
+ * year markers.
+ */
+export default function PrTimeline({ rows, pageSize = 12, compact = false }: { rows: TimelineRow[]; pageSize?: number; compact?: boolean }) {
+  const { visible, hasMore, showMore, sentinelRef } = useIncrementalList(rows, pageSize);
+
   return (
-    <div className="space-y-3">
-      {groupByYear(entries.map((entry) => ({ ...entry, start_date: entry.date }))).map(({ year, entries: yearEntries }, index) => {
-        const count = yearEntries.reduce((sum, entry) => sum + entry.prs.length, 0);
-        return (
-          <details key={year} open={index === 0} className="collapse collapse-arrow border border-base-300 bg-base-200">
-            <summary className="collapse-title font-display text-lg font-bold">
-              {year}{" "}
-              <span className="font-sans text-sm font-normal text-muted">
-                · {count} {count === 1 ? "PR" : "PRs"} at {yearEntries.length} {yearEntries.length === 1 ? "competition" : "competitions"}
-              </span>
-            </summary>
-            <div className="collapse-content pt-2">
-              <TimelineList entries={yearEntries} nested />
-            </div>
-          </details>
-        );
-      })}
+    <div>
+      {/* Pinned under the site header on the full timeline, so the sides stay labelled while scrolling. */}
+      <div
+        className={`grid grid-cols-2 border-b border-base-300 py-2 text-sm font-semibold uppercase tracking-wider text-muted ${
+          compact ? "" : "sticky top-16 z-10 -mx-4 bg-base-100/90 px-4 backdrop-blur sm:mx-0 sm:px-0"
+        }`}
+      >
+        <span className="pr-4 text-right sm:pr-8">Singles</span>
+        <span className="pl-4 sm:pl-8">Averages</span>
+      </div>
+
+      <ol className="relative pt-6">
+        {/* The centre line. */}
+        <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-base-300" aria-hidden="true" />
+        {visible.map((row, index) => {
+          const newYear = !compact && row.year !== visible[index - 1]?.year;
+          return (
+            <Fragment key={row.competitionId}>
+              {newYear && (
+                <li className="relative flex justify-center pb-6" aria-hidden="true">
+                  <span className="rounded-full bg-primary px-4 py-1 font-display text-lg font-bold text-primary-content">{row.year}</span>
+                </li>
+              )}
+              <li className="relative pb-10">
+                <div className="relative mx-auto mb-4 w-fit max-w-[85%] rounded-box border border-base-300 bg-base-200 px-4 py-2 text-center">
+                  <p className="text-xs text-muted">{row.dateLabel}</p>
+                  <h3 className="font-semibold leading-snug">
+                    <ExternalLink href={`https://www.worldcubeassociation.org/competitions/${row.competitionId}`} className="link link-hover">
+                      {row.competitionName}
+                    </ExternalLink>
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2">
+                  <Side items={row.singles} side="left" label="Single PRs" />
+                  <Side items={row.averages} side="right" label="Average PRs" />
+                </div>
+              </li>
+            </Fragment>
+          );
+        })}
+      </ol>
+
+      {hasMore && (
+        <div className="flex justify-center">
+          <button
+            ref={(element) => { sentinelRef.current = element; }}
+            type="button"
+            onClick={showMore}
+            className="btn btn-sm border-base-300 bg-base-200 hover:border-primary"
+          >
+            Show more
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -122,7 +122,7 @@ export default function CompetitionExplorer({ ongoing, upcoming, history }: {
       </div>
 
       {filtered.length > 0 ? (
-        <CompetitionHistory history={filtered} expandAll={filtering} />
+        <CompetitionHistory history={filtered} />
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-box border border-base-300 bg-base-200 py-10 text-center">
           <p className="text-muted">No past competitions match.</p>

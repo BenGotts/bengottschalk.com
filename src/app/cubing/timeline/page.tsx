@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import PrTimeline from "@/components/results/PrTimeline";
+import { timelineRows } from "@/components/results/timelineRows";
 import { getResults, prTimeline, sortEventIds } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
@@ -28,7 +29,7 @@ export default async function TimelinePage() {
       </header>
 
       {results.ok ? (
-        <PrTimeline entries={timeline} />
+        <PrTimeline rows={timelineRows(timeline)} />
       ) : (
         <div role="alert" className="alert alert-warning">Results couldn&apos;t be loaded from the WCA right now. Please try again later.</div>
       )}
