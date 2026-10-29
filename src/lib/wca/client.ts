@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { fail, ok, type Result } from "@/lib/result";
 
-export const WCA_API_URL = "https://www.worldcubeassociation.org/api";
+// Overridable to point local development at a stub server.
+export const WCA_API_URL = process.env.WCA_API_URL ?? "https://www.worldcubeassociation.org/api";
 
 // The WCA API allows 60 requests per minute per IP. Callers cache results, but
 // a build renders many pages at once, so slow or rate-limited responses are

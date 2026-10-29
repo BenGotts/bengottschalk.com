@@ -9,7 +9,7 @@ export default function NotFound() {
       <p className="text-lg text-muted">That page doesn&apos;t exist, or it&apos;s been scrambled.</p>
       <div className="flex flex-wrap justify-center gap-3">
         <Link href="/" className="btn btn-primary">Go home</Link>
-        <Link href="/results" className="btn border-base-300 bg-base-200 hover:border-primary">See results</Link>
+        <Link href="/cubing" className="btn border-base-300 bg-base-200 hover:border-primary">Cubing</Link>
       </div>
     </div>
   );

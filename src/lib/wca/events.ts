@@ -54,6 +54,16 @@ function eventRank(eventId: string): number {
   return index === -1 ? EVENT_ORDER.length : index;
 }
 
+/** Whether an event is still held at WCA competitions (not retired, like 3x3x3 With Feet). */
+export function isCurrentEvent(eventId: string): boolean {
+  return (CURRENT_EVENT_IDS as readonly string[]).includes(eventId);
+}
+
+/** The current events among `eventIds`, in WCA order. Results pages show only these. */
+export function currentEventIds(eventIds: readonly string[]): string[] {
+  return sortEventIds(eventIds.filter(isCurrentEvent));
+}
+
 /** Sorts event ids into WCA order; unknown ids go last, alphabetically. */
 export function sortEventIds<T extends string>(eventIds: readonly T[]): T[] {
   return eventIds.toSorted((a, b) => eventRank(a) - eventRank(b) || a.localeCompare(b));
