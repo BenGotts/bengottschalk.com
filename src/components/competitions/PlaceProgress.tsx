@@ -111,13 +111,16 @@ export function StateProgress({ states }: { states: StateGoal[] }) {
   );
 }
 
+const SCROLL_AFTER = 6;
+
 /**
  * Countries on a world map, with a list (small countries can be hard to spot
- * on the map). From lg up the card matches the states card's height and the
- * list scrolls inside it; on phones the list scrolls in a fixed-height box.
+ * on the map). Past six countries the list scrolls: from lg up inside a card
+ * that matches the states card's height, and on phones in a fixed-height box.
  */
 export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
   const competed = countries.filter((country) => country.status === "competed").length;
+  const scrolls = countries.length > SCROLL_AFTER;
   const byIso2 = new Map(countries.map((country) => [country.iso2, country]));
 
   return (
@@ -143,11 +146,14 @@ export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
           );
         })}
       </svg>
-      {/* Absolutely placed from lg up, so the list doesn't add to the card's height. */}
-      <div className="relative min-h-40 flex-1">
+      {/* Up to SCROLL_AFTER countries just show. Past that the list scrolls, absolutely
+          placed from lg up so it doesn't add to the card's height, with room for three rows. */}
+      <div className={scrolls ? "relative min-h-40 flex-1 lg:min-h-48" : ""}>
         <ul
           aria-label="Countries"
-          className="grid max-h-72 content-start gap-x-6 gap-y-3 overflow-y-auto sm:grid-cols-2 rounded-field border-y border-base-300 py-3 pr-2 lg:absolute lg:inset-0 lg:max-h-none"
+          className={`grid content-start gap-x-6 gap-y-3 border-t border-base-300 pt-3 sm:grid-cols-2 ${
+            scrolls ? "max-h-72 overflow-y-auto border-b pr-2 pb-3 lg:absolute lg:inset-0 lg:max-h-none" : ""
+          }`}
         >
           {countries.map((country) => (
             <li key={country.iso2} className="flex items-center gap-3">
