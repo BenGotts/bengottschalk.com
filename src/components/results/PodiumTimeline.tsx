@@ -8,12 +8,14 @@ import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import type { PodiumItem, PodiumRow } from "./podiumRows";
 
-// The tint is a gradient over the solid page colour, so the centre line doesn't show through.
+// The chip tint is a gradient over the solid page colour, so the centre line
+// doesn't show through. `step` is the medal's block on the podium.
 const MEDAL_STYLES = {
-  gold: { label: "1st", dot: "bg-medal-gold", chip: "border-medal-gold/70 bg-linear-to-b from-medal-gold/10 to-medal-gold/10" },
-  silver: { label: "2nd", dot: "bg-medal-silver", chip: "border-medal-silver/70 bg-linear-to-b from-medal-silver/10 to-medal-silver/10" },
-  bronze: { label: "3rd", dot: "bg-medal-bronze", chip: "border-medal-bronze/70 bg-linear-to-b from-medal-bronze/10 to-medal-bronze/10" },
+  gold: { label: "1st", dot: "bg-medal-gold", chip: "border-medal-gold/70 bg-linear-to-b from-medal-gold/10 to-medal-gold/10", step: "h-28 bg-medal-gold" },
+  silver: { label: "2nd", dot: "bg-medal-silver", chip: "border-medal-silver/70 bg-linear-to-b from-medal-silver/10 to-medal-silver/10", step: "h-20 bg-medal-silver" },
+  bronze: { label: "3rd", dot: "bg-medal-bronze", chip: "border-medal-bronze/70 bg-linear-to-b from-medal-bronze/10 to-medal-bronze/10", step: "h-14 bg-medal-bronze" },
 } as const;
+const PODIUM_ORDER = ["silver", "gold", "bronze"] as const;
 
 /** One podium: the place, the event and the result, edged in its medal's colour. */
 function Medal({ item }: { item: PodiumItem }) {
@@ -43,6 +45,7 @@ function Medal({ item }: { item: PodiumItem }) {
 type Placement = "all" | PodiumItem["medal"];
 const PLACEMENTS: Placement[] = ["all", "gold", "silver", "bronze"];
 
+
 /**
  * Podiums down a centre line, one node per competition with its medals below,
  * newest first, filterable by placement. More competitions load as you scroll.
@@ -65,21 +68,42 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
 
   return (
     <div className="space-y-6">
-      <fieldset className="join">
+      {/* A podium of the medal counts, which doubles as the filter: 2nd, 1st, 3rd, with 1st tallest. */}
+      <fieldset className="mx-auto w-full max-w-sm">
         <legend className="sr-only">Show podiums by placement</legend>
-        {PLACEMENTS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            aria-pressed={placement === p}
-            onClick={() => setPlacement(p)}
-            className={`btn btn-sm join-item gap-1.5 ${placement === p ? "btn-primary" : "border-base-300 bg-base-200"}`}
-          >
-            {p !== "all" && <span className={`size-2.5 rounded-full ${MEDAL_STYLES[p].dot}`} aria-hidden="true" />}
-            {p === "all" ? "All" : MEDAL_STYLES[p].label}
-            <span className="font-normal opacity-70">{counts[p]}</span>
-          </button>
-        ))}
+        <div className="flex items-end justify-center gap-2">
+          {PODIUM_ORDER.map((medal) => {
+            const style = MEDAL_STYLES[medal];
+            const selected = placement === medal;
+            return (
+              <button
+                key={medal}
+                type="button"
+                aria-pressed={selected}
+                aria-label={`${style.label} place: ${counts[medal]} ${counts[medal] === 1 ? "podium" : "podiums"}`}
+                onClick={() => setPlacement(selected ? "all" : medal)}
+                className={`group flex flex-1 flex-col items-center gap-1.5 transition-opacity ${placement === "all" || selected ? "" : "opacity-45 hover:opacity-80"}`}
+              >
+                <span className="font-display text-3xl font-bold">{counts[medal]}</span>
+                <span
+                  className={`flex w-full flex-col items-center justify-start rounded-t-box pt-2 font-display text-lg font-bold text-black/85 ring-offset-2 ring-offset-base-100 transition group-hover:brightness-110 ${style.step} ${
+                    selected ? "ring-2 ring-primary" : ""
+                  }`}
+                >
+                  {style.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between border-t-2 border-base-300 pt-2 text-sm text-muted">
+          <span>{counts.all} podiums</span>
+          {placement === "all" ? (
+            <span>Tap a step to filter</span>
+          ) : (
+            <button type="button" onClick={() => setPlacement("all")} className="link link-primary">Show all</button>
+          )}
+        </div>
       </fieldset>
 
       <ol className="relative">
