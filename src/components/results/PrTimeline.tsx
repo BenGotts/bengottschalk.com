@@ -3,6 +3,7 @@
 import "@cubing/icons";
 import Link from "next/link";
 import { Fragment } from "react";
+import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import type { TimelineItem, TimelineRow } from "./timelineRows";
@@ -56,8 +57,8 @@ function Side({ items, side, label, showEvent }: { items: TimelineItem[]; side: 
  * PRs down a centre line, singles on the left and averages on the right, one
  * node per competition. More competitions load as you scroll. With `compact`
  * (the Overview's teaser) the column labels aren't pinned and there are no
- * year markers. `showEvent={false}` leaves out each PR's event name, for an
- * event's own page.
+ * year markers or back-to-top button. `showEvent={false}` leaves out each
+ * PR's event name, for an event's own page.
  */
 export default function PrTimeline({ rows, pageSize = 12, compact = false, showEvent = true }: {
   rows: TimelineRow[];
@@ -122,6 +123,9 @@ export default function PrTimeline({ rows, pageSize = 12, compact = false, showE
           </button>
         </div>
       )}
+
+      {/* The full timeline runs long, so offer a way back up. */}
+      {!compact && <BackToTop />}
     </div>
   );
 }
