@@ -3,9 +3,18 @@ import { pageMetadata } from "@/lib/metadata";
 import BackToTop from "@/components/BackToTop";
 import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
+import TravelGoals from "@/components/competitions/TravelGoals";
 import TravelStats from "@/components/competitions/TravelStats";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview, travelStats } from "@/lib/wca";
+import {
+  countryGoals,
+  finishedCompetitions,
+  formatDateRange,
+  getCompetitionHistory,
+  getCompetitionsOverview,
+  stateGoals,
+  travelStats,
+} from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
@@ -47,6 +56,11 @@ export default async function CompetitionsPage() {
         <div role="alert" className="alert alert-warning">
           Upcoming competitions couldn&apos;t be loaded from the WCA right now. Please try again later.
         </div>
+      )}
+
+      {historyResult.ok && (
+        // Competitions underway count as coming up until they finish.
+        <TravelGoals states={stateGoals(history, [...ongoing, ...upcoming])} countries={countryGoals(history, [...ongoing, ...upcoming])} />
       )}
 
       {historyResult.ok && history.length > 1 && <TravelStats stats={travelStats(history)} />}

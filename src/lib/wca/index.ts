@@ -8,4 +8,5 @@ export * from "./schedule";
 export * from "./stats";
 export * from "./milestones";
 export * from "./travel";
+export * from "./goals";
 export type * from "./schemas";
