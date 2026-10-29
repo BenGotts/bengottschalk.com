@@ -2,7 +2,6 @@ import {
   eventIconClass,
   eventName,
   formatImprovement,
-  formatIsoDate,
   formatResult,
   isCurrentEvent,
   type TimelineEntry,
@@ -50,13 +49,14 @@ function item(pr: TimelinePr): TimelineItem {
 
 /**
  * The timeline formatted on the server, so the browser only renders it and
- * doesn't need the WCA formatting code.
+ * doesn't need the WCA formatting code. `dateLabel` shows each competition's
+ * dates (see `competitionDateLabels`), since results only carry the start date.
  */
-export function timelineRows(entries: TimelineEntry[]): TimelineRow[] {
+export function timelineRows(entries: TimelineEntry[], dateLabel: (competitionId: string, startDate: string) => string): TimelineRow[] {
   return entries.map((entry) => ({
     competitionId: entry.competitionId,
     competitionName: entry.competitionName,
-    dateLabel: formatIsoDate(entry.date),
+    dateLabel: dateLabel(entry.competitionId, entry.date),
     year: entry.date.slice(0, 4),
     singles: entry.prs.filter((pr) => pr.kind === "single").map(item),
     averages: entry.prs.filter((pr) => pr.kind === "average").map(item),

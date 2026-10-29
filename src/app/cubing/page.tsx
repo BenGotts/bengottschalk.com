@@ -14,11 +14,12 @@ import PrCard from "@/components/results/PrCard";
 import PrTimeline from "@/components/results/PrTimeline";
 import { timelineRows } from "@/components/results/timelineRows";
 import {
+  competitionDateLabels,
   cubingStats,
   eventName,
   finishedCompetitions,
+  formatDateRange,
   formatDelegateStatus,
-  formatIsoDate,
   getCompetitionHistory,
   getCompetitionsOverview,
   getDelegateRole,
@@ -156,7 +157,7 @@ export default async function CubingPage() {
       {latestPrs.length > 0 && (
         <section aria-labelledby="latest-prs-heading" className="space-y-4">
           <SectionHeader id="latest-prs-heading" title="Latest PRs" href="/cubing/timeline" linkLabel="PR timeline" />
-          <PrTimeline rows={timelineRows(latestPrs)} compact />
+          <PrTimeline rows={timelineRows(latestPrs, competitionDateLabels(historyResult.ok ? historyResult.data.history : []))} compact />
         </section>
       )}
 
@@ -170,7 +171,7 @@ export default async function CubingPage() {
                   <span className="min-w-0 flex-1">
                     <ExternalLink href={entry.url} className="link link-hover font-medium">{entry.name}</ExternalLink>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-muted">
-                      {formatIsoDate(entry.start_date)}
+                      {formatDateRange(entry.start_date, entry.end_date)}
                       <CompetitionLocation city={entry.city} countryIso2={entry.country_iso2} />
                     </span>
                   </span>

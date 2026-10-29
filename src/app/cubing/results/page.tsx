@@ -3,7 +3,18 @@ import { pageMetadata } from "@/lib/metadata";
 import "@cubing/icons";
 import { MedalCounts } from "@/components/cubing/CubingStats";
 import PrTable from "@/components/results/PrTable";
-import { eventIconClass, eventName, formatIsoDate, formatResult, getPerson, getRegionalRecords, getResults, podiums, type Medal } from "@/lib/wca";
+import {
+  competitionDateLabels,
+  eventIconClass,
+  eventName,
+  formatResult,
+  getCompetitionHistory,
+  getPerson,
+  getRegionalRecords,
+  getResults,
+  podiums,
+  type Medal,
+} from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
 
 export const metadata: Metadata = pageMetadata({
@@ -13,7 +24,9 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function ResultsPage() {
-  const [person, regionalRecords, results] = await Promise.all([getPerson(), getRegionalRecords(), getResults()]);
+  const [person, regionalRecords, results, history] = await Promise.all([getPerson(), getRegionalRecords(), getResults(), getCompetitionHistory()]);
+  // Results only carry start dates; the history has each competition's end date.
+  const dateLabel = competitionDateLabels(history.ok ? history.data.history : []);
 
   if (!person.ok) {
     return (
@@ -59,7 +72,7 @@ export default async function ResultsPage() {
                 <span className="badge border-accent bg-accent/10 font-semibold">{record}</span>
                 <span className="font-semibold">{eventName(result.event_id)} {kind}</span>
                 <span className="font-mono">{formatResult(result.event_id, value, kind)}</span>
-                <span className="text-sm text-muted">{result.competition_short_name} · {formatIsoDate(result.competition_start_date)}</span>
+                <span className="text-sm text-muted">{result.competition_short_name} · {dateLabel(result.competition_id, result.competition_start_date)}</span>
               </li>
             ))}
           </ul>
@@ -72,14 +85,14 @@ export default async function ResultsPage() {
             <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
             <span className="text-sm text-muted"><MedalCounts medals={medals} /></span>
           </div>
-          <PodiumList podiums={podiumList.slice(0, PODIUMS_SHOWN)} />
+          <PodiumList podiums={podiumList.slice(0, PODIUMS_SHOWN)} dateLabel={dateLabel} />
           {podiumList.length > PODIUMS_SHOWN && (
             <details className="group">
               <summary className="btn btn-sm border-base-300 bg-base-200 hover:border-primary group-open:mb-3">
                 <span className="group-open:hidden">Show all {podiumList.length} podiums</span>
                 <span className="hidden group-open:inline">Show fewer</span>
               </summary>
-              <PodiumList podiums={podiumList.slice(PODIUMS_SHOWN)} />
+              <PodiumList podiums={podiumList.slice(PODIUMS_SHOWN)} dateLabel={dateLabel} />
             </details>
           )}
         </section>
@@ -87,6 +100,8 @@ export default async function ResultsPage() {
     </div>
   )
 }
+
+type DateLabel = ReturnType<typeof competitionDateLabels>;
 
 const PODIUMS_SHOWN = 8;
 const AVERAGE_FORMATS = new Set(["a", "m"]);
@@ -97,7 +112,7 @@ const MEDAL_STYLES: Record<Medal, { label: string; dot: string }> = {
   bronze: { label: "3rd", dot: "bg-medal-bronze" },
 };
 
-function PodiumList({ podiums: list }: { podiums: ReturnType<typeof podiums> }) {
+function PodiumList({ podiums: list, dateLabel }: { podiums: ReturnType<typeof podiums>; dateLabel: DateLabel }) {
   return (
     <ul className="grid gap-3 md:grid-cols-2">
       {list.map(({ medal, result }) => {
@@ -119,7 +134,7 @@ function PodiumList({ podiums: list }: { podiums: ReturnType<typeof podiums> }) 
                 </span>
               </span>
               <span className="block truncate text-sm text-muted">
-                {result.competition_short_name} · {formatIsoDate(result.competition_start_date)}
+                {result.competition_short_name} · {dateLabel(result.competition_id, result.competition_start_date)}
               </span>
             </span>
           </li>

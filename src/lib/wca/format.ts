@@ -37,6 +37,34 @@ export function formatIsoDate(date: string): string {
   return isoDateFormat.format(new Date(`${date}T00:00:00Z`));
 }
 
+const parts = (date: string) => {
+  const d = new Date(`${date}T00:00:00Z`);
+  return { month: d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }), day: d.getUTCDate(), year: d.getUTCFullYear() };
+};
+
+/**
+ * A competition's dates, e.g. `"May 1, 2025"`, `"May 1 – 3, 2025"`,
+ * `"Apr 30 – May 2, 2025"` or `"Dec 31, 2025 – Jan 1, 2026"`.
+ */
+export function formatDateRange(start: string, end: string): string {
+  if (end <= start) return formatIsoDate(start);
+  const a = parts(start);
+  const b = parts(end);
+  if (a.year !== b.year) return `${formatIsoDate(start)} – ${formatIsoDate(end)}`;
+  if (a.month !== b.month) return `${a.month} ${a.day} – ${b.month} ${b.day}, ${b.year}`;
+  return `${a.month} ${a.day} – ${b.day}, ${b.year}`;
+}
+
+/**
+ * Formats competition dates by id, for views built from results, which only
+ * carry the start date; the end date comes from the competition history.
+ * Unknown competitions fall back to their start date.
+ */
+export function competitionDateLabels(history: { id: string; end_date: string }[]): (competitionId: string, startDate: string) => string {
+  const endDates = new Map(history.map((entry) => [entry.id, entry.end_date]));
+  return (competitionId, startDate) => formatDateRange(startDate, endDates.get(competitionId) ?? startDate);
+}
+
 const DELEGATE_STATUS_LABELS: Record<string, string> = {
   trainee_delegate: "Trainee Delegate",
   junior_delegate: "Junior Delegate",

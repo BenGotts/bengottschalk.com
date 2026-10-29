@@ -1,4 +1,4 @@
-import { eventResultType, formatIsoDate, formatResult, type PrPoint, type Progression } from "@/lib/wca";
+import { eventResultType, formatResult, type PrPoint, type Progression } from "@/lib/wca";
 
 const WIDTH = 720;
 const HEIGHT = 300;
@@ -31,7 +31,12 @@ interface Series {
  * PRs improve. FMC averages (moves × 100) are plotted in moves to share the
  * axis with singles. Not used for Multi-Blind, whose values aren't linear.
  */
-export default function ProgressionChart({ eventId, progression }: { eventId: string; progression: Progression }) {
+export default function ProgressionChart({ eventId, progression, dateLabel }: {
+  eventId: string;
+  progression: Progression;
+  /** Formats a competition's dates by id (see `competitionDateLabels`). */
+  dateLabel: (competitionId: string, startDate: string) => string;
+}) {
   const isMoves = eventResultType(eventId) === "number";
   const plotValue = (point: PrPoint, key: Series["key"]) => (isMoves && key === "average" ? point.value / 100 : point.value);
 
@@ -99,7 +104,7 @@ export default function ProgressionChart({ eventId, progression }: { eventId: st
             <path d={path(s)} fill="none" className={s.lineClass} strokeWidth="2.5" strokeLinejoin="round" />
             {s.points.map((p) => (
               <circle key={`${p.competitionId}-${p.value}`} cx={x(Date.parse(p.date))} cy={y(plotValue(p, s.key))} r="4" className={s.dotClass}>
-                <title>{`${s.label} ${formatResult(eventId, p.value, s.key)} · ${p.competitionName} · ${formatIsoDate(p.date)}`}</title>
+                <title>{`${s.label} ${formatResult(eventId, p.value, s.key)} · ${p.competitionName} · ${dateLabel(p.competitionId, p.date)}`}</title>
               </circle>
             ))}
           </g>

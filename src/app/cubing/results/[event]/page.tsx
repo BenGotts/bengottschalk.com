@@ -11,8 +11,9 @@ import {
   eventIconClass,
   eventName,
   eventResultType,
-  formatIsoDate,
+  competitionDateLabels,
   formatResult,
+  getCompetitionHistory,
   getPerson,
   getResults,
   isKnownEvent,
@@ -39,7 +40,9 @@ export async function generateMetadata({ params }: PageProps<"/cubing/results/[e
   });
 }
 
-function PrCard({ label, value, rank, setAt }: { label: string; value: string; rank: Rank; setAt?: PrPoint }) {
+type DateLabel = ReturnType<typeof competitionDateLabels>;
+
+function PrCard({ label, value, rank, setAt, dateLabel }: { label: string; value: string; rank: Rank; setAt?: PrPoint; dateLabel: DateLabel }) {
   return (
     <div className="flex flex-col gap-4 rounded-box border border-base-300 bg-base-200 p-5">
       <div>
@@ -47,7 +50,7 @@ function PrCard({ label, value, rank, setAt }: { label: string; value: string; r
         <p className="font-mono text-4xl font-medium">{value}</p>
         {setAt && (
           <p className="mt-1 text-sm text-muted">
-            {setAt.competitionName} · {formatIsoDate(setAt.date)}
+            {setAt.competitionName} · {dateLabel(setAt.competitionId, setAt.date)}
           </p>
         )}
       </div>
@@ -67,7 +70,13 @@ function PrCard({ label, value, rank, setAt }: { label: string; value: string; r
   );
 }
 
-function PrHistory({ title, points, eventId, kind }: { title: string; points: PrPoint[]; eventId: string; kind: "single" | "average" }) {
+function PrHistory({ title, points, eventId, kind, dateLabel }: {
+  title: string;
+  points: PrPoint[];
+  eventId: string;
+  kind: "single" | "average";
+  dateLabel: DateLabel;
+}) {
   if (points.length === 0) return null;
   return (
     <section className="space-y-3">
@@ -79,9 +88,9 @@ function PrHistory({ title, points, eventId, kind }: { title: string; points: Pr
             {/* The date sits under the name on phones and in its own column from sm up. */}
             <span className="min-w-0 flex-1">
               {point.competitionName}
-              <span className="block text-sm text-muted sm:hidden">{formatIsoDate(point.date)}</span>
+              <span className="block text-sm text-muted sm:hidden">{dateLabel(point.competitionId, point.date)}</span>
             </span>
-            <span className="hidden shrink-0 text-sm text-muted sm:block">{formatIsoDate(point.date)}</span>
+            <span className="hidden shrink-0 text-sm text-muted sm:block">{dateLabel(point.competitionId, point.date)}</span>
           </li>
         ))}
       </ol>
@@ -121,7 +130,9 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
   // Retired events (e.g. 3x3x3 With Feet) aren't shown on the results pages.
   if (!isKnownEvent(event) || !isCurrentEvent(event)) notFound();
 
-  const [person, results] = await Promise.all([getPerson(), getResults(event)]);
+  const [person, results, history] = await Promise.all([getPerson(), getResults(event), getCompetitionHistory()]);
+  // Results only carry start dates; the history has each competition's end date.
+  const dateLabel = competitionDateLabels(history.ok ? history.data.history : []);
   const pr = person.ok ? person.data.personal_records[event] : undefined;
   if (person.ok && !pr) notFound();
 
@@ -143,9 +154,9 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
 
       {pr && (
         <section aria-label="Personal records" className="grid gap-4 sm:grid-cols-2">
-          <PrCard label="Single" value={formatResult(event, pr.single.best)} rank={pr.single} setAt={progression?.single.at(-1)} />
+          <PrCard label="Single" value={formatResult(event, pr.single.best)} rank={pr.single} setAt={progression?.single.at(-1)} dateLabel={dateLabel} />
           {pr.average && (
-            <PrCard label="Average" value={formatResult(event, pr.average.best, "average")} rank={pr.average} setAt={progression?.average.at(-1)} />
+            <PrCard label="Average" value={formatResult(event, pr.average.best, "average")} rank={pr.average} setAt={progression?.average.at(-1)} dateLabel={dateLabel} />
           )}
         </section>
       )}
@@ -155,12 +166,12 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
           {eventResultType(event) !== "multi" && (
             <section aria-labelledby="chart-heading" className="space-y-4 rounded-box border border-base-300 bg-base-200 p-5">
               <h2 id="chart-heading" className="text-xl font-bold">PR progression</h2>
-              <ProgressionChart eventId={event} progression={progression} />
+              <ProgressionChart eventId={event} progression={progression} dateLabel={dateLabel} />
             </section>
           )}
           <div className="grid gap-8 lg:grid-cols-2">
-            <PrHistory title="Single PR history" points={progression.single} eventId={event} kind="single" />
-            <PrHistory title="Average PR history" points={progression.average} eventId={event} kind="average" />
+            <PrHistory title="Single PR history" points={progression.single} eventId={event} kind="single" dateLabel={dateLabel} />
+            <PrHistory title="Average PR history" points={progression.average} eventId={event} kind="average" dateLabel={dateLabel} />
           </div>
         </>
       ) : (

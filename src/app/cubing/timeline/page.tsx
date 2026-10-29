@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/metadata";
 import StatTile from "@/components/StatTile";
 import PrTimeline from "@/components/results/PrTimeline";
 import { timelineRows } from "@/components/results/timelineRows";
-import { getCompetitionHistory, getResults, prDroughts, prStreaks, prTimeline, sortEventIds } from "@/lib/wca";
+import { competitionDateLabels, getCompetitionHistory, getResults, prDroughts, prStreaks, prTimeline, sortEventIds } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "PR timeline",
@@ -15,7 +15,7 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 const range = (from: string, to: string) => (from === to ? from : `${from} to ${to}`);
 
 export default async function TimelinePage() {
-  // The history is only for its cached "today", used to count days since the last PR.
+  // The history gives competitions' end dates, and a cached "today" for days since the last PR.
   const [results, history] = await Promise.all([getResults(), getCompetitionHistory()]);
   const timeline = results.ok ? prTimeline(results.data, sortEventIds) : [];
   const prCount = timeline.reduce((sum, entry) => sum + entry.prs.length, 0);
@@ -61,7 +61,7 @@ export default async function TimelinePage() {
       )}
 
       {results.ok ? (
-        <PrTimeline rows={timelineRows(timeline)} />
+        <PrTimeline rows={timelineRows(timeline, competitionDateLabels(history.ok ? history.data.history : []))} />
       ) : (
         <div role="alert" className="alert alert-warning">Results couldn&apos;t be loaded from the WCA right now. Please try again later.</div>
       )}

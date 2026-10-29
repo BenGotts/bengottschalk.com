@@ -4,7 +4,7 @@ import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import TravelStats from "@/components/competitions/TravelStats";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import { finishedCompetitions, formatIsoDate, getCompetitionHistory, getCompetitionsOverview, travelStats } from "@/lib/wca";
+import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview, travelStats } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
@@ -19,7 +19,7 @@ export default async function CompetitionsPage() {
   // Competitions still running at their venue stay out of the past list.
   const history = historyResult.ok
     ? finishedCompetitions(historyResult.data.history, competitions.ok ? competitions.data : null, historyResult.data.utcToday)
-        .map((entry) => ({ ...entry, date_range: formatIsoDate(entry.start_date) }))
+        .map((entry) => ({ ...entry, date_range: formatDateRange(entry.start_date, entry.end_date) }))
     : [];
 
   return (

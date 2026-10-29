@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDelegateStatus, formatImprovement, formatResult } from "./format";
+import { competitionDateLabels, formatDateRange, formatDelegateStatus, formatImprovement, formatResult } from "./format";
 
 // Values are Ben's personal records as returned by the WCA API.
 describe("formatResult", () => {
@@ -54,5 +54,25 @@ describe("formatImprovement", () => {
   it("has nothing for Multi-Blind or a non-improvement", () => {
     expect(formatImprovement("333mbf", 970360001, 960161200)).toBeNull();
     expect(formatImprovement("333", 900, 900)).toBeNull();
+  });
+});
+
+describe("formatDateRange", () => {
+  it("shows one date for a one-day competition", () => {
+    expect(formatDateRange("2025-05-01", "2025-05-01")).toBe("May 1, 2025");
+  });
+
+  it("shortens ranges within a month or a year", () => {
+    expect(formatDateRange("2025-05-01", "2025-05-03")).toBe("May 1 – 3, 2025");
+    expect(formatDateRange("2025-04-30", "2025-05-02")).toBe("Apr 30 – May 2, 2025");
+    expect(formatDateRange("2025-12-31", "2026-01-01")).toBe("Dec 31, 2025 – Jan 1, 2026");
+  });
+});
+
+describe("competitionDateLabels", () => {
+  it("looks up end dates by competition, falling back to the start date", () => {
+    const label = competitionDateLabels([{ id: "Weekend2025", end_date: "2025-05-04" }]);
+    expect(label("Weekend2025", "2025-05-03")).toBe("May 3 – 4, 2025");
+    expect(label("Unknown2025", "2025-05-03")).toBe("May 3, 2025");
   });
 });
