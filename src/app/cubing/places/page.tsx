@@ -47,7 +47,7 @@ export default async function PlacesPage() {
             <CompetitionMapLoader locations={locations} />
           </section>
 
-          <div className="grid items-start gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <StateProgress states={stateGoals(history, comingUp)} />
             <CountryProgress countries={countryGoals(history, comingUp)} />
           </div>

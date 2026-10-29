@@ -2,7 +2,7 @@
 // so it's shown apart, and upcoming competitions mark the places coming up next.
 import { US_STATE_SHAPES, VIEW_BOX as US_VIEW_BOX } from "@/content/maps/usStates";
 import { COUNTRY_SHAPES, VIEW_BOX as WORLD_VIEW_BOX } from "@/content/maps/worldCountries";
-import CountryList, { type CountryRow } from "./CountryList";
+import { ReactCountryFlag } from "react-country-flag";
 import { formatIsoDate, type CountryGoal, type GoalStatus, type StateGoal } from "@/lib/wca";
 
 // Map fills; "upcoming" uses the striped pattern below.
@@ -111,28 +111,17 @@ export function StateProgress({ states }: { states: StateGoal[] }) {
   );
 }
 
-function countryRow(country: CountryGoal): CountryRow {
-  const upcoming = country.status === "upcoming" && country.competition;
-  return {
-    iso2: country.iso2,
-    name: country.name,
-    detail: upcoming
-      ? `Coming up: ${country.competition!.name}, ${formatIsoDate(country.competition!.start_date)}`
-      : `${country.count} ${country.count === 1 ? "competition" : "competitions"} · since ${country.competition?.start_date.slice(0, 4)}`,
-    badge:
-      country.status === "delegated" ? { label: LABEL.delegated, className: "border-primary/60 bg-primary/10" }
-      : country.status === "upcoming" ? { label: LABEL.upcoming, className: "border-dashed border-secondary" }
-      : null,
-  };
-}
-
-/** Countries on a world map, with a list (small countries can be hard to spot on the map). */
+/**
+ * Countries on a world map, with a list (small countries can be hard to spot
+ * on the map). From lg up the card matches the states card's height and the
+ * list scrolls inside it; on phones the list scrolls in a fixed-height box.
+ */
 export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
   const competed = countries.filter((country) => country.status === "competed").length;
   const byIso2 = new Map(countries.map((country) => [country.iso2, country]));
 
   return (
-    <section aria-labelledby="countries-heading" className="space-y-4 rounded-box border border-base-300 bg-base-200 p-5">
+    <section aria-labelledby="countries-heading" className="flex flex-col gap-4 rounded-box border border-base-300 bg-base-200 p-5">
       <h2 id="countries-heading" className="scroll-mt-24 text-xl font-bold">Countries</h2>
       <p>
         <span className="font-display text-4xl font-bold text-primary">{competed}</span>
@@ -154,8 +143,32 @@ export function CountryProgress({ countries }: { countries: CountryGoal[] }) {
           );
         })}
       </svg>
-      <CountryList rows={countries.map(countryRow)} />
-      <Legend />
+      {/* Absolutely placed from lg up, so the list doesn't add to the card's height. */}
+      <div className="relative min-h-40 flex-1">
+        <ul
+          aria-label="Countries"
+          className="grid max-h-72 content-start gap-x-6 gap-y-3 overflow-y-auto sm:grid-cols-2 rounded-field border-y border-base-300 py-3 pr-2 lg:absolute lg:inset-0 lg:max-h-none"
+        >
+          {countries.map((country) => (
+            <li key={country.iso2} className="flex items-center gap-3">
+              <ReactCountryFlag countryCode={country.iso2} svg aria-hidden="true" className="shrink-0 rounded-[2px]" style={{ width: "1.5em", height: "1.125em" }} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{country.name}</span>
+                <span className="block text-xs text-muted">
+                  {country.status === "upcoming" && country.competition
+                    ? `Coming up: ${country.competition.name}, ${formatIsoDate(country.competition.start_date)}`
+                    : `${country.count} ${country.count === 1 ? "competition" : "competitions"} · since ${country.competition?.start_date.slice(0, 4)}`}
+                </span>
+              </span>
+              {country.status !== "competed" && (
+                <span className={`badge badge-sm whitespace-nowrap ${country.status === "delegated" ? "border-primary/60 bg-primary/10" : "border-dashed border-secondary"}`}>
+                  {LABEL[country.status as Exclude<GoalStatus, "none" | "competed">]}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }
