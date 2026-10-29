@@ -7,7 +7,10 @@ import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import type { TimelineItem, TimelineRow } from "./timelineRows";
 
-/** One PR, aligned towards the centre line: right-aligned on the singles side. */
+/**
+ * One PR, aligned towards the centre line: right-aligned on the singles side.
+ * A PR that was also a record (NR, CR, WR) is highlighted with its badge.
+ */
 function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
   const name = (
     <span className={`flex items-start gap-1.5 text-sm ${side === "left" ? "flex-row-reverse text-right" : ""}`}>
@@ -16,11 +19,16 @@ function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
     </span>
   );
   return (
-    <li className={`flex flex-col gap-0.5 ${side === "left" ? "items-end" : "items-start"}`}>
+    <li
+      className={`flex flex-col gap-0.5 rounded-box border px-2.5 py-1.5 ${side === "left" ? "items-end" : "items-start"} ${
+        item.record ? "border-accent/60 bg-accent/10" : "border-transparent"
+      }`}
+    >
       {/* Retired events have no results page to link to. */}
       {item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name}
       <span className={`flex items-baseline gap-2 ${side === "left" ? "flex-row-reverse" : ""}`}>
         <span className="font-mono text-lg font-medium">{item.value}</span>
+        {item.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{item.record}</span>}
         {item.first ? (
           <span className="text-xs text-muted">first</span>
         ) : (
@@ -33,7 +41,7 @@ function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
 
 function Side({ items, side, label }: { items: TimelineItem[]; side: "left" | "right"; label: string }) {
   return (
-    <ul aria-label={label} className={`space-y-3 ${side === "left" ? "pr-4 sm:pr-8" : "pl-4 sm:pl-8"}`}>
+    <ul aria-label={label} className={`space-y-1 ${side === "left" ? "pr-2 sm:pr-6" : "pl-2 sm:pl-6"}`}>
       {items.map((item) => <Pr key={item.key} item={item} side={side} />)}
     </ul>
   );

@@ -5,6 +5,8 @@ export interface PrPoint {
   date: string;
   competitionId: string;
   competitionName: string;
+  /** "NR", "CR" or "WR" (or a continental code like "NAR") when the PR was also a record. */
+  record?: string;
 }
 
 export interface Progression {
@@ -34,16 +36,21 @@ export function prProgression(results: PersonResult[]): Progression {
   const single: PrPoint[] = [];
   const average: PrPoint[] = [];
   for (const result of results.toSorted(chronological)) {
-    const point = (value: number): PrPoint => ({
+    const point = (value: number, record: string | null): PrPoint => ({
       value,
       date: result.competition_start_date,
       competitionId: result.competition_id,
       competitionName: result.competition_short_name,
+      ...(record && { record }),
     });
     const bestSingle = single.at(-1)?.value;
-    if (result.best > 0 && (bestSingle === undefined || result.best < bestSingle)) single.push(point(result.best));
+    if (result.best > 0 && (bestSingle === undefined || result.best < bestSingle)) {
+      single.push(point(result.best, result.regional_single_record));
+    }
     const bestAverage = average.at(-1)?.value;
-    if (result.average > 0 && (bestAverage === undefined || result.average < bestAverage)) average.push(point(result.average));
+    if (result.average > 0 && (bestAverage === undefined || result.average < bestAverage)) {
+      average.push(point(result.average, result.regional_average_record));
+    }
   }
   return { single, average };
 }
@@ -54,6 +61,8 @@ export interface TimelinePr {
   value: number;
   /** The record it beat; absent for the first result in that event. */
   previous?: number;
+  /** "NR", "CR", "WR" etc. when the PR was also a regional record. */
+  record?: string;
 }
 
 export interface TimelineEntry {
@@ -91,8 +100,15 @@ export function prTimeline(results: PersonResult[], eventOrder: (eventIds: strin
         const existing = prsAt.get(key);
         if (existing) {
           existing.value = point.value;
+          if (point.record) existing.record = point.record;
         } else {
-          const pr: TimelinePr = { eventId, kind, value: point.value, ...(previous !== undefined && { previous }) };
+          const pr: TimelinePr = {
+            eventId,
+            kind,
+            value: point.value,
+            ...(previous !== undefined && { previous }),
+            ...(point.record && { record: point.record }),
+          };
           prsAt.set(key, pr);
           entry.prs.push(pr);
         }
@@ -108,4 +124,43 @@ export function prTimeline(results: PersonResult[], eventOrder: (eventIds: strin
   return [...entries.values()].toSorted(
     (a, b) => b.date.localeCompare(a.date) || b.competitionId.localeCompare(a.competitionId),
   );
+}
+
+export interface StreakCompetition {
+  competitionId: string;
+  competitionName: string;
+  date: string;
+}
+
+export interface PrStreaks {
+  /** PR competitions in a row up to the latest competition (0 if it had no PR). */
+  current: number;
+  /** The longest run (the earliest, if tied), or null without any PR. */
+  longest: { length: number; from: StreakCompetition; to: StreakCompetition } | null;
+}
+
+/**
+ * Runs of consecutive competitions where at least one PR was set. Every
+ * competition with results counts, so one without a PR ends the run.
+ */
+export function prStreaks(results: PersonResult[], timeline: TimelineEntry[]): PrStreaks {
+  const withPrs = new Set(timeline.map((entry) => entry.competitionId));
+  const competitions = [
+    ...new Map(
+      results.map((result) => [
+        result.competition_id,
+        { competitionId: result.competition_id, competitionName: result.competition_short_name, date: result.competition_start_date },
+      ]),
+    ).values(),
+  ].toSorted((a, b) => a.date.localeCompare(b.date) || a.competitionId.localeCompare(b.competitionId));
+
+  let run = 0;
+  let longest: PrStreaks["longest"] = null;
+  competitions.forEach((competition, index) => {
+    run = withPrs.has(competition.competitionId) ? run + 1 : 0;
+    if (run > 0 && run > (longest?.length ?? 0)) {
+      longest = { length: run, from: competitions[index - run + 1], to: competition };
+    }
+  });
+  return { current: run, longest };
 }

@@ -49,7 +49,7 @@ export default async function CubingPage() {
   const stats = person.ok && historyResult.ok ? cubingStats(person.data, history) : null;
   const firstYear = history.findLast((entry) => entry.competed)?.start_date.slice(0, 4);
   const recent = history.slice(0, 4);
-  const latestPrs = results.ok ? prTimeline(results.data, sortEventIds).slice(0, 2) : [];
+  const latestPrs = results.ok ? prTimeline(results.data, sortEventIds).slice(0, 3) : [];
 
   return (
     <div className="space-y-14">
