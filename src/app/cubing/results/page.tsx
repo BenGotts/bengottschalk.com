@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import "@cubing/icons";
 import { MedalCounts } from "@/components/cubing/CubingStats";
+import PodiumTimeline from "@/components/results/PodiumTimeline";
+import { podiumRows } from "@/components/results/podiumRows";
 import PrTable from "@/components/results/PrTable";
 import {
   competitionDateLabels,
-  eventIconClass,
   eventName,
   formatResult,
   getCompetitionHistory,
@@ -13,7 +14,6 @@ import {
   getRegionalRecords,
   getResults,
   podiums,
-  type Medal,
 } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
 
@@ -85,61 +85,9 @@ export default async function ResultsPage() {
             <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
             <span className="text-sm text-muted"><MedalCounts medals={medals} /></span>
           </div>
-          <PodiumList podiums={podiumList.slice(0, PODIUMS_SHOWN)} dateLabel={dateLabel} />
-          {podiumList.length > PODIUMS_SHOWN && (
-            <details className="group">
-              <summary className="btn btn-sm border-base-300 bg-base-200 hover:border-primary group-open:mb-3">
-                <span className="group-open:hidden">Show all {podiumList.length} podiums</span>
-                <span className="hidden group-open:inline">Show fewer</span>
-              </summary>
-              <PodiumList podiums={podiumList.slice(PODIUMS_SHOWN)} dateLabel={dateLabel} />
-            </details>
-          )}
+          <PodiumTimeline rows={podiumRows(podiumList, dateLabel)} />
         </section>
       )}
     </div>
   )
-}
-
-type DateLabel = ReturnType<typeof competitionDateLabels>;
-
-const PODIUMS_SHOWN = 8;
-const AVERAGE_FORMATS = new Set(["a", "m"]);
-
-const MEDAL_STYLES: Record<Medal, { label: string; dot: string }> = {
-  gold: { label: "1st", dot: "bg-medal-gold" },
-  silver: { label: "2nd", dot: "bg-medal-silver" },
-  bronze: { label: "3rd", dot: "bg-medal-bronze" },
-};
-
-function PodiumList({ podiums: list, dateLabel }: { podiums: ReturnType<typeof podiums>; dateLabel: DateLabel }) {
-  return (
-    <ul className="grid gap-3 md:grid-cols-2">
-      {list.map(({ medal, result }) => {
-        // Average formats (Ao5, Mo3) rank by the average; best-of formats, and
-        // rounds without a valid average, by the single.
-        const kind = AVERAGE_FORMATS.has(result.format_id) && result.average > 0 ? "average" : "single";
-        return (
-          <li key={result.id} className="flex items-center gap-3 rounded-box border border-base-300 bg-base-200 px-4 py-3">
-            <span className="flex w-12 shrink-0 items-center gap-1.5 text-sm font-semibold">
-              <span className={`size-2.5 rounded-full ${MEDAL_STYLES[medal].dot}`} aria-hidden="true" />
-              {MEDAL_STYLES[medal].label}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2 font-medium">
-                <span className={eventIconClass(result.event_id)} aria-hidden="true" />
-                {eventName(result.event_id)}
-                <span className="font-mono text-sm font-normal text-muted">
-                  {formatResult(result.event_id, kind === "average" ? result.average : result.best, kind)}
-                </span>
-              </span>
-              <span className="block truncate text-sm text-muted">
-                {result.competition_short_name} · {dateLabel(result.competition_id, result.competition_start_date)}
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
 }
