@@ -1,0 +1,48 @@
+# Points preview.bengottschalk.com at the newest successful Vercel preview
+# deployment, from whichever branch it was built. Production deploys are ignored.
+#
+# Calls the Vercel API directly rather than the CLI, since the CLI first loads
+# the user account, which a token limited to this project can't do.
+#
+# Needs a VERCEL_TOKEN repository secret (vercel.com/account/tokens). The
+# project lives in the benjamin-gottschalks-projects Vercel team; a VERCEL_SCOPE
+# repository variable overrides that if it ever moves.
+name: Preview alias
+
+on: deployment_status
+
+permissions:
+  contents: read
+
+# Run one at a time in the order deployments finish, so the newest one wins.
+concurrency:
+  group: preview-alias
+  cancel-in-progress: false
+
+jobs:
+  alias:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      startsWith(github.event.deployment.environment, 'Preview')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Alias preview.bengottschalk.com
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE || 'benjamin-gottschalks-projects' }}
+          DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          SHA: ${{ github.event.deployment.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Vercel reports the commit, not the branch; look the branch up for the summary.
+          BRANCH=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/branches-where-head" --jq '.[0].name // empty' || true)
+          BRANCH=${BRANCH:-$SHA}
+          echo "Aliasing $DEPLOYMENT_URL ($BRANCH)"
+          curl --silent --show-error --fail-with-body -X POST \
+            "https://api.vercel.com/v2/deployments/${DEPLOYMENT_URL#https://}/aliases?slug=$VERCEL_SCOPE" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"alias":"preview.bengottschalk.com"}'
+          echo
+          echo "preview.bengottschalk.com now shows \`$BRANCH\`: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"

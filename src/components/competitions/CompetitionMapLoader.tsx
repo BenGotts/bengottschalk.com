@@ -6,7 +6,7 @@ import type { MapLocation } from "@/lib/wca/competitions";
 
 // <output> has the implicit "status" role, so screen readers announce it.
 const placeholder = (
-  <output className="skeleton block h-[31rem] w-full rounded-box">
+  <output className="skeleton block h-[23rem] w-full sm:h-[31rem] rounded-box">
     <span className="sr-only">Loading map</span>
   </output>
 );

@@ -153,3 +153,15 @@
     cursor: pointer;
   }
 }
+
+/* Phone menu (SiteNav): the panel drops in under the header over a fading backdrop. */
+@media (prefers-reduced-motion: no-preference) {
+  .menu-panel { animation: menu-panel-in 180ms ease-out; }
+  .menu-backdrop { animation: menu-backdrop-in 180ms ease-out; }
+}
+@keyframes menu-panel-in {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+}
+@keyframes menu-backdrop-in {
+  from { opacity: 0; }
+}

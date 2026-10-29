@@ -37,3 +37,6 @@ next-env.d.ts
 
 # secrets
 .env
+
+# Written by `next dev`
+AGENTS.md
