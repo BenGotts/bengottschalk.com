@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-5 py-16 text-center">
       <ScrambleCube
-        rowClassName="my-6 flex items-center gap-6 font-display text-8xl font-bold leading-none sm:gap-10 sm:text-9xl"
+        rowClassName="my-10 flex items-center gap-6 font-display text-8xl font-bold leading-none sm:gap-10 sm:text-9xl"
         before={<span>4</span>}
         after={<span>4</span>}
       />

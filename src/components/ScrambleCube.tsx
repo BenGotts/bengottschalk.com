@@ -24,8 +24,8 @@ function Move({ move, state }: { move: string; state: "current" | "done" | "todo
 }
 
 /**
- * The self-solving cube with my PR scramble and solution written out
- * underneath, following along move by move. `before` and `after` sit beside
+ * The self-solving cube with my PR scramble written out above it and my
+ * solution below, following along move by move. `before` and `after` sit beside
  * the cube in a row (e.g. the 4s of "404").
  */
 export default function ScrambleCube({ before, after, rowClassName = "" }: {
@@ -47,36 +47,33 @@ export default function ScrambleCube({ before, after, rowClassName = "" }: {
 
   return (
     <>
+      <div className="w-full max-w-lg space-y-1 font-mono text-sm">
+        <p className="font-sans text-xs font-semibold uppercase tracking-wider text-muted">My 3x3 PR scramble</p>
+        <p className="flex flex-wrap justify-center gap-x-2 gap-y-1" aria-label={`My 3x3 PR scramble: ${PR_SCRAMBLE}`}>
+          {SCRAMBLE_MOVES.map((move, index) => (
+            <span key={index} aria-hidden="true"><Move move={move} state={scrambleState(index)} /></span>
+          ))}
+        </p>
+      </div>
       <div aria-hidden="true" className={rowClassName}>
         {before}
         <TwistyCube onStep={onStep} />
         {after}
       </div>
-      <figure className="w-full max-w-lg space-y-3 font-mono text-sm">
-        <figcaption className="font-sans text-xs font-semibold uppercase tracking-wider text-muted">My 3x3 PR</figcaption>
-        <div className="space-y-1">
-          <p className="font-sans text-xs text-muted">Scramble</p>
-          <p className="flex flex-wrap justify-center gap-x-2 gap-y-1" aria-label={`Scramble: ${PR_SCRAMBLE}`}>
-            {SCRAMBLE_MOVES.map((move, index) => (
-              <span key={index} aria-hidden="true"><Move move={move} state={scrambleState(index)} /></span>
-            ))}
-          </p>
-        </div>
-        <div className="space-y-1">
-          <p className="font-sans text-xs text-muted">Solution</p>
-          <ol className="space-y-1">
-            {SOLUTION_STEPS.map((solutionStep) => (
-              <li key={solutionStep.label} className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1">
-                <span className="sr-only">{`${solutionStep.label}: ${solutionStep.moves.map((m) => m.move).join(" ")}`}</span>
-                <span aria-hidden="true" className="contents">
-                  {solutionStep.moves.map(({ move, index }) => <Move key={index} move={move} state={solutionState(index)} />)}
-                  <span className="font-sans text-xs text-muted">{`// ${solutionStep.label}`}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </figure>
+      <div className="w-full max-w-lg space-y-1 font-mono text-sm">
+        <p className="font-sans text-xs font-semibold uppercase tracking-wider text-muted">My solution</p>
+        <ol className="space-y-1">
+          {SOLUTION_STEPS.map((solutionStep) => (
+            <li key={solutionStep.label} className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1">
+              <span className="sr-only">{`${solutionStep.label}: ${solutionStep.moves.map((m) => m.move).join(" ")}`}</span>
+              <span aria-hidden="true" className="contents">
+                {solutionStep.moves.map(({ move, index }) => <Move key={index} move={move} state={solutionState(index)} />)}
+                <span className="font-sans text-xs text-muted">{`// ${solutionStep.label}`}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </>
   );
 }
