@@ -106,17 +106,13 @@ export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<Co
   const utcToday = utcDateString(now);
   const [registered, delegated] = await Promise.all([
     fetchWca(`/v0/users/${wcaId}?upcoming_competitions=true&ongoing_competitions=true`, UserCompetitionsSchema),
-    // Shared with the history, so a build or refresh asks the WCA once.
-    getDelegatedCompetitions(wcaId),
+    // The WCA filters with UTC dates; asking from yesterday keeps a competition
+    // that is still running at its venue after UTC midnight.
+    fetchDelegatedCompetitions(wcaId, { ongoingAndFuture: addDays(utcToday, -1) }),
   ]);
 
   if (!registered.ok) return settle(registered, "hours");
-  // From yesterday (UTC), so a competition still running at its venue after
-  // UTC midnight stays in.
-  const since = addDays(utcToday, -1);
-  const delegatedData = delegated.ok
-    ? delegated.data.filter((competition) => competition.end_date >= since)
-    : [];
+  const delegatedData = delegated.ok ? delegated.data : [];
 
   // Only competitions near today need a venue time zone to classify.
   const near = new Map<string, Competition>();
@@ -170,7 +166,7 @@ export async function getCompetitionHistory(
   const utcToday = utcDateString(new Date());
   const [competed, delegated] = await Promise.all([
     fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
-    getDelegatedCompetitions(wcaId),
+    fetchDelegatedCompetitions(wcaId),
   ]);
   if (!competed.ok) return settle(competed, "days");
   if (!delegated.ok) return settle(delegated, "days");
@@ -182,30 +178,19 @@ export async function getCompetitionHistory(
   );
 }
 
-/**
- * Every competition the person has delegated, past and future. Both the
- * history and the overview use it; hours keeps new assignments showing soon.
- */
+/** Every competition the person has delegated, past and future. */
 export async function getDelegatedCompetitions(wcaId = WCA_ID): Promise<Result<Competition[]>> {
   "use cache";
   cacheTag("wca", `wca-delegated-${wcaId}`);
-  return settle(await fetchDelegatedCompetitions(wcaId), "hours");
+  return settle(await fetchDelegatedCompetitions(wcaId), "days");
 }
 
-/**
- * All results, or one event's results. Oldest first, as the API returns them.
- * One event's are picked from the cached full list rather than asked for
- * separately, so a build makes one request instead of one per event page.
- */
+/** All results, or one event's results. Oldest first, as the API returns them. */
 export async function getResults(eventId?: string, wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
   "use cache";
   cacheTag("wca", `wca-results-${wcaId}`);
-  if (eventId) {
-    const all = await getResults(undefined, wcaId);
-    return settle(all.ok ? ok(all.data.filter((result) => result.event_id === eventId)) : all, "days");
-  }
-  // Every result in every event is a large, slow response.
-  return settle(await fetchWca(`/v1/persons/${wcaId}/results`, z.array(PersonResultSchema), { timeoutMs: 40_000 }), "days");
+  const query = eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
+  return settle(await fetchWca(`/v1/persons/${wcaId}/results${query}`, z.array(PersonResultSchema)), "days");
 }
 
 /** Results that set a regional record (NR, CR or WR). */
@@ -270,8 +255,12 @@ export function pickDelegateRole(roles: UserRole[]): DelegateRole | null {
 
 const PAGE_SIZE = 1000; // WCA API maximum
 
-async function fetchDelegatedCompetitions(wcaId: string): Promise<Result<Competition[]>> {
+async function fetchDelegatedCompetitions(
+  wcaId: string,
+  { ongoingAndFuture }: { ongoingAndFuture?: string } = {},
+): Promise<Result<Competition[]>> {
   const params = new URLSearchParams({ delegate: wcaId, per_page: String(PAGE_SIZE) });
+  if (ongoingAndFuture) params.set("ongoing_and_future", ongoingAndFuture);
 
   const competitions: Competition[] = [];
   for (let page = 1; ; page++) {
