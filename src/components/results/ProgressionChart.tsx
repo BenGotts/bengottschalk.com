@@ -1,8 +1,12 @@
 import { eventResultType, formatResult, type PrPoint, type Progression } from "@/lib/wca";
 
-const WIDTH = 720;
-const HEIGHT = 300;
-const PAD = { left: 64, right: 20, top: 16, bottom: 32 };
+// Phones get their own drawing at about their real size, so the labels stay
+// readable instead of shrinking with a wide chart.
+const LAYOUTS = {
+  wide: { width: 720, height: 300, pad: { left: 64, right: 20, top: 16, bottom: 32 }, maxYears: 8, dot: 4, stroke: 2.5 },
+  narrow: { width: 320, height: 240, pad: { left: 58, right: 8, top: 12, bottom: 28 }, maxYears: 4, dot: 3.5, stroke: 2 },
+};
+type Layout = (typeof LAYOUTS)["wide"];
 const DAY_MS = 86_400_000;
 
 /** Round axis ticks (steps of 1, 2 or 5 × 10ⁿ) that cover [min, max] in about four steps. */
@@ -27,8 +31,8 @@ interface Series {
 }
 
 /**
- * Step chart of PR history. Faster results sit higher, so the line climbs as
- * PRs improve. FMC averages (moves × 100) are plotted in moves to share the
+ * Step chart of PR history. Faster results sit lower, so the line steps down
+ * as PRs improve. FMC averages (moves × 100) are plotted in moves to share the
  * axis with singles. Not used for Multi-Blind, whose values aren't linear.
  */
 export default function ProgressionChart({ eventId, progression, dateLabel }: {
@@ -53,26 +57,58 @@ export default function ProgressionChart({ eventId, progression, dateLabel }: {
   const yTicks = niceTicks(Math.min(...values), Math.max(...values));
   const [vMin, vMax] = [yTicks[0], yTicks.at(-1)!];
 
-  const plotW = WIDTH - PAD.left - PAD.right;
-  const plotH = HEIGHT - PAD.top - PAD.bottom;
-  const x = (t: number) => PAD.left + ((t - tMin) / (tMax - tMin)) * plotW;
-  const y = (v: number) => PAD.top + ((v - vMin) / (vMax - vMin)) * plotH;
-
   const tickLabel = (v: number) => (isMoves ? v.toFixed(1).replace(/\.0$/, "") : formatResult(eventId, Math.round(v)));
-  const firstYear = new Date(tMin).getUTCFullYear() + 1;
-  const lastYear = new Date(tMax).getUTCFullYear();
-  const yearStep = Math.max(1, Math.ceil((lastYear - firstYear + 1) / 8));
-  const years: number[] = [];
-  for (let year = firstYear; year <= lastYear; year += yearStep) years.push(year);
 
-  const path = (s: Series) =>
-    s.points
-      .map((p, i) => {
-        const px = x(Date.parse(p.date)).toFixed(1);
-        const py = y(plotValue(p, s.key)).toFixed(1);
-        return i === 0 ? `M${px} ${py}` : `H${px} V${py}`;
-      })
-      .join(" ");
+  const plot = (layout: Layout, className: string) => {
+    const { width, height, pad } = layout;
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const x = (t: number) => pad.left + ((t - tMin) / (tMax - tMin)) * plotW;
+    const y = (v: number) => pad.top + ((vMax - v) / (vMax - vMin)) * plotH;
+
+    const firstYear = new Date(tMin).getUTCFullYear() + 1;
+    const lastYear = new Date(tMax).getUTCFullYear();
+    const yearStep = Math.max(1, Math.ceil((lastYear - firstYear + 1) / layout.maxYears));
+    const years: number[] = [];
+    for (let year = firstYear; year <= lastYear; year += yearStep) years.push(year);
+
+    const path = (s: Series) =>
+      s.points
+        .map((p, i) => {
+          const px = x(Date.parse(p.date)).toFixed(1);
+          const py = y(plotValue(p, s.key)).toFixed(1);
+          return i === 0 ? `M${px} ${py}` : `H${px} V${py}`;
+        })
+        .join(" ");
+
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className={`w-full ${className}`} aria-hidden="true">
+        {yTicks.map((v) => (
+          <g key={v}>
+            <line x1={pad.left} x2={width - pad.right} y1={y(v)} y2={y(v)} className="stroke-base-300" strokeWidth="1" />
+            <text x={pad.left - 8} y={y(v)} textAnchor="end" dominantBaseline="middle" className="fill-muted font-mono text-[12px]">
+              {tickLabel(v)}
+            </text>
+          </g>
+        ))}
+        {years.map((year) => (
+          <text key={year} x={x(Date.UTC(year, 0, 1))} y={height - 8} textAnchor="middle" className="fill-muted text-[12px]">
+            {year}
+          </text>
+        ))}
+        {series.map((s) => (
+          <g key={s.key}>
+            <path d={path(s)} fill="none" className={s.lineClass} strokeWidth={layout.stroke} strokeLinejoin="round" />
+            {s.points.map((p) => (
+              <circle key={`${p.competitionId}-${p.value}`} cx={x(Date.parse(p.date))} cy={y(plotValue(p, s.key))} r={layout.dot} className={s.dotClass}>
+                <title>{`${s.label} ${formatResult(eventId, p.value, s.key)} · ${p.competitionName} · ${dateLabel(p.competitionId, p.date)}`}</title>
+              </circle>
+            ))}
+          </g>
+        ))}
+      </svg>
+    );
+  };
 
   const summary = series
     .map((s) => `${s.label}: ${s.points.length} PRs, from ${formatResult(eventId, s.points[0].value, s.key)} to ${formatResult(eventId, s.points.at(-1)!.value, s.key)}`)
@@ -80,36 +116,10 @@ export default function ProgressionChart({ eventId, progression, dateLabel }: {
 
   return (
     <figure className="space-y-3">
-      {/* The PR history lists below the chart carry the same data for screen readers. */}
+      {/* The PR history below the chart carries the same data for screen readers. */}
       <p className="sr-only">{`PR progression. ${summary}.`}</p>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" aria-hidden="true">
-        {yTicks.map((v) => (
-          <g key={v}>
-            <line x1={PAD.left} x2={WIDTH - PAD.right} y1={y(v)} y2={y(v)} className="stroke-base-300" strokeWidth="1" />
-            <text x={PAD.left - 10} y={y(v)} textAnchor="end" dominantBaseline="middle" className="fill-muted font-mono text-[12px]">
-              {tickLabel(v)}
-            </text>
-          </g>
-        ))}
-        {years.map((year) => {
-          const yx = x(Date.UTC(year, 0, 1));
-          return (
-            <text key={year} x={yx} y={HEIGHT - 8} textAnchor="middle" className="fill-muted text-[12px]">
-              {year}
-            </text>
-          );
-        })}
-        {series.map((s) => (
-          <g key={s.key}>
-            <path d={path(s)} fill="none" className={s.lineClass} strokeWidth="2.5" strokeLinejoin="round" />
-            {s.points.map((p) => (
-              <circle key={`${p.competitionId}-${p.value}`} cx={x(Date.parse(p.date))} cy={y(plotValue(p, s.key))} r="4" className={s.dotClass}>
-                <title>{`${s.label} ${formatResult(eventId, p.value, s.key)} · ${p.competitionName} · ${dateLabel(p.competitionId, p.date)}`}</title>
-              </circle>
-            ))}
-          </g>
-        ))}
-      </svg>
+      {plot(LAYOUTS.narrow, "sm:hidden")}
+      {plot(LAYOUTS.wide, "hidden sm:block")}
       <figcaption className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
         {series.map((s) => (
           <span key={s.key} className="flex items-center gap-2">
@@ -117,7 +127,6 @@ export default function ProgressionChart({ eventId, progression, dateLabel }: {
             {s.label}
           </span>
         ))}
-        <span>Higher is faster.</span>
       </figcaption>
     </figure>
   );

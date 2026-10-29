@@ -6,7 +6,9 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LuArrowLeft, LuArrowRight } from "react-icons/lu";
 import EventSwitcher from "@/components/results/EventSwitcher";
+import PrTimeline from "@/components/results/PrTimeline";
 import ProgressionChart from "@/components/results/ProgressionChart";
+import { timelineRows } from "@/components/results/timelineRows";
 import {
   eventIconClass,
   eventName,
@@ -18,6 +20,8 @@ import {
   getResults,
   isKnownEvent,
   prProgression,
+  prTimeline,
+  sortEventIds,
   currentEventIds,
   isCurrentEvent,
   type PrPoint,
@@ -70,34 +74,6 @@ function PrCard({ label, value, rank, setAt, dateLabel }: { label: string; value
   );
 }
 
-function PrHistory({ title, points, eventId, kind, dateLabel }: {
-  title: string;
-  points: PrPoint[];
-  eventId: string;
-  kind: "single" | "average";
-  dateLabel: DateLabel;
-}) {
-  if (points.length === 0) return null;
-  return (
-    <section className="space-y-3">
-      <h2 className="text-xl font-bold">{title}</h2>
-      <ol className="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
-        {points.toReversed().map((point) => (
-          <li key={`${point.competitionId}-${point.value}`} className="flex items-baseline gap-4 px-4 py-2.5">
-            <span className="w-20 shrink-0 font-mono font-medium sm:w-24">{formatResult(eventId, point.value, kind)}</span>
-            {/* The date sits under the name on phones and in its own column from sm up. */}
-            <span className="min-w-0 flex-1">
-              {point.competitionName}
-              <span className="block text-sm text-muted sm:hidden">{dateLabel(point.competitionId, point.date)}</span>
-            </span>
-            <span className="hidden shrink-0 text-sm text-muted sm:block">{dateLabel(point.competitionId, point.date)}</span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
 // Same shape as the page, shown only for event URLs that weren't prerendered.
 function EventResultsSkeleton() {
   return (
@@ -137,6 +113,7 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
   if (person.ok && !pr) notFound();
 
   const progression = results.ok ? prProgression(results.data) : null;
+  const timeline = results.ok ? prTimeline(results.data, sortEventIds) : [];
   const eventIds = person.ok ? currentEventIds(Object.keys(person.data.personal_records)) : [];
   const index = eventIds.indexOf(event);
   const previous = index > 0 ? eventIds[index - 1] : undefined;
@@ -169,10 +146,10 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
               <ProgressionChart eventId={event} progression={progression} dateLabel={dateLabel} />
             </section>
           )}
-          <div className="grid gap-8 lg:grid-cols-2">
-            <PrHistory title="Single PR history" points={progression.single} eventId={event} kind="single" dateLabel={dateLabel} />
-            <PrHistory title="Average PR history" points={progression.average} eventId={event} kind="average" dateLabel={dateLabel} />
-          </div>
+          <section aria-labelledby="history-heading" className="space-y-4">
+            <h2 id="history-heading" className="text-xl font-bold">PR history</h2>
+            <PrTimeline rows={timelineRows(timeline, dateLabel)} showEvent={false} />
+          </section>
         </>
       ) : (
         <div role="alert" className="alert alert-warning">Result history couldn&apos;t be loaded from the WCA right now.</div>

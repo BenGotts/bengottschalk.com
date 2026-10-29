@@ -3,6 +3,7 @@
 import "@cubing/icons";
 import Link from "next/link";
 import { Fragment } from "react";
+import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import type { TimelineItem, TimelineRow } from "./timelineRows";
@@ -10,9 +11,10 @@ import type { TimelineItem, TimelineRow } from "./timelineRows";
 /**
  * One PR, aligned towards the centre line: right-aligned on the singles side.
  * A PR that was also a record (NR, CR, WR) is highlighted with its badge, and
- * one that broke a barrier gets a milestone badge (e.g. "Sub-10").
+ * one that broke a barrier gets a milestone badge (e.g. "Sub-10"). An event's
+ * first result gets a "First" badge.
  */
-function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
+function Pr({ item, side, showEvent }: { item: TimelineItem; side: "left" | "right"; showEvent: boolean }) {
   const name = (
     <span className={`flex items-start gap-1.5 text-sm ${side === "left" ? "flex-row-reverse text-right" : ""}`}>
       <span className={`${item.iconClass} mt-0.5 shrink-0`} aria-hidden="true" />
@@ -26,18 +28,15 @@ function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
       }`}
     >
       {/* Retired events have no results page to link to. */}
-      {item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name}
+      {showEvent && (item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name)}
       <span className={`flex items-baseline gap-2 ${side === "left" ? "flex-row-reverse" : ""}`}>
         <span className="font-mono text-lg font-medium">{item.value}</span>
-        {item.first ? (
-          // "First success" already says it for Blindfolded.
-          !item.milestone && <span className="text-xs text-muted">first</span>
-        ) : (
-          item.improvement && <span className="font-mono text-xs text-success">{item.improvement}</span>
-        )}
+        {item.improvement && <span className="font-mono text-xs text-success">{item.improvement}</span>}
       </span>
-      {(item.record || item.milestone) && (
+      {/* "First success" already says it for Blindfolded, so it replaces the "First" badge. */}
+      {(item.record || item.milestone || item.first) && (
         <span className={`flex flex-wrap gap-1 ${side === "left" ? "justify-end" : ""}`}>
+          {item.first && !item.milestone && <span className="badge badge-sm border-secondary bg-secondary/15 font-semibold">First</span>}
           {item.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{item.record}</span>}
           {item.milestone && <span className="badge badge-sm border-primary bg-primary/15 font-semibold whitespace-nowrap">{item.milestone}</span>}
         </span>
@@ -46,10 +45,10 @@ function Pr({ item, side }: { item: TimelineItem; side: "left" | "right" }) {
   );
 }
 
-function Side({ items, side, label }: { items: TimelineItem[]; side: "left" | "right"; label: string }) {
+function Side({ items, side, label, showEvent }: { items: TimelineItem[]; side: "left" | "right"; label: string; showEvent: boolean }) {
   return (
     <ul aria-label={label} className={`space-y-1 ${side === "left" ? "pr-2 sm:pr-6" : "pl-2 sm:pl-6"}`}>
-      {items.map((item) => <Pr key={item.key} item={item} side={side} />)}
+      {items.map((item) => <Pr key={item.key} item={item} side={side} showEvent={showEvent} />)}
     </ul>
   );
 }
@@ -58,9 +57,15 @@ function Side({ items, side, label }: { items: TimelineItem[]; side: "left" | "r
  * PRs down a centre line, singles on the left and averages on the right, one
  * node per competition. More competitions load as you scroll. With `compact`
  * (the Overview's teaser) the column labels aren't pinned and there are no
- * year markers.
+ * year markers or back-to-top button. `showEvent={false}` leaves out each
+ * PR's event name, for an event's own page.
  */
-export default function PrTimeline({ rows, pageSize = 12, compact = false }: { rows: TimelineRow[]; pageSize?: number; compact?: boolean }) {
+export default function PrTimeline({ rows, pageSize = 12, compact = false, showEvent = true }: {
+  rows: TimelineRow[];
+  pageSize?: number;
+  compact?: boolean;
+  showEvent?: boolean;
+}) {
   const { visible, hasMore, showMore, sentinelRef } = useIncrementalList(rows, pageSize);
 
   return (
@@ -97,8 +102,8 @@ export default function PrTimeline({ rows, pageSize = 12, compact = false }: { r
                   </h3>
                 </div>
                 <div className="grid grid-cols-2">
-                  <Side items={row.singles} side="left" label="Single PRs" />
-                  <Side items={row.averages} side="right" label="Average PRs" />
+                  <Side items={row.singles} side="left" label="Single PRs" showEvent={showEvent} />
+                  <Side items={row.averages} side="right" label="Average PRs" showEvent={showEvent} />
                 </div>
               </li>
             </Fragment>
@@ -118,6 +123,9 @@ export default function PrTimeline({ rows, pageSize = 12, compact = false }: { r
           </button>
         </div>
       )}
+
+      {/* The full timeline runs long, so offer a way back up. */}
+      {!compact && <BackToTop />}
     </div>
   );
 }
