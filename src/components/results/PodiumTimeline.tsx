@@ -2,7 +2,7 @@
 
 import "@cubing/icons";
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, useMemo, useState } from "react";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
@@ -40,15 +40,48 @@ function Medal({ item }: { item: PodiumItem }) {
   );
 }
 
+type Placement = "all" | PodiumItem["medal"];
+const PLACEMENTS: Placement[] = ["all", "gold", "silver", "bronze"];
+
 /**
  * Podiums down a centre line, one node per competition with its medals below,
- * newest first. More competitions load as you scroll.
+ * newest first, filterable by placement. More competitions load as you scroll.
  */
 export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRow[]; pageSize?: number }) {
-  const { visible, hasMore, showMore, sentinelRef } = useIncrementalList(rows, pageSize);
+  const [placement, setPlacement] = useState<Placement>("all");
+  const counts = useMemo(() => {
+    const medals = rows.flatMap((row) => row.medals);
+    return Object.fromEntries(PLACEMENTS.map((p) => [p, p === "all" ? medals.length : medals.filter((m) => m.medal === p).length])) as Record<Placement, number>;
+  }, [rows]);
+  // Competitions without a podium of the chosen placement drop out.
+  const filtered = useMemo(
+    () =>
+      placement === "all"
+        ? rows
+        : rows.map((row) => ({ ...row, medals: row.medals.filter((item) => item.medal === placement) })).filter((row) => row.medals.length > 0),
+    [rows, placement],
+  );
+  const { visible, hasMore, showMore, sentinelRef } = useIncrementalList(filtered, pageSize);
 
   return (
-    <div>
+    <div className="space-y-6">
+      <fieldset className="join">
+        <legend className="sr-only">Show podiums by placement</legend>
+        {PLACEMENTS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={placement === p}
+            onClick={() => setPlacement(p)}
+            className={`btn btn-sm join-item gap-1.5 ${placement === p ? "btn-primary" : "border-base-300 bg-base-200"}`}
+          >
+            {p !== "all" && <span className={`size-2.5 rounded-full ${MEDAL_STYLES[p].dot}`} aria-hidden="true" />}
+            {p === "all" ? "All" : MEDAL_STYLES[p].label}
+            <span className="font-normal opacity-70">{counts[p]}</span>
+          </button>
+        ))}
+      </fieldset>
+
       <ol className="relative">
         {/* The centre line. */}
         <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-base-300" aria-hidden="true" />

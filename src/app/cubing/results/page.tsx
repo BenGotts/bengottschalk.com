@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import "@cubing/icons";
-import { MedalCounts } from "@/components/cubing/CubingStats";
 import PodiumTimeline from "@/components/results/PodiumTimeline";
 import { podiumRows } from "@/components/results/podiumRows";
 import PrTable from "@/components/results/PrTable";
@@ -37,7 +36,7 @@ export default async function ResultsPage() {
     );
   }
 
-  const { medals, personal_records, person: profile } = person.data;
+  const { personal_records, person: profile } = person.data;
   const podiumList = results.ok ? podiums(results.data) : [];
   const recordRows = regionalRecords.ok
     ? regionalRecords.data.flatMap((result) => [
@@ -81,10 +80,8 @@ export default async function ResultsPage() {
 
       {podiumList.length > 0 && (
         <section aria-labelledby="podiums-heading" className="space-y-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
-            <span className="text-sm text-muted"><MedalCounts medals={medals} /></span>
-          </div>
+          {/* The placement filter below shows the medal counts. */}
+          <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
           <PodiumTimeline rows={podiumRows(podiumList, dateLabel)} />
         </section>
       )}
