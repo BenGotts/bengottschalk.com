@@ -31,7 +31,7 @@ export async function contact(formData: unknown) {
       to: sendTo,
       replyTo: email,
       subject: topic ? `${topic}: message from ${name}` : `Contact Form from ${name}`,
-      react: ContactEmailTemplate({ name, message, topic })
+      react: ContactEmailTemplate({ name, email, message, topic, sentAt: new Date() })
     })
     if (error) {
       console.error(error);
