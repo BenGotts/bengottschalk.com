@@ -3,13 +3,12 @@ import { pageMetadata } from "@/lib/metadata";
 import BackToTop from "@/components/BackToTop";
 import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
-import TravelStats from "@/components/competitions/TravelStats";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview, travelStats } from "@/lib/wca";
+import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
-  description: "Where Ben Gottschalk is competing, delegating, and organizing next, plus every WCA competition he has attended, on a map.",
+  description: "Where Ben Gottschalk is competing, delegating, and organizing next, plus every WCA competition he has attended.",
   path: "/cubing/competitions",
 });
 
@@ -49,9 +48,7 @@ export default async function CompetitionsPage() {
         </div>
       )}
 
-      {historyResult.ok && history.length > 1 && <TravelStats stats={travelStats(history)} />}
-
-      {historyResult.ok && <CompetitionExplorer ongoing={ongoing} upcoming={upcoming} history={history} />}
+      {historyResult.ok && <CompetitionExplorer history={history} />}
 
       <BackToTop />
     </div>
