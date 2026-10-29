@@ -190,7 +190,9 @@ export async function getResults(eventId?: string, wcaId = WCA_ID): Promise<Resu
   "use cache";
   cacheTag("wca", `wca-results-${wcaId}`);
   const query = eventId ? `?event_id=${encodeURIComponent(eventId)}` : "";
-  return settle(await fetchWca(`/v1/persons/${wcaId}/results${query}`, z.array(PersonResultSchema)), "days");
+  // Every result in every event is a large, slow response; one event is quick.
+  const timeoutMs = eventId ? undefined : 40_000;
+  return settle(await fetchWca(`/v1/persons/${wcaId}/results${query}`, z.array(PersonResultSchema), { timeoutMs }), "days");
 }
 
 /** Results that set a regional record (NR, CR or WR). */
