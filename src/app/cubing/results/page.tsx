@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import "@cubing/icons";
-import { MedalCounts } from "@/components/cubing/CubingStats";
+import PodiumTimeline from "@/components/results/PodiumTimeline";
+import { podiumRows } from "@/components/results/podiumRows";
 import PrTable from "@/components/results/PrTable";
+import StatTile from "@/components/StatTile";
 import {
   competitionDateLabels,
   eventIconClass,
@@ -13,7 +15,8 @@ import {
   getRegionalRecords,
   getResults,
   podiums,
-  type Medal,
+  podiumStats,
+  type PodiumStats,
 } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
 
@@ -37,8 +40,9 @@ export default async function ResultsPage() {
     );
   }
 
-  const { medals, personal_records, person: profile } = person.data;
+  const { personal_records, person: profile } = person.data;
   const podiumList = results.ok ? podiums(results.data) : [];
+  const podiumNumbers = results.ok ? podiumStats(results.data) : null;
   const recordRows = regionalRecords.ok
     ? regionalRecords.data.flatMap((result) => [
         ...(result.regional_single_record ? [{ result, kind: "single" as const, value: result.best, record: result.regional_single_record }] : []),
@@ -80,66 +84,56 @@ export default async function ResultsPage() {
       )}
 
       {podiumList.length > 0 && (
-        <section aria-labelledby="podiums-heading" className="space-y-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
-            <span className="text-sm text-muted"><MedalCounts medals={medals} /></span>
-          </div>
-          <PodiumList podiums={podiumList.slice(0, PODIUMS_SHOWN)} dateLabel={dateLabel} />
-          {podiumList.length > PODIUMS_SHOWN && (
-            <details className="group">
-              <summary className="btn btn-sm border-base-300 bg-base-200 hover:border-primary group-open:mb-3">
-                <span className="group-open:hidden">Show all {podiumList.length} podiums</span>
-                <span className="hidden group-open:inline">Show fewer</span>
-              </summary>
-              <PodiumList podiums={podiumList.slice(PODIUMS_SHOWN)} dateLabel={dateLabel} />
-            </details>
-          )}
+        <section aria-labelledby="podiums-heading" className="space-y-6">
+          {/* The placement filter below shows the medal counts. */}
+          <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
+          {podiumNumbers && <PodiumStatTiles stats={podiumNumbers} dateLabel={dateLabel} />}
+          <PodiumTimeline rows={podiumRows(podiumList, dateLabel)} />
         </section>
       )}
     </div>
   )
 }
 
-type DateLabel = ReturnType<typeof competitionDateLabels>;
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
-const PODIUMS_SHOWN = 8;
-const AVERAGE_FORMATS = new Set(["a", "m"]);
-
-const MEDAL_STYLES: Record<Medal, { label: string; dot: string }> = {
-  gold: { label: "1st", dot: "bg-medal-gold" },
-  silver: { label: "2nd", dot: "bg-medal-silver" },
-  bronze: { label: "3rd", dot: "bg-medal-bronze" },
-};
-
-function PodiumList({ podiums: list, dateLabel }: { podiums: ReturnType<typeof podiums>; dateLabel: DateLabel }) {
+/** An event's name with its icon, kept together on one line. */
+function EventName({ eventId }: { eventId: string }) {
   return (
-    <ul className="grid gap-3 md:grid-cols-2">
-      {list.map(({ medal, result }) => {
-        // Average formats (Ao5, Mo3) rank by the average; best-of formats, and
-        // rounds without a valid average, by the single.
-        const kind = AVERAGE_FORMATS.has(result.format_id) && result.average > 0 ? "average" : "single";
-        return (
-          <li key={result.id} className="flex items-center gap-3 rounded-box border border-base-300 bg-base-200 px-4 py-3">
-            <span className="flex w-12 shrink-0 items-center gap-1.5 text-sm font-semibold">
-              <span className={`size-2.5 rounded-full ${MEDAL_STYLES[medal].dot}`} aria-hidden="true" />
-              {MEDAL_STYLES[medal].label}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2 font-medium">
-                <span className={eventIconClass(result.event_id)} aria-hidden="true" />
-                {eventName(result.event_id)}
-                <span className="font-mono text-sm font-normal text-muted">
-                  {formatResult(result.event_id, kind === "average" ? result.average : result.best, kind)}
-                </span>
-              </span>
-              <span className="block truncate text-sm text-muted">
-                {result.competition_short_name} · {dateLabel(result.competition_id, result.competition_start_date)}
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    <span className="whitespace-nowrap">
+      <span className={`${eventIconClass(eventId)} mr-1 align-[-0.125em]`} aria-hidden="true" />
+      {eventName(eventId)}
+    </span>
+  );
+}
+
+/** Podium numbers beyond the medal counts: where and when. */
+function PodiumStatTiles({ stats, dateLabel }: { stats: PodiumStats; dateLabel: ReturnType<typeof competitionDateLabels> }) {
+  const { events, topEvent, bestCompetition, bestYear, firstPodium, currentStreak } = stats;
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <StatTile tone="blue" value={events} label={events === 1 ? "Event with a podium" : "Different events with a podium"} />
+      <StatTile tone="red" value={currentStreak} label={currentStreak === 1 ? "Competition in a row with a podium" : "Competitions in a row with a podium"} />
+      {topEvent && (
+        <StatTile tone="green" value={topEvent.count} label={<>Podiums in <EventName eventId={topEvent.eventId} />, my most in one event</>} />
+      )}
+      {bestCompetition && (
+        <StatTile
+          tone="yellow"
+          value={bestCompetition.count}
+          label={`Podiums at ${bestCompetition.name}, my most at one competition (${dateLabel(bestCompetition.id, bestCompetition.startDate)})`}
+        />
+      )}
+      {bestYear && (
+        <StatTile tone="orange" value={bestYear.year} label={`My best year, with ${plural(bestYear.count, "podium")} in ${plural(bestYear.events, "event")}`} />
+      )}
+      {firstPodium && (
+        <StatTile
+          tone="blue"
+          value={firstPodium.result.competition_start_date.slice(0, 4)}
+          label={<>First podium: <EventName eventId={firstPodium.result.event_id} /> at {firstPodium.result.competition_short_name}</>}
+        />
+      )}
+    </div>
   );
 }
