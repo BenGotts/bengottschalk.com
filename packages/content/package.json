@@ -1,0 +1,21 @@
+{
+  "name": "@bengottschalk/content",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hand-edited content shared by the apps: social links, projects, experience.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react-icons": "^5.7.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

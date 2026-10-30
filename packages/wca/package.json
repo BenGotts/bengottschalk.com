@@ -1,0 +1,21 @@
+{
+  "name": "@bengottschalk/wca",
+  "version": "0.0.0",
+  "private": true,
+  "description": "WCA event names and result formatting shared by the apps.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@wca/helpers": "2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

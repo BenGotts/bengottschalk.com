@@ -1,0 +1,133 @@
+/* Shared "Midnight Cube" theme. Each app imports it after Tailwind:
+
+     @import "tailwindcss";
+     @import "@bengottschalk/theme/theme.css";
+
+   Font variables (--font-dm-sans, --font-dm-mono) come from next/font in each app's root layout. */
+
+/* DaisyUI with only the site's own themes (no built-in themes are shipped). */
+@plugin 'daisyui' {
+  themes: false;
+  logs: false;
+}
+
+/* "Midnight Cube": the default, dark. All text/background pairs pass WCAG AA. */
+@plugin 'daisyui/theme' {
+  name: 'midnight';
+  default: true;
+  color-scheme: dark;
+  --color-base-100: #0B1220;
+  --color-base-200: #111A2E;
+  --color-base-300: #1A2540;
+  --color-base-content: #E6EBF5;
+  --color-primary: #4C8DFF;
+  --color-primary-content: #06142E;
+  --color-secondary: #2FBF71;
+  --color-secondary-content: #04210F;
+  --color-accent: #FFD23F;
+  --color-accent-content: #2A1F00;
+  --color-neutral: #263352;
+  --color-neutral-content: #E6EBF5;
+  --color-info: #38BDF8;
+  --color-info-content: #04202E;
+  --color-success: #2FBF71;
+  --color-success-content: #04210F;
+  --color-warning: #FFD23F;
+  --color-warning-content: #2A1F00;
+  --color-error: #FF6B6B;
+  --color-error-content: #2B0707;
+  --radius-selector: 2rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+  --muted: #9AA6BF;
+  /* The other cube colors, readable as text on these backgrounds. */
+  --ink-red: #FF6B81;
+  --ink-orange: #FF8A4C;
+  --ink-yellow: #FFD23F;
+}
+
+/* "Daylight": a soft blue-green tint, with the cube's own blue and green. All text/background pairs pass WCAG AA. */
+@plugin 'daisyui/theme' {
+  name: 'midnight-light';
+  color-scheme: light;
+  --color-base-100: #E6F0F1;
+  --color-base-200: #FFFFFF;
+  --color-base-300: #C8DCDF;
+  --color-base-content: #0B2545;
+  --color-primary: #0051BA;
+  --color-primary-content: #FFFFFF;
+  --color-secondary: #00744A;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #8A6100;
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #0B2545;
+  --color-neutral-content: #E6F0F1;
+  --color-info: #0369A1;
+  --color-info-content: #FFFFFF;
+  --color-success: #00744A;
+  --color-success-content: #FFFFFF;
+  --color-warning: #8A6100;
+  --color-warning-content: #FFFFFF;
+  --color-error: #B42318;
+  --color-error-content: #FFFFFF;
+  --radius-selector: 2rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+  --muted: #4A5E6B;
+  --ink-red: #B8162F;
+  --ink-orange: #B84300;
+  --ink-yellow: #8A6100;
+}
+
+@theme inline {
+  /* Font variables come from next/font in the app's root layout. */
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Headings use the same family; kept as its own token so it can diverge later. */
+  --font-display: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+
+  /* Secondary text, e.g. dates and labels: `text-muted`. */
+  --color-muted: var(--muted);
+
+  /* Red, orange and yellow cube colors for text and borders, e.g. `text-ink-red`.
+     Blue and green are the theme's primary and secondary. */
+  --color-ink-red: var(--ink-red);
+  --color-ink-orange: var(--ink-orange);
+  --color-ink-yellow: var(--ink-yellow);
+}
+
+@theme {
+  /* Rubik's Cube sticker colors, for small accents (event markers, the logo). */
+  --color-cube-white: #F4F4F4;
+  --color-cube-yellow: #FFD500;
+  --color-cube-red: #C41E3A;
+  --color-cube-orange: #FF5800;
+  --color-cube-blue: #0051BA;
+  --color-cube-green: #009E60;
+
+  --color-medal-gold: #E2B13C;
+  --color-medal-silver: #B5BDC8;
+  --color-medal-bronze: #C8803F;
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+
+  /* Tailwind v4 dropped the pointer cursor on buttons. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
