@@ -4,7 +4,7 @@ A monorepo (npm workspaces + [Turborepo](https://turborepo.com)) with three apps
 
 | App | Domain | What it is |
 | --- | --- | --- |
-| `apps/web` | [bengottschalk.com](https://www.bengottschalk.com) | The personal website |
+| `apps/www` | [bengottschalk.com](https://www.bengottschalk.com) | The personal website |
 | `apps/links` | [links.bengottschalk.com](https://links.bengottschalk.com) | Link in bio for social media profiles |
 | `apps/mcp` | [mcp.bengottschalk.com](https://mcp.bengottschalk.com) | MCP server (endpoint `/mcp`) for asking AI assistants about Ben |
 
@@ -32,13 +32,13 @@ Requires Node.js 24.
 
 ```bash
 npm install                                # once, at the repo root
-cp apps/web/.env.example apps/web/.env     # then fill in the values
-npm run dev                                # all apps: web :3000, links :3002, MCP :3003
-npm run dev -- --filter=@bengottschalk/web # just one app
+cp apps/www/.env.example apps/www/.env     # then fill in the values
+npm run dev                                # all apps: www :3000, links :3002, MCP :3003
+npm run dev -- --filter=@bengottschalk/www # just one app
 ```
 
 Run scripts from the root to run them in every app and package (through Turborepo), or with `-w` for one,
-e.g. `npm run email -w apps/web`.
+e.g. `npm run email -w apps/www`.
 
 | Script | What it does |
 | --- | --- |
@@ -47,9 +47,9 @@ e.g. `npm run email -w apps/web`.
 | `npm run lint` | [oxlint](https://oxc.rs/docs/guide/usage/linter) with type-aware rules |
 | `npm run typecheck` | TypeScript (7, native) |
 | `npm test` | Unit tests (Vitest) |
-| `npm run email -w apps/web` | Preview the contact email template |
+| `npm run email -w apps/www` | Preview the contact email template |
 
-Add a dependency to one app with `npm install <package> -w apps/web`.
+Add a dependency to one app with `npm install <package> -w apps/www`.
 
 ## Environment variables
 
@@ -64,7 +64,7 @@ A new build-time variable also goes in `turbo.json`'s `build.env`, or Turborepo 
 
 ## Project layout
 
-Under `apps/web/`:
+Under `apps/www/`:
 
 ```
 src/
@@ -80,7 +80,7 @@ src/
 
 ### Data and caching
 
-All WCA and YouTube requests go through `"use cache"` functions in `apps/web/src/lib/wca/api.ts` and `apps/web/src/lib/youtube.ts`.
+All WCA and YouTube requests go through `"use cache"` functions in `apps/www/src/lib/wca/api.ts` and `apps/www/src/lib/youtube.ts`.
 Responses are validated with Zod, which also drops fields the site doesn't use (such as emails).
 Successful results are cached for hours or days; failures are cached for minutes so they retry soon.
 The WCA API allows 60 requests per minute per IP, so the client retries timeouts, 429s and 5xx responses with backoff.
@@ -95,7 +95,7 @@ The WCA API allows 60 requests per minute per IP, so the client retries timeouts
 ## Notes
 
 - The competition map uses Esri's keyless Canvas basemaps. If they start requiring a key, switch providers in
-  `apps/web/src/components/competitions/CompetitionMap.tsx`.
+  `apps/www/src/components/competitions/CompetitionMap.tsx`.
 - `@wca/helpers` 2.0.0 lists FTO in its types but not its event table; `packages/wca/src/events.ts` works around it.
 
 ## MCP server
@@ -111,7 +111,7 @@ Each app is its own Vercel project, all connected to this repository:
 
 | Vercel project | Root Directory | Domain |
 | --- | --- | --- |
-| `bengottschalk` (existing) | `apps/web` | `bengottschalk.com`, `www.bengottschalk.com` |
+| `bengottschalk` (existing) | `apps/www` | `bengottschalk.com`, `www.bengottschalk.com` |
 | new, e.g. `bengottschalk-links` | `apps/links` | `links.bengottschalk.com` |
 | new, e.g. `bengottschalk-mcp` | `apps/mcp` | `mcp.bengottschalk.com` |
 

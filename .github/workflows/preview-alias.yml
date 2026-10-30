@@ -1,5 +1,5 @@
 # Points preview.bengottschalk.com at the newest successful Vercel preview
-# deployment of the website (apps/web), from whichever branch it was built.
+# deployment of the website (apps/www), from whichever branch it was built.
 # Production deploys and the links and MCP apps' deploys are ignored.
 #
 # Calls the Vercel API directly rather than the CLI, since the CLI first loads
