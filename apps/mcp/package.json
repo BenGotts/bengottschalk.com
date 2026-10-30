@@ -1,0 +1,38 @@
+{
+  "name": "@bengottschalk/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "mcp.bengottschalk.com: an MCP server for asking AI assistants about Ben Gottschalk.",
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "build": "next build",
+    "start": "next start",
+    "lint": "oxlint --type-aware",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@bengottschalk/content": "*",
+    "@bengottschalk/theme": "*",
+    "@bengottschalk/wca": "*",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "mcp-handler": "^2.3.0",
+    "next": "^16.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "daisyui": "^5.7.50",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "tailwindcss": "^4.3.3",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

@@ -1,12 +1,14 @@
 # Points preview.bengottschalk.com at the newest successful Vercel preview
-# deployment, from whichever branch it was built. Production deploys are ignored.
+# deployment of the website (apps/web), from whichever branch it was built.
+# Production deploys and the links and MCP apps' deploys are ignored.
 #
 # Calls the Vercel API directly rather than the CLI, since the CLI first loads
 # the user account, which a token limited to this project can't do.
 #
 # Needs a VERCEL_TOKEN repository secret (vercel.com/account/tokens). The
 # project lives in the benjamin-gottschalks-projects Vercel team; a VERCEL_SCOPE
-# repository variable overrides that if it ever moves.
+# repository variable overrides that if it ever moves, and a VERCEL_WEB_PROJECT
+# variable overrides the website's Vercel project name.
 name: Preview alias
 
 on: deployment_status
@@ -21,9 +23,13 @@ concurrency:
 
 jobs:
   alias:
+    # Vercel names the environment "Preview" while one project deploys from the
+    # repo, and "Preview – <project>" once several do.
     if: >-
       github.event.deployment_status.state == 'success' &&
-      startsWith(github.event.deployment.environment, 'Preview')
+      (github.event.deployment.environment == 'Preview' ||
+       (startsWith(github.event.deployment.environment, 'Preview') &&
+        endsWith(github.event.deployment.environment, format(' {0}', vars.VERCEL_WEB_PROJECT || 'bengottschalk'))))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

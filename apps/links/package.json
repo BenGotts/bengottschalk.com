@@ -1,0 +1,35 @@
+{
+  "name": "@bengottschalk/links",
+  "version": "0.1.0",
+  "private": true,
+  "description": "links.bengottschalk.com: the link in bio for social media profiles.",
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start",
+    "lint": "oxlint --type-aware",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@bengottschalk/content": "*",
+    "@bengottschalk/theme": "*",
+    "next": "^16.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-icons": "^5.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "daisyui": "^5.7.50",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "tailwindcss": "^4.3.3",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@bengottschalk/theme",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The \"Midnight Cube\" DaisyUI themes and Tailwind tokens shared by the apps.",
+  "type": "module",
+  "exports": {
+    ".": "./theme.ts",
+    "./theme.css": "./theme.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "daisyui": "^5.7.50",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
