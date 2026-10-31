@@ -1,6 +1,7 @@
 import { MCP_URL, SITE_NAME, SITE_URL } from "@bengottschalk/content/site";
 
 const ENDPOINT = `${MCP_URL}/mcp`;
+const PRIVATE_ENDPOINT = `${MCP_URL}/private`;
 
 const TOOLS = [
   ["get_about", "Who I am and where to find me"],
@@ -25,6 +26,9 @@ export default function Home() {
         <h2 className="text-xl font-bold">Endpoint</h2>
         <p className="text-muted">Add it as a remote MCP server (Streamable HTTP). No sign-in needed.</p>
         <pre className="overflow-x-auto rounded-box bg-base-200 p-4 font-mono text-sm">{ENDPOINT}</pre>
+        <p className="text-sm text-muted">
+          <code className="font-mono">{PRIVATE_ENDPOINT}</code> has the same tools plus private ones, and is only for me.
+        </p>
       </section>
 
       <section className="space-y-2">

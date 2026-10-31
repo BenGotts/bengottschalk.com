@@ -11,7 +11,10 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "db:generate": "npm run db:generate -w packages/db",
+    "db:migrate": "npm run db:migrate -w packages/db",
+    "db:studio": "npm run db:studio -w packages/db"
   },
   "devDependencies": {
     "turbo": "^2.11.10"

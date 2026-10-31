@@ -1,0 +1,28 @@
+{
+  "name": "@bengottschalk/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Turso (libSQL) database shared by the links and MCP apps: links, clicks, and sign-in data.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

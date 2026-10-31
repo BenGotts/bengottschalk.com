@@ -43,3 +43,6 @@ AGENTS.md
 
 # turborepo
 .turbo
+
+# local database (Turso dev)
+.data

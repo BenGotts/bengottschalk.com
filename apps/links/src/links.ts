@@ -1,23 +1,19 @@
-import type { IconType } from "react-icons";
-import { LuGlobe, LuMail, LuMedal, LuTrophy } from "react-icons/lu";
-import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@bengottschalk/content/links";
+import type { Link } from "@bengottschalk/db/schema";
+import { WCA_PROFILE_URL } from "@bengottschalk/content/links";
 import { SITE_URL } from "@bengottschalk/content/site";
 
-export interface BioLink {
-  label: string;
-  href: string;
-  icon: IconType;
-  /** Short line under the label. */
-  description?: string;
-}
+/** The links a visitor sees on the page; a subset of the database row. */
+export type PageLink = Pick<Link, "id" | "label" | "url" | "description" | "icon" | "visible" | "archivedAt" | "startsAt" | "endsAt">;
 
-/** The big buttons, top to bottom. Edit freely: this list is only used here. */
-export const FEATURED_LINKS: BioLink[] = [
-  { label: "My website", description: "Cubing, videos, projects and more", href: SITE_URL, icon: LuGlobe },
-  { label: "Competition results", description: "PRs, podiums and records", href: `${SITE_URL}/cubing/results`, icon: LuMedal },
-  { label: "WCA profile", href: WCA_PROFILE_URL, icon: LuTrophy },
-  { label: "Get in touch", href: `${SITE_URL}/contact`, icon: LuMail },
+/**
+ * Shown if the database can't be reached, so the page is never empty.
+ * The real list lives in the database and is edited through the MCP server.
+ */
+const ALWAYS = { visible: true, archivedAt: null, startsAt: null, endsAt: null } as const;
+
+export const FALLBACK_LINKS: PageLink[] = [
+  { ...ALWAYS, id: "fallback-website", label: "My website", description: "Cubing, videos, projects and more", url: SITE_URL, icon: "globe" },
+  { ...ALWAYS, id: "fallback-results", label: "Competition results", description: "PRs, podiums and records", url: `${SITE_URL}/cubing/results`, icon: "medal" },
+  { ...ALWAYS, id: "fallback-wca", label: "WCA profile", description: null, url: WCA_PROFILE_URL, icon: "trophy" },
+  { ...ALWAYS, id: "fallback-contact", label: "Get in touch", description: null, url: `${SITE_URL}/contact`, icon: "mail" },
 ];
-
-/** Icon row under the buttons. */
-export { SOCIAL_LINKS };

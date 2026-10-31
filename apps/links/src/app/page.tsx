@@ -1,5 +1,10 @@
+import { Suspense } from "react";
+import { headers } from "next/headers";
+import { SOCIAL_LINKS } from "@bengottschalk/content/links";
 import { SITE_NAME } from "@bengottschalk/content/site";
-import { FEATURED_LINKS, SOCIAL_LINKS } from "@/links";
+import { LINK_ICON_COMPONENTS } from "@/icons";
+import { sourceFrom } from "@/lib/clicks";
+import { getLinks, liveLinks } from "@/lib/data";
 
 // A 3×3 cube face, the same as icon.svg.
 const STICKERS = [
@@ -19,7 +24,53 @@ function StickerLogo({ className }: { className?: string }) {
   );
 }
 
-export default function LinksPage() {
+const BUTTON_CLASS =
+  "flex items-center gap-4 rounded-box border border-base-300 bg-base-200 px-5 py-4 transition-colors hover:border-primary focus-visible:border-primary";
+
+/** The buttons. Rendered per request so schedules apply and clicks carry the visitor's source. */
+async function LinkList({ searchParams }: { searchParams: Promise<{ src?: string | string[] }> }) {
+  // Request data first: it marks this part as per-request, so builds never query the database.
+  const [{ src }, requestHeaders] = await Promise.all([searchParams, headers()]);
+  const { links, fromDatabase } = await getLinks();
+  const source = sourceFrom({
+    src: typeof src === "string" ? src : undefined,
+    referrer: requestHeaders.get("referer"),
+    ownHost: requestHeaders.get("host"),
+  });
+
+  return (
+    <ul className="flex w-full flex-col gap-3">
+      {liveLinks(links).map(({ id, label, description, url, icon }) => {
+        const Icon = LINK_ICON_COMPONENTS[icon] ?? LINK_ICON_COMPONENTS.link;
+        // Through /go/<id> to count the click, unless the database is down.
+        const href = fromDatabase ? `/go/${id}${source ? `?src=${encodeURIComponent(source)}` : ""}` : url;
+        return (
+          <li key={id}>
+            <a href={href} className={BUTTON_CLASS}>
+              <Icon className="size-6 shrink-0 text-primary" aria-hidden="true" />
+              <span className="flex flex-col">
+                <span className="font-semibold">{label}</span>
+                {description && <span className="text-sm text-muted">{description}</span>}
+              </span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function LinkListSkeleton() {
+  return (
+    <ul className="flex w-full flex-col gap-3" aria-hidden="true">
+      {[0, 1, 2, 3].map((i) => (
+        <li key={i} className="h-[4.5rem] animate-pulse rounded-box border border-base-300 bg-base-200" />
+      ))}
+    </ul>
+  );
+}
+
+export default function LinksPage({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-col items-center gap-8 px-4 py-12">
       <header className="flex flex-col items-center gap-3 text-center">
@@ -28,22 +79,9 @@ export default function LinksPage() {
         <p className="text-muted">Competitive cuber, WCA Delegate, and software developer.</p>
       </header>
 
-      <ul className="flex w-full flex-col gap-3">
-        {FEATURED_LINKS.map(({ label, description, href, icon: Icon }) => (
-          <li key={href}>
-            <a
-              href={href}
-              className="flex items-center gap-4 rounded-box border border-base-300 bg-base-200 px-5 py-4 transition-colors hover:border-primary focus-visible:border-primary"
-            >
-              <Icon className="size-6 shrink-0 text-primary" aria-hidden="true" />
-              <span className="flex flex-col">
-                <span className="font-semibold">{label}</span>
-                {description && <span className="text-sm text-muted">{description}</span>}
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
+      <Suspense fallback={<LinkListSkeleton />}>
+        <LinkList searchParams={searchParams} />
+      </Suspense>
 
       <ul className="flex flex-wrap justify-center gap-2">
         {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
