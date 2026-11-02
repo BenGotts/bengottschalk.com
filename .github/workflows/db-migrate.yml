@@ -1,0 +1,48 @@
+# Applies the database migrations in packages/db/migrations to the production
+# Turso database: automatically when new migrations reach main, or on demand
+# from the Actions tab (Run workflow), which also works from the GitHub app.
+#
+# Needs TURSO_DATABASE_URL and TURSO_AUTH_TOKEN repository secrets, the same
+# values the links and MCP apps use on Vercel.
+name: Database migrations
+
+on:
+  push:
+    branches: [main]
+    paths: ["packages/db/migrations/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never run two migrations at once.
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check secrets
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          if [ -z "$TURSO_DATABASE_URL" ] || [ -z "$TURSO_AUTH_TOKEN" ]; then
+            echo "::error::Add TURSO_DATABASE_URL and TURSO_AUTH_TOKEN as repository secrets (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: npm run db:migrate
+      - run: echo "Migrations applied to the production database." >> "$GITHUB_STEP_SUMMARY"

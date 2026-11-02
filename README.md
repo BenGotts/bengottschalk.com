@@ -149,8 +149,10 @@ There's no GitHub app for localhost, so in development `/login` also offers emai
 `packages/db` holds the Drizzle schema (`src/schema.ts`, plus `src/auth-schema.ts` for Better Auth's tables) and SQL
 migrations in `packages/db/migrations`. Migration `0001` seeds the links page's first four buttons.
 
-- `npm run db:migrate` applies migrations to the database in `TURSO_DATABASE_URL` (default: `.data/dev.db`). To migrate
-  Turso, run it with `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` set to the production values.
+- Production (Turso) is migrated by the **Database migrations** GitHub Action
+  (`.github/workflows/db-migrate.yml`): automatically when new migrations reach `main`, or from the Actions tab with
+  **Run workflow**. It needs `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` repository secrets.
+- `npm run db:migrate` applies migrations to the database in `TURSO_DATABASE_URL` (default: `.data/dev.db`).
 - After changing `src/schema.ts`, run `npm run db:generate` to write a new migration, then commit it.
 - After changing Better Auth plugins, regenerate `src/auth-schema.ts` with the Better Auth CLI (`npx auth@latest generate`,
   with a config file that exports the result of `getAuth()` from `apps/mcp/src/lib/auth.ts`), then `npm run db:generate`.
