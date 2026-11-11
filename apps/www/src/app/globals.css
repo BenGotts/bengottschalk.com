@@ -7,20 +7,6 @@
   font-family: var(--font-sans);
   background: var(--color-base-200);
 }
-.leaflet-container .leaflet-popup-content-wrapper,
-.leaflet-container .leaflet-popup-tip {
-  background: var(--color-base-200);
-  color: var(--color-base-content);
-  border: 1px solid var(--color-base-300);
-  box-shadow: none;
-}
-.leaflet-container .leaflet-popup-content {
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-.leaflet-container .leaflet-popup-content a {
-  color: var(--color-primary);
-}
 /* leaflet.css loads after this file with the same specificity, so these need one more class. */
 .leaflet-container .leaflet-control-container .leaflet-control-attribution {
   background: color-mix(in oklab, var(--color-base-200) 85%, transparent);
@@ -42,6 +28,21 @@
 .leaflet-container .map-marker-past { fill: var(--color-primary); }
 .leaflet-container .map-marker-upcoming { fill: var(--color-secondary); }
 .leaflet-container .map-marker-ongoing { fill: var(--color-error); }
+.leaflet-container .map-marker-selected {
+  stroke: var(--color-base-content);
+  stroke-width: 3;
+  fill-opacity: 1;
+}
+.leaflet-container .leaflet-tooltip {
+  background: var(--color-base-200);
+  color: var(--color-base-content);
+  border: 1px solid var(--color-base-300);
+  box-shadow: none;
+  font-size: 0.8125rem;
+}
+.leaflet-container .leaflet-tooltip-top::before {
+  border-top-color: var(--color-base-300);
+}
 
 /* Phone menu (SiteNav): the panel drops in under the header over a fading backdrop. */
 @media (prefers-reduced-motion: no-preference) {
