@@ -6,6 +6,7 @@ import ExternalLink from "@/components/ExternalLink";
 import { formatIsoDate } from "@/lib/wca/format";
 import type { GoalStatus, PlaceVisit } from "@/lib/wca/goals";
 import type { RegionProgress } from "@/lib/wca/regions";
+import { regionColor, regionWash } from "./regionColors";
 
 export interface PlaceInfo {
   name: string;
@@ -16,26 +17,6 @@ export interface PlaceInfo {
 }
 
 type Selection = { place: string } | { region: string } | null;
-
-/**
- * Each CubingUSA region's color: the five cube colors, plus four more so
- * every region has its own. Neighboring regions never share a similar hue.
- */
-const REGION_COLOR: Record<string, string> = {
-  Northwest: "var(--color-primary)",
-  West: "var(--color-ink-orange)",
-  "Rocky Mountain": "#8B5CF6",
-  Heartland: "var(--color-ink-yellow)",
-  South: "var(--color-ink-red)",
-  "Great Lakes": "#0EA5E9",
-  Southeast: "var(--color-secondary)",
-  "Mid-Atlantic": "#EC4899",
-  "New England": "#14B8A6",
-};
-
-const regionColor = (name: string) => REGION_COLOR[name] ?? "var(--color-secondary)";
-/** A light wash of a region's color, for backgrounds. */
-const regionWash = (name: string, percent: number) => `color-mix(in oklab, ${regionColor(name)} ${percent}%, transparent)`;
 
 function RegionDot({ name }: { name: string }) {
   return <span className="inline-block size-2.5 shrink-0 rounded-full" style={{ backgroundColor: regionColor(name) }} aria-hidden="true" />;
@@ -90,10 +71,8 @@ export default function MapExplorer({ map, places, regions, hint, children }: {
     };
   }, []);
 
-  // Dim everything outside the selection, paint a selected region's states in its
-  // color (solid where I've competed), and mark what's selected for screen readers.
+  // Dim everything outside the selection, and mark what's selected for screen readers.
   useEffect(() => {
-    const regionName = selection && "region" in selection ? selection.region : null;
     const focus = !selection
       ? null
       : "place" in selection
@@ -102,18 +81,11 @@ export default function MapExplorer({ map, places, regions, hint, children }: {
     for (const element of ref.current?.querySelectorAll<HTMLElement | SVGElement>("[data-place]") ?? []) {
       const code = element.dataset.place ?? "";
       element.toggleAttribute("data-dim", focus !== null && !focus.has(code));
-      if (element instanceof SVGElement) {
-        if (regionName && focus?.has(code)) {
-          element.style.fill = places[code]?.status === "competed" ? regionColor(regionName) : regionWash(regionName, 30);
-        } else {
-          element.style.removeProperty("fill");
-        }
-      }
       if (element.getAttribute("role") === "button" || element instanceof HTMLButtonElement) {
         element.setAttribute("aria-pressed", String(focus !== null && "place" in selection! && selection.place === code));
       }
     }
-  }, [selection, regions, places]);
+  }, [selection, regions]);
 
   const place = selection && "place" in selection ? places[selection.place] : undefined;
   const region = selection && "region" in selection ? regions?.find((r) => r.name === selection.region) : undefined;
