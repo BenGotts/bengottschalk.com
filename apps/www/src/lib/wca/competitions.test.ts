@@ -148,6 +148,19 @@ describe("groupMapLocations", () => {
     expect(portland?.status).toBe("upcoming");
     expect(portland?.competitions.map((c) => [c.id, c.dateLabel])).toEqual([["Soon", "Nov 1, 2026"], ["Old", "2019-01-01"]]);
   });
+
+  it("marks past competitions I only delegated", () => {
+    const [location] = groupMapLocations([
+      { competition: { ...competition("Delegated", "2019-01-01", "2019-01-02"), competed: false }, status: "past" },
+      { competition: { ...competition("Competed", "2018-01-01", "2018-01-01"), competed: true }, status: "past" },
+      { competition: competition("Upcoming", "2027-01-01", "2027-01-01"), status: "upcoming" },
+    ]);
+    expect(location.competitions.map((c) => [c.id, c.delegatedOnly, c.endDate])).toEqual([
+      ["Upcoming", false, "2027-01-01"],
+      ["Delegated", true, "2019-01-02"],
+      ["Competed", false, "2018-01-01"],
+    ]);
+  });
 });
 
 describe("utcDateString", () => {

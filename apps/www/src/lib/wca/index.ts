@@ -10,3 +10,4 @@ export * from "./milestones";
 export * from "./travel";
 export * from "./goals";
 export type * from "./schemas";
+export * from "./regions";

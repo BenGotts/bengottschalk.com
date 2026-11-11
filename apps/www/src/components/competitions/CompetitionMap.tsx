@@ -4,16 +4,16 @@ import "leaflet/dist/leaflet.css";
 import { latLngBounds, type Map as LeafletMap } from "leaflet";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LuFocus, LuHouse, LuMaximize, LuMinus, LuPlus, LuX } from "react-icons/lu";
-import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
+import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
 import { THEMES } from "@bengottschalk/theme";
 import { useTheme } from "@/lib/useTheme";
 // Import the pure module directly: the wca index also exports server-only API code.
 import { mostCurrentStatus, type MapLocation, type MapStatus } from "@/lib/wca/competitions";
-import ExternalLink from "@/components/ExternalLink";
+import MapLocationCard from "./MapLocationCard";
 
 const HOME_CENTER: [number, number] = [45.5, -122.7]; // Portland
 const HOME_ZOOM = 5;
-const POPUP_LIMIT = 8;
+const VENUE_ZOOM = 12;
 
 // Esri Canvas basemaps: keyless, with a separate labels layer on top.
 // (CARTO's basemaps, used before, now require an API key.)
@@ -72,6 +72,8 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [shown, setShown] = useState<Record<MapStatus, boolean>>({ past: true, upcoming: true, ongoing: true });
   const [engaged, setEngaged] = useState(false);
+  // The pin whose competitions are shown in the card over the map.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [mapInstance, setMapInstance] = useState(0);
   // Whether the history entry for the expanded map is still there to go back from.
@@ -110,6 +112,33 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
       .toSorted((a, b) => DRAW_ORDER[a.status] - DRAW_ORDER[b.status]),
     [locations, shown],
   );
+
+  // The card follows the filters: it shows only the competitions still shown, and
+  // closes if none are left.
+  const selected = visible.find((location) => location.key === selectedKey) ?? null;
+
+  // Clicking the map itself, away from a pin, closes the card.
+  useEffect(() => {
+    if (!map) return () => {};
+    const close = () => setSelectedKey(null);
+    map.on("click", close);
+    return () => {
+      map.off("click", close);
+    };
+  }, [map]);
+
+  // Escape closes the card first; the expanded map's own Escape (below) waits
+  // for the next press. Capturing on window runs this before that listener.
+  useEffect(() => {
+    if (!selectedKey) return () => {};
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopImmediatePropagation();
+      setSelectedKey(null);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [selectedKey]);
 
   // Scroll-to-zoom turns on when the visitor clicks or tabs into any part of the
   // widget, and off only when they click or tab somewhere else on the page, so
@@ -255,31 +284,29 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
         >
           <TileLayer key={`${theme}-base`} url={TILES[theme].base} attribution={ATTRIBUTION} maxZoom={MAX_ZOOM} />
           <TileLayer key={`${theme}-labels`} url={TILES[theme].labels} maxZoom={MAX_ZOOM} />
-          {visible.map((location) => (
-            <CircleMarker
-              key={`${location.key}-${location.status}-${location.competitions.length}`}
-              center={[location.latitude, location.longitude]}
-              radius={6 + Math.min(10, Math.sqrt(location.competitions.length) * 2)}
-              // A creation option, not pathOptions: Leaflet only reads className when the
-              // marker is built (the key above rebuilds it when the status changes).
-              className={`map-marker map-marker-${location.status}`}
-            >
-              <Popup>
-                <p className="m-0 font-semibold">{location.city}</p>
-                <ul className="mt-2 space-y-1">
-                  {location.competitions.slice(0, POPUP_LIMIT).map((competition) => (
-                    <li key={competition.id}>
-                      <ExternalLink href={competition.url}>{competition.name}</ExternalLink>
-                      <span className="text-muted"> · {competition.dateLabel}</span>
-                    </li>
-                  ))}
-                </ul>
-                {location.competitions.length > POPUP_LIMIT && (
-                  <p className="m-0 mt-1 text-muted">+{location.competitions.length - POPUP_LIMIT} more</p>
+          {visible.map((location) => {
+            const isSelected = location.key === selected?.key;
+            return (
+              <CircleMarker
+                key={`${location.key}-${location.status}-${location.competitions.length}-${isSelected}`}
+                center={[location.latitude, location.longitude]}
+                radius={6 + Math.min(10, Math.sqrt(location.competitions.length) * 2)}
+                // A creation option, not pathOptions: Leaflet only reads className when the
+                // marker is built (the key above rebuilds it when the status or selection changes).
+                className={`map-marker map-marker-${location.status} ${isSelected ? "map-marker-selected" : ""}`}
+                // Keeps a pin's click from also reaching the map, which would close the card.
+                bubblingMouseEvents={false}
+                eventHandlers={{ click: () => setSelectedKey(location.key) }}
+              >
+                {/* A quick label on hover; the card has the details. Touch screens have no hover. */}
+                {!touch && (
+                  <Tooltip direction="top" offset={[0, -8]}>
+                    {location.city} · {location.competitions.length}
+                  </Tooltip>
                 )}
-              </Popup>
-            </CircleMarker>
-          ))}
+              </CircleMarker>
+            );
+          })}
         </MapContainer>
 
         <div className={`absolute right-3 top-3 z-[1000] flex-col gap-2 ${preview ? "hidden" : "flex"}`}>
@@ -296,6 +323,14 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
           </div>
         </div>
 
+        {selected && !preview && (
+          <MapLocationCard
+            location={selected}
+            onClose={() => setSelectedKey(null)}
+            onZoom={() => map?.flyTo([selected.latitude, selected.longitude], Math.max(map.getZoom(), VENUE_ZOOM))}
+          />
+        )}
+
         {preview && (
           // Covers the map so it never receives a touch; a scroll gesture passes
           // through to the page and a tap opens the map fullscreen.
@@ -310,7 +345,7 @@ export default function CompetitionMap({ locations }: { locations: MapLocation[]
             </span>
           </button>
         )}
-        {!touch && !engaged && <MapHint>Click the map to zoom with scroll</MapHint>}
+        {!touch && !engaged && !selected && <MapHint>Click the map to zoom with scroll</MapHint>}
       </div>
     </div>
   );

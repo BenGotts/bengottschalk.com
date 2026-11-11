@@ -203,8 +203,11 @@ export interface MapCompetition {
   name: string;
   url: string;
   startDate: string;
+  endDate: string;
   dateLabel: string;
   status: MapStatus;
+  /** A past competition I only delegated, without competing. */
+  delegatedOnly: boolean;
 }
 
 export interface MapLocation {
@@ -229,7 +232,7 @@ export function mostCurrentStatus(statuses: MapStatus[]): MapStatus {
  * Multi-location competitions are left out: their coordinates aren't real venues.
  */
 export function groupMapLocations(
-  items: { competition: CompetitionBase & { date_range?: string }; status: MapStatus }[],
+  items: { competition: CompetitionBase & { date_range?: string; competed?: boolean }; status: MapStatus }[],
 ): MapLocation[] {
   const locations = new Map<string, MapLocation>();
   for (const { competition, status } of items) {
@@ -243,8 +246,10 @@ export function groupMapLocations(
       name: competition.name,
       url: competition.url,
       startDate: competition.start_date,
+      endDate: competition.end_date,
       dateLabel: competition.date_range || competition.start_date,
       status,
+      delegatedOnly: competition.competed === false,
     });
     if (STATUS_RANK[status] < STATUS_RANK[location.status]) location.status = status;
     locations.set(key, location);
