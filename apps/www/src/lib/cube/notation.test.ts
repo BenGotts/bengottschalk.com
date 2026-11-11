@@ -10,8 +10,17 @@ describe("parseScramble", () => {
     ]);
   });
 
+  it("reads wide turns, written Rw or r", () => {
+    expect(parseScramble("Lw r2 Uw'")).toEqual([
+      { notation: "Lw", axis: 0, layer: -1, wide: true, dir: -1, amount: 1 },
+      { notation: "r2", axis: 0, layer: 1, wide: true, dir: 1, amount: 2 },
+      { notation: "Uw'", axis: 1, layer: -1, wide: true, dir: 1, amount: 1 },
+    ]);
+  });
+
   it("rejects moves it can't draw", () => {
-    expect(() => parseScramble("R Rw")).toThrow('Unsupported move "Rw"');
+    expect(() => parseScramble("R M")).toThrow('Unsupported move "M"');
+    expect(() => parseScramble("R 3Rw")).toThrow('Unsupported move "3Rw"');
   });
 });
 

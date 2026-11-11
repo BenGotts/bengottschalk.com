@@ -19,8 +19,12 @@ export function quarterTurn(axis: Axis, dir: 1 | -1): Matrix {
 export const multiply = (a: Matrix, b: Matrix): Matrix => a.map((row) => b[0].map((_, j) => row.reduce((sum, value, k) => sum + value * b[k][j], 0)));
 export const apply = (m: Matrix, v: number[]) => m.map((row) => row.reduce((sum, value, k) => sum + value * v[k], 0));
 
-/** Whether the cubie (by its rotation and home) is in the turning layer. */
-export const inLayer = (turn: Turn, rotation: Matrix, home: number[]) => turn.layer === "all" || apply(rotation, home)[turn.axis] === turn.layer;
+/** Whether the cubie (by its rotation and home) is in the turning layer, or layers for a wide turn. */
+export function inLayer(turn: Turn, rotation: Matrix, home: number[]): boolean {
+  if (turn.layer === "all") return true;
+  const position = apply(rotation, home)[turn.axis];
+  return position === turn.layer || (turn.wide === true && position === 0);
+}
 
 /** The cubies' rotations after a turn. */
 export function applyTurn(rotations: Matrix[], turn: Turn): Matrix[] {
