@@ -71,7 +71,8 @@ export default function TwistyCube({ className, scramble = PR_SCRAMBLE, solution
       }
     }
 
-    (async () => {
+    // Runs until the effect is cleaned up; nothing in it can reject.
+    void (async () => {
       await wait(800);
       while (!signal.aborted) {
         await play(scrambleTurns, "scrambling");
