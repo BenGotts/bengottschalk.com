@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@bengottschalk/content": "*",
+    "@bengottschalk/cube": "*",
     "@bengottschalk/theme": "*",
     "@bengottschalk/wca": "*",
     "@cubing/icons": "^3.0.5",

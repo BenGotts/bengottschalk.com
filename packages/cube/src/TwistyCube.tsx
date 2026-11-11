@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { solutionMoves, type Solve } from "@/content/solves";
-import { applyTurn, CUBIES, IDENTITY, inLayer, reorientation, type Matrix } from "@/lib/cube/model";
-import { parseScramble, type Turn } from "@/lib/cube/notation";
-import { useRandomSolve } from "@/lib/cube/useRandomSolve";
+import { solutionMoves, type Solve } from "./solves";
+import { applyTurn, CUBIES, IDENTITY, inLayer, reorientation, type Matrix } from "./model";
+import { parseScramble, type Turn } from "./notation";
+import { useRandomSolve } from "./useRandomSolve";
 
 // A 3×3 cube that plays one of my solves' scramble, then its solution, and
 // loops. Cubies are positioned with CSS 3D transforms; each turn is a CSS

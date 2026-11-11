@@ -2,13 +2,7 @@ import type { CSSProperties } from "react";
 import { LuArrowUpRight } from "react-icons/lu";
 import { SITE_NAME, SITE_URL } from "@bengottschalk/content/site";
 import { FEATURED_LINKS, SOCIAL_LINKS, type Tone } from "@/links";
-
-// A 3×3 cube face, the same as icon.svg.
-const STICKERS = [
-  "#0051BA", "#F4F4F4", "#009E60",
-  "#C41E3A", "#FFD500", "#FF5800",
-  "#009E60", "#0051BA", "#F4F4F4",
-];
+import HeaderCube from "./HeaderCube";
 
 // Full class names, so Tailwind finds them. Yellow and orange stickers are
 // light, so their icons are dark.
@@ -38,27 +32,6 @@ const STRIPE = [
 /** Staggers an entrance animation; reduced-motion users get none (see motion-safe:). */
 const delay = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
-function StickerLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 30 30" aria-hidden="true">
-      <rect width="30" height="30" rx="7" fill="#0D0D0F" />
-      {STICKERS.map((color, i) => (
-        <rect
-          key={i}
-          className="sticker motion-safe:animate-sticker-in"
-          style={delay(150 + i * 45)}
-          x={3 + (i % 3) * 8.5}
-          y={3 + Math.floor(i / 3) * 8.5}
-          width="7"
-          height="7"
-          rx="1.5"
-          fill={color}
-        />
-      ))}
-    </svg>
-  );
-}
-
 export default function LinksPage() {
   return (
     <div className="relative isolate min-h-screen overflow-hidden">
@@ -76,9 +49,7 @@ export default function LinksPage() {
 
       <main className="mx-auto flex w-full max-w-md flex-col items-center gap-9 px-4 pt-14 pb-10">
         <header className="flex flex-col items-center gap-4 text-center">
-          <div className="motion-safe:animate-float">
-            <StickerLogo className="size-24 drop-shadow-[0_12px_24px_rgb(0_81_186/0.35)]" />
-          </div>
+          <HeaderCube />
           <div className="space-y-1">
             <h1 className="font-display text-3xl font-bold tracking-tight">{SITE_NAME}</h1>
             <p className="text-sm text-muted">@bengotts · Pacific Northwest</p>

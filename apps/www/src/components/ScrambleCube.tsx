@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
-import { PR_SOLVE, type Solve } from "@/content/solves";
-import { useRandomSolve } from "@/lib/cube/useRandomSolve";
-import TwistyCube, { type CubeStep } from "./TwistyCube";
+import { PR_SOLVE, type Solve } from "@bengottschalk/cube/solves";
+import { useRandomSolve } from "@bengottschalk/cube/useRandomSolve";
+import TwistyCube, { type CubeStep } from "@bengottschalk/cube/TwistyCube";
 
 /** The solution's steps, each move numbered in the order the cube plays them. */
 function solutionSteps(solve: Solve) {

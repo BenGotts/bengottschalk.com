@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { SOLVES, type Solve } from "@/content/solves";
+import { SOLVES, type Solve } from "./solves";
 
 const noSubscription = () => () => {};
 

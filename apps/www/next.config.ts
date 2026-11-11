@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@bengottschalk/content", "@bengottschalk/theme", "@bengottschalk/wca"],
+  transpilePackages: ["@bengottschalk/content", "@bengottschalk/cube", "@bengottschalk/theme", "@bengottschalk/wca"],
   // Data is cached with "use cache" + cacheLife in src/lib (see src/lib/wca/api.ts).
   cacheComponents: true,
   partialPrefetching: true,

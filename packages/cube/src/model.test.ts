@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PR_SOLVE, SOLVES, solutionMoves } from "@/content/solves";
+import { PR_SOLVE, SOLVES, solutionMoves } from "./solves";
 import { applyTurn, CUBIES, IDENTITY, isSolved, reorientation } from "./model";
 import { invert, parseScramble } from "./notation";
 
