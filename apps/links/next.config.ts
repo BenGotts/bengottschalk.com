@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@bengottschalk/content", "@bengottschalk/theme"],
+  transpilePackages: ["@bengottschalk/content", "@bengottschalk/cube", "@bengottschalk/theme"],
 };
 
 export default nextConfig;

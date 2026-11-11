@@ -1,0 +1,27 @@
+{
+  "name": "@bengottschalk/cube",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The self-solving 3\u00d73 cube (TwistyCube), its turn model and my PR and PB solves, shared by the apps.",
+  "type": "module",
+  "exports": {
+    "./notation": "./src/notation.ts",
+    "./model": "./src/model.ts",
+    "./solves": "./src/solves.ts",
+    "./useRandomSolve": "./src/useRandomSolve.ts",
+    "./TwistyCube": "./src/TwistyCube.tsx",
+    "./twisty-cube.css": "./src/twisty-cube.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

@@ -2,7 +2,7 @@
 
 import { contact } from "@/actions/contact";
 import CubeStripe from "@/components/CubeStripe";
-import TwistyCube from "@/components/TwistyCube";
+import TwistyCube from "@bengottschalk/cube/TwistyCube";
 import { CONTACT_TOPICS, ContactFormSchema } from "@/lib/schemas";
 import { useState } from "react";
 

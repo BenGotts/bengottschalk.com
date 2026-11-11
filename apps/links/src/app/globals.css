@@ -1,2 +1,24 @@
 @import 'tailwindcss';
 @import '@bengottschalk/theme/theme.css';
+@import '@bengottschalk/cube/twisty-cube.css';
+
+@theme {
+  --animate-rise-in: rise-in 0.5s ease-out both;
+
+  /* Links slide up into place, one after another. */
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* A faint grid of cube stickers behind the header, fading out toward the bottom:
+   a light wash with page-colored gaps drawn over it every 34px. */
+.sticker-grid {
+  background-image:
+    linear-gradient(to right, var(--color-base-100) 6px, transparent 6px),
+    linear-gradient(to bottom, var(--color-base-100) 6px, transparent 6px),
+    linear-gradient(color-mix(in oklab, var(--color-base-content) 5%, transparent), color-mix(in oklab, var(--color-base-content) 5%, transparent));
+  background-size: 34px 34px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}

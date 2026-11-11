@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@bengottschalk/content": "*",
+    "@bengottschalk/cube": "*",
     "@bengottschalk/theme": "*",
     "next": "^16.4.2",
     "react": "^19.3.1",
