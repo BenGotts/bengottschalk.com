@@ -71,15 +71,27 @@ export function usStateCode(place: Place): string | null {
  */
 export type GoalStatus = "competed" | "delegated" | "upcoming" | "none";
 
+/** A competition at a place: one I competed in, only delegated, or am registered for. */
+export interface PlaceVisit {
+  id: string;
+  name: string;
+  start_date: string;
+  role: Exclude<GoalStatus, "none">;
+}
+
 export interface GoalPlace {
   status: GoalStatus;
   /** The first competition that earned the status (the next one, for upcoming). */
   competition: { id: string; name: string; start_date: string } | null;
   /** Competitions there, competed in or delegated. */
   count: number;
+  /** Every competition there, upcoming ones included, newest first. */
+  visits: PlaceVisit[];
 }
 
 const RANK: Record<GoalStatus, number> = { competed: 3, delegated: 2, upcoming: 1, none: 0 };
+
+const noPlace = (): GoalPlace => ({ status: "none", competition: null, count: 0, visits: [] });
 
 /**
  * Progress towards competing everywhere, keyed by `key` (a state or country
@@ -92,11 +104,12 @@ function goalPlaces(
   key: (place: Place) => string | null,
 ): Map<string, GoalPlace> {
   const places = new Map<string, GoalPlace>();
-  const consider = (code: string, status: GoalStatus, competition: GoalPlace["competition"], counts: boolean) => {
-    const place = places.get(code) ?? { status: "none", competition: null, count: 0 };
+  const consider = (code: string, status: Exclude<GoalStatus, "none">, competition: NonNullable<GoalPlace["competition"]>, counts: boolean) => {
+    const place = places.get(code) ?? noPlace();
     if (counts) place.count++;
+    place.visits.push({ id: competition.id, name: competition.name, start_date: competition.start_date, role: status });
     const better = RANK[status] > RANK[place.status];
-    const earlier = RANK[status] === RANK[place.status] && competition && place.competition && competition.start_date < place.competition.start_date;
+    const earlier = RANK[status] === RANK[place.status] && place.competition && competition.start_date < place.competition.start_date;
     if (better || earlier) {
       place.status = status;
       place.competition = competition;
@@ -111,6 +124,7 @@ function goalPlaces(
     const code = isMultiLocation(competition) ? null : key(competition);
     if (code) consider(code, "upcoming", competition, false);
   }
+  for (const place of places.values()) place.visits.sort((a, b) => b.start_date.localeCompare(a.start_date));
   return places;
 }
 
@@ -122,7 +136,7 @@ export interface StateGoal extends GoalPlace {
 /** Every state, with its progress towards the goal. */
 export function stateGoals(history: HistoryEntry[], upcoming: Parameters<typeof goalPlaces>[1]): StateGoal[] {
   const places = goalPlaces(history, upcoming, usStateCode);
-  return US_STATES.map((state) => ({ ...state, ...(places.get(state.code) ?? { status: "none", competition: null, count: 0 }) }));
+  return US_STATES.map((state) => ({ ...state, ...(places.get(state.code) ?? noPlace()) }));
 }
 
 export interface CountryGoal extends GoalPlace {

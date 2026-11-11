@@ -71,6 +71,19 @@ describe("stateGoals", () => {
     expect(goals.get("TX")).toMatchObject({ status: "upcoming", count: 0, competition: { id: "Sooner" } });
     expect(goals.get("OR")).toMatchObject({ status: "competed", count: 1, competition: { id: "Past" } });
   });
+
+  it("lists every competition in a state, newest first, with my role there", () => {
+    const goals = byCode(stateGoals([
+      entry("Old", "2016-01-01", "Salem, Oregon"),
+      entry("Delegated", "2019-01-01", "Portland, Oregon", { delegated: true }),
+    ], [upcoming("Next", "2027-01-01", "Eugene, Oregon")]));
+    expect(goals.get("OR")?.visits.map((visit) => [visit.id, visit.role])).toEqual([
+      ["Next", "upcoming"],
+      ["Delegated", "delegated"],
+      ["Old", "competed"],
+    ]);
+    expect(goals.get("TX")?.visits).toEqual([]);
+  });
 });
 
 describe("countryGoals", () => {
