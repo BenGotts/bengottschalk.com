@@ -163,8 +163,11 @@ function PlaceDetails({ place, onClose, onRegion }: { place: PlaceInfo; onClose:
       }
       onClose={onClose}
     >
+      {/* `relative` keeps each link's absolutely positioned "(opens in a new tab)" text
+          inside the scrolling list. Without it, Safari lays those spans out down the
+          full, unclipped length of the list, adding empty space below the footer. */}
       {place.visits.length > 0 ? (
-        <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
+        <ul className="relative max-h-64 space-y-2 overflow-y-auto pr-1">
           {place.visits.map((visit) => (
             <li key={visit.id} className="flex items-baseline gap-3 text-sm">
               <span className="w-24 shrink-0 text-muted tabular-nums">{formatIsoDate(visit.start_date)}</span>
