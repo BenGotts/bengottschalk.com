@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PR_SCRAMBLE, PR_SOLUTION } from "@/content/prScramble";
+import { solutionMoves, type Solve } from "@/content/solves";
 import { applyTurn, CUBIES, IDENTITY, inLayer, reorientation, type Matrix } from "@/lib/cube/model";
 import { parseScramble, type Turn } from "@/lib/cube/notation";
+import { useRandomSolve } from "@/lib/cube/useRandomSolve";
 
-// A 3×3 cube that plays a scramble, then a solution (by default my PR's), and
+// A 3×3 cube that plays one of my solves' scramble, then its solution, and
 // loops. Cubies are positioned with CSS 3D transforms; each turn is a CSS
 // transition on the turning layer, baked into the cubies' rotations after.
 
@@ -32,28 +33,28 @@ const FACES = [
 const AXIS_VECTORS = ["1,0,0", "0,1,0", "0,0,1"];
 // matrix3d() is column-major.
 const matrix3d = (m: Matrix) => `matrix3d(${m[0][0]},${m[1][0]},${m[2][0]},0,${m[0][1]},${m[1][1]},${m[2][1]},0,${m[0][2]},${m[1][2]},${m[2][2]},0,0,0,0,1)`;
-const DEFAULT_SOLUTION = PR_SOLUTION.map((step) => step.moves).join(" ");
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export default function TwistyCube({ className, scramble = PR_SCRAMBLE, solution = DEFAULT_SOLUTION, onStep }: {
+export default function TwistyCube({ className, solve: chosen, onStep }: {
   className?: string;
-  /** In WCA notation, e.g. "R U' F2". */
-  scramble?: string;
-  /** Moves (rotations allowed) that solve the scramble. */
-  solution?: string;
+  /** The solve to play; by default one of mine, picked at random. */
+  solve?: Solve | null;
   /** Called as each move starts and when the cube rests scrambled or solved. */
   onStep?: (step: CubeStep) => void;
 }) {
+  const random = useRandomSolve();
+  const solve = chosen === undefined ? random : chosen;
   const [rotations, setRotations] = useState<Matrix[]>(() => CUBIES.map(() => IDENTITY));
   const [move, setMove] = useState<Turn | null>(null);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Rests solved until a solve is picked.
+    if (!solve || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const controller = new AbortController();
     const { signal } = controller;
-    const scrambleTurns = parseScramble(scramble);
-    const solutionTurns = parseScramble(solution);
+    const scrambleTurns = parseScramble(solve.scramble);
+    const solutionTurns = parseScramble(solutionMoves(solve));
     // The cube's state, mirrored outside React so the loop can plan from it.
     let current = CUBIES.map(() => IDENTITY);
 
@@ -89,7 +90,7 @@ export default function TwistyCube({ className, scramble = PR_SCRAMBLE, solution
       }
     })();
     return () => controller.abort();
-  }, [scramble, solution, onStep]);
+  }, [solve, onStep]);
 
   return (
     <div className={`twisty-cube ${className ?? ""}`}>
