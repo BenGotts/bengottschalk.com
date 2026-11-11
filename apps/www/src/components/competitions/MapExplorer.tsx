@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { LuX } from "react-icons/lu";
 import ExternalLink from "@/components/ExternalLink";
 import { formatIsoDate } from "@/lib/wca/format";
@@ -16,6 +16,30 @@ export interface PlaceInfo {
 }
 
 type Selection = { place: string } | { region: string } | null;
+
+/**
+ * Each CubingUSA region's color: the five cube colors, plus four more so
+ * every region has its own. Neighboring regions never share a similar hue.
+ */
+const REGION_COLOR: Record<string, string> = {
+  Northwest: "var(--color-primary)",
+  West: "var(--color-ink-orange)",
+  "Rocky Mountain": "#8B5CF6",
+  Heartland: "var(--color-ink-yellow)",
+  South: "var(--color-ink-red)",
+  "Great Lakes": "#0EA5E9",
+  Southeast: "var(--color-secondary)",
+  "Mid-Atlantic": "#EC4899",
+  "New England": "#14B8A6",
+};
+
+const regionColor = (name: string) => REGION_COLOR[name] ?? "var(--color-secondary)";
+/** A light wash of a region's color, for backgrounds. */
+const regionWash = (name: string, percent: number) => `color-mix(in oklab, ${regionColor(name)} ${percent}%, transparent)`;
+
+function RegionDot({ name }: { name: string }) {
+  return <span className="inline-block size-2.5 shrink-0 rounded-full" style={{ backgroundColor: regionColor(name) }} aria-hidden="true" />;
+}
 
 const ROLE_BADGE: Record<PlaceVisit["role"], string | null> = {
   competed: null,
@@ -66,8 +90,10 @@ export default function MapExplorer({ map, places, regions, hint, children }: {
     };
   }, []);
 
-  // Dim everything outside the selection, and mark what's selected for screen readers.
+  // Dim everything outside the selection, paint a selected region's states in its
+  // color (solid where I've competed), and mark what's selected for screen readers.
   useEffect(() => {
+    const regionName = selection && "region" in selection ? selection.region : null;
     const focus = !selection
       ? null
       : "place" in selection
@@ -76,11 +102,18 @@ export default function MapExplorer({ map, places, regions, hint, children }: {
     for (const element of ref.current?.querySelectorAll<HTMLElement | SVGElement>("[data-place]") ?? []) {
       const code = element.dataset.place ?? "";
       element.toggleAttribute("data-dim", focus !== null && !focus.has(code));
+      if (element instanceof SVGElement) {
+        if (regionName && focus?.has(code)) {
+          element.style.fill = places[code]?.status === "competed" ? regionColor(regionName) : regionWash(regionName, 30);
+        } else {
+          element.style.removeProperty("fill");
+        }
+      }
       if (element.getAttribute("role") === "button" || element instanceof HTMLButtonElement) {
         element.setAttribute("aria-pressed", String(focus !== null && "place" in selection! && selection.place === code));
       }
     }
-  }, [selection, regions]);
+  }, [selection, regions, places]);
 
   const place = selection && "place" in selection ? places[selection.place] : undefined;
   const region = selection && "region" in selection ? regions?.find((r) => r.name === selection.region) : undefined;
@@ -148,7 +181,8 @@ function PlaceDetails({ place, onClose, onRegion }: { place: PlaceInfo; onClose:
           {place.region && (
             <>
               {" · "}
-              <button type="button" className="link link-hover" onClick={() => onRegion(place.region!)}>
+              <button type="button" className="link link-hover inline-flex items-center gap-1.5" onClick={() => onRegion(place.region!)}>
+                <RegionDot name={place.region} />
                 {place.region} region
               </button>
             </>
@@ -198,7 +232,12 @@ function RegionDetails({ region, places, onClose, onPlace }: {
   const left = region.states.length - region.competed;
   return (
     <Panel
-      title={`${region.name} region`}
+      title={
+        <span className="flex items-center gap-2">
+          <RegionDot name={region.name} />
+          {region.name} region
+        </span>
+      }
       subtitle={left === 0 ? `All ${region.states.length} states competed in` : `${region.competed} of ${region.states.length} states · ${left} to go`}
       onClose={onClose}
     >
@@ -240,16 +279,27 @@ function RegionList({ regions, selected, onSelect }: { regions: RegionProgress[]
                 aria-pressed={selected === region.name}
                 aria-label={`${region.name}: ${region.competed} of ${region.states.length} states`}
                 onClick={() => onSelect(region.name)}
-                className="w-full rounded-field border border-base-300 bg-base-100 px-3 py-2 text-left transition-colors hover:border-secondary/60 aria-pressed:border-secondary aria-pressed:bg-secondary/10"
+                className="w-full rounded-field border border-base-300 bg-base-100 px-3 py-2 text-left transition-colors hover:border-(--region)"
+                style={{
+                  "--region": regionColor(region.name),
+                  ...(selected === region.name && { borderColor: regionColor(region.name), backgroundColor: regionWash(region.name, 14) }),
+                } as CSSProperties}
               >
-                <span className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className="font-medium">{region.name}</span>
-                  <span className={`shrink-0 tabular-nums ${done ? "font-semibold text-secondary" : "text-muted"}`}>
+                <span className="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap">
+                  <RegionDot name={region.name} />
+                  {region.name}
+                </span>
+                {/* The count sits by the bar, so the name gets the card's full width on phones. */}
+                <span className="mt-1.5 flex items-center gap-2">
+                  <span className="block h-1.5 flex-1 overflow-hidden rounded-full bg-base-300" aria-hidden="true">
+                    <span
+                      className="block h-full rounded-full"
+                      style={{ width: `${(region.competed / region.states.length) * 100}%`, backgroundColor: regionColor(region.name) }}
+                    />
+                  </span>
+                  <span className={`shrink-0 text-xs tabular-nums ${done ? "font-semibold text-base-content" : "text-muted"}`}>
                     {region.competed}/{region.states.length}
                   </span>
-                </span>
-                <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-base-300" aria-hidden="true">
-                  <span className="block h-full rounded-full bg-secondary" style={{ width: `${(region.competed / region.states.length) * 100}%` }} />
                 </span>
               </button>
             </li>
