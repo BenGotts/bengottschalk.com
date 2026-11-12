@@ -29,7 +29,7 @@ Built with Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tail
 
 ## Getting started
 
-Requires Node.js 24.
+Requires Node.js 26 (see `.nvmrc`).
 
 ```bash
 npm install                                # once, at the repo root
@@ -122,5 +122,5 @@ Each app is its own Vercel project, all connected to this repository:
 - In each project's Settings → Build and Deployment, keep **Include files outside the Root Directory** on (packages
   live outside it) and turn on **Skip deployments when there are no changes to the root directory or its
   dependencies**, so a links-only change doesn't redeploy the website.
-- Each app's `package.json` pins Node.js 24.x through `engines`.
+- Each app's `package.json` pins Node.js 26.x through `engines`, matching the Node.js version selected in each Vercel project.
 - `preview.bengottschalk.com` follows the website's previews only (see `.github/workflows/preview-alias.yml`).
