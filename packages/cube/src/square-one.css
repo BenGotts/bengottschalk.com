@@ -1,0 +1,44 @@
+/* SquareOne: a Square-1 built from 18 prisms in CSS 3D. An app imports this
+   file from its globals.css. It sits in Tailwind's components layer, so a
+   utility such as [--sq:3rem] on the puzzle can resize it (--sq is half its width). */
+@layer components {
+  .square-one {
+    --sq: 2.5rem;
+    width: calc(var(--sq) * 2);
+    height: calc(var(--sq) * 2);
+    perspective: 40rem;
+  }
+  @media (min-width: 40rem) {
+    .square-one { --sq: 3rem; }
+  }
+  .square-one-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transform: rotateX(-28deg) rotateY(-38deg);
+  }
+  .sq1-piece {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-style: preserve-3d;
+  }
+  .sq1-face {
+    position: absolute;
+    backface-visibility: hidden;
+  }
+  .sq1-face svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .square-one-body { animation: square-one-sway 9s ease-in-out infinite alternate; }
+  }
+  @keyframes square-one-sway {
+    from { transform: rotateX(-28deg) rotateY(-50deg); }
+    to { transform: rotateX(-22deg) rotateY(-20deg); }
+  }
+}

@@ -5,7 +5,7 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "npm@10.9.4",
+  "packageManager": "npm@11.20.0",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -17,7 +17,7 @@
     "turbo": "^2.11.10"
   },
   "engines": {
-    "node": "24.x"
+    "node": "26.x"
   },
   "allowScripts": {
     "esbuild@0.28.2": true

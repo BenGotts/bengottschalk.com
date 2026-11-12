@@ -13,7 +13,7 @@ and shared packages:
 | Package | What it holds |
 | --- | --- |
 | `packages/content` | Hand-edited content: social links, projects, experience, site name and URLs |
-| `packages/cube` | The self-solving cube (`TwistyCube`), its turn model, and my PR and PB solves it plays |
+| `packages/cube` | The self-solving cube (`TwistyCube`) and Square-1 (`SquareOne`, on the links page), their turn models, and the solves they play |
 | `packages/theme` | The "Midnight Cube" DaisyUI themes and Tailwind tokens (`theme.css`), and theme names |
 | `packages/wca` | WCA event names and result formatting |
 
@@ -29,7 +29,7 @@ Built with Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tail
 
 ## Getting started
 
-Requires Node.js 24.
+Requires Node.js 26 (see `.nvmrc`).
 
 ```bash
 npm install                                # once, at the repo root
@@ -90,6 +90,8 @@ The WCA API allows 60 requests per minute per IP, so the client retries timeouts
 
 - **Experience, projects, social links:** edit the files in `packages/content/src/`; all three apps pick them up.
 - **The self-solving cube's PR and PB:** `packages/cube/src/solves.ts`; a test checks each solution solves its scramble.
+- **The links page's Square-1 solves:** `packages/cube/src/sq1Solves.ts`, in WCA notation (`(1, 0) / (-1, -1) /`); a
+  test checks each solution solves its scramble and that no slash is blocked.
 - **Link in bio buttons:** `apps/links/src/links.ts`.
 - **Competitions, results, records:** nothing to do; they update from the WCA automatically.
 - **Theme colors:** `packages/theme/theme.css` (DaisyUI themes `midnight` and `midnight-light`).
@@ -122,5 +124,5 @@ Each app is its own Vercel project, all connected to this repository:
 - In each project's Settings → Build and Deployment, keep **Include files outside the Root Directory** on (packages
   live outside it) and turn on **Skip deployments when there are no changes to the root directory or its
   dependencies**, so a links-only change doesn't redeploy the website.
-- Each app's `package.json` pins Node.js 24.x through `engines`.
+- Each app's `package.json` pins Node.js 26.x through `engines`, matching the Node.js version selected in each Vercel project.
 - `preview.bengottschalk.com` follows the website's previews only (see `.github/workflows/preview-alias.yml`).
