@@ -9,7 +9,7 @@ export interface Sq1Solve {
   solution: { label: string; moves: string }[];
 }
 
-/** My official Square-1 single PR (CSP, OBL, PBL). */
+// Each solved with CSP, OBL and PBL. The first is my official single PR.
 export const SQ1_SOLVES: Sq1Solve[] = [
   {
     id: "pr",
@@ -19,6 +19,16 @@ export const SQ1_SOLVES: Sq1Solve[] = [
       { label: "CSP", moves: "2,-4/ 0,-2/ -1,0/ -3,0/" },
       { label: "OBL", moves: "-2,-3/ 3,0/ 3,0/ -1,-1/ -3,0/ -3,0/" },
       { label: "PBL", moves: "0,3/ -3,0/ 3,3/ 0,-3/ -3,4" },
+    ],
+  },
+  {
+    id: "nec-2022",
+    title: "4.45 at Northeast Champs 2022",
+    scramble: "(1,0) / (5,-4) / (-5,4) / (3,0) / (0,-3) / (6,-3) / (-1,0) / (6,-3) / (-4,-5) / (2,-3) / (4,0) / (6,0)",
+    solution: [
+      { label: "CSP", moves: "0,6/ 0,-4/ -2,3/ -1,-2/ -3,0/" },
+      { label: "OBL", moves: "-5,6/" },
+      { label: "PBL", moves: "0,-3/ 3,0/ -3,0/ 2,-1/ -2,1/ 5,6" },
     ],
   },
 ];
