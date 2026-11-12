@@ -13,7 +13,7 @@ and shared packages:
 | Package | What it holds |
 | --- | --- |
 | `packages/content` | Hand-edited content: social links, projects, experience, site name and URLs |
-| `packages/cube` | The self-solving cube (`TwistyCube`), its turn model, and my PR and PB solves it plays |
+| `packages/cube` | The self-solving cube (`TwistyCube`) and Square-1 (`SquareOne`, on the links page), their turn models, and the solves they play |
 | `packages/theme` | The "Midnight Cube" DaisyUI themes and Tailwind tokens (`theme.css`), and theme names |
 | `packages/wca` | WCA event names and result formatting |
 
@@ -90,6 +90,8 @@ The WCA API allows 60 requests per minute per IP, so the client retries timeouts
 
 - **Experience, projects, social links:** edit the files in `packages/content/src/`; all three apps pick them up.
 - **The self-solving cube's PR and PB:** `packages/cube/src/solves.ts`; a test checks each solution solves its scramble.
+- **The links page's Square-1 solves:** `packages/cube/src/sq1Solves.ts`, in WCA notation (`(1, 0) / (-1, -1) /`); a
+  test checks each solution solves its scramble and that no slash is blocked.
 - **Link in bio buttons:** `apps/links/src/links.ts`.
 - **Competitions, results, records:** nothing to do; they update from the WCA automatically.
 - **Theme colors:** `packages/theme/theme.css` (DaisyUI themes `midnight` and `midnight-light`).
