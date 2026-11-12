@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { LuArrowUpRight } from "react-icons/lu";
 import { SITE_NAME, SITE_URL } from "@bengottschalk/content/site";
 import { FEATURED_LINKS, SOCIAL_LINKS, type Tone } from "@/links";
-import TwistyCube from "@bengottschalk/cube/TwistyCube";
+import SquareOne from "@bengottschalk/cube/SquareOne";
 
 // Full class names, so Tailwind finds them. Yellow and orange stickers are
 // light, so their icons are dark.
@@ -49,9 +49,9 @@ export default function LinksPage() {
 
       <main className="mx-auto flex w-full max-w-md flex-col items-center gap-9 px-4 pt-14 pb-10">
         <header className="flex flex-col items-center gap-4 text-center">
-          {/* The website's self-solving cube, playing my official PR or my at-home PB at random.
+          {/* A self-solving Square-1, cycling through my Square-1 solves.
               It draws past its box in 3D, so it gets room above and below. */}
-          <TwistyCube className="my-8 [--cubie:2.25rem]" />
+          <SquareOne className="my-8 [--sq:3rem]" />
           <div className="space-y-1">
             <h1 className="font-display text-3xl font-bold tracking-tight">{SITE_NAME}</h1>
             <p className="text-sm text-muted">@bengotts · Pacific Northwest</p>
