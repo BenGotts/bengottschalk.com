@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IDENTITY, type Matrix } from "./model";
-import { applySq1Move, pieceTurn, SQ1_PIECES, SQ1_SOLVED, type Face, type Side, type Vec3 } from "./sq1Model";
+import { applySq1Move, pieceTurn, sq1Reorientation, SQ1_PIECES, SQ1_SOLVED, type Face, type Side, type Vec3 } from "./sq1Model";
 import { parseSq1, type Sq1Move } from "./sq1Notation";
 import { SQ1_SOLVES, sq1SolutionMoves, type Sq1Solve } from "./sq1Solves";
 
@@ -12,7 +12,7 @@ import { SQ1_SOLVES, sq1SolutionMoves, type Sq1Solve } from "./sq1Solves";
 // rotations after.
 
 const SLASH_MS = 420;
-const turnMs = (move: Sq1Move) => (move.kind === "slash" ? SLASH_MS : 200 + 40 * Math.max(Math.abs(move.top), Math.abs(move.bottom)));
+const turnMs = (move: Sq1Move) => (move.kind === "slash" ? SLASH_MS : move.kind === "rotate" ? 300 + 150 * Math.abs(move.quarters) : 200 + 40 * Math.max(Math.abs(move.top), Math.abs(move.bottom)));
 const PAUSE_MS = 110;
 
 // Sticker colors, in TwistyCube's shades: black on top and white on the
@@ -115,7 +115,11 @@ export default function SquareOne({ className, solves = SQ1_SOLVES }: {
         if (signal.aborted) return;
         await wait(1500);
         await play(parseSq1(sq1SolutionMoves(solve)));
-        await wait(2200);
+        if (signal.aborted) return;
+        await wait(1200);
+        // A solve can end with the puzzle held differently; turn it back to start again.
+        await play(sq1Reorientation(current));
+        await wait(1200);
         index = (index + 1) % solves.length;
       }
     })();

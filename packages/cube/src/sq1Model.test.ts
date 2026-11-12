@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applySq1Move, canSlash, isSq1Solved, SQ1_SOLVED } from "./sq1Model";
+import { applySq1Move, canSlash, isSq1Solved, SQ1_SOLVED, sq1Reorientation } from "./sq1Model";
 import { invertSq1, parseSq1 } from "./sq1Notation";
 import { SQ1_SOLVES, sq1SolutionMoves } from "./sq1Solves";
 
@@ -35,7 +35,17 @@ describe("Square-1 model", () => {
 
   it("parses moves with or without parentheses", () => {
     expect(parseSq1("1,0/ -1,-1/").map((m) => m.notation)).toEqual(["(1, 0)", "/", "(-1, -1)", "/"]);
+    expect(parseSq1("y2 /0-4/40/-1-3/64").map((m) => m.notation)).toEqual(["y2", "/", "(0, -4)", "/", "(4, 0)", "/", "(-1, -3)", "/", "(6, 4)"]);
     expect(() => parseSq1("(1, 0) R")).toThrow();
+    expect(() => parseSq1("123/")).toThrow();
+  });
+
+  it("turns the whole puzzle with y moves, which still counts as solved", () => {
+    expect(isSq1Solved(play("y2"))).toBe(false);
+    expect(isSq1Solved(play("y2"), { inStartOrientation: false })).toBe(true);
+    expect(isSq1Solved(play("y y"))).toBe(false);
+    expect(isSq1Solved(play("y y'"))).toBe(true);
+    expect(sq1Reorientation(play("y")).map((m) => m.notation)).toEqual(["y'"]);
   });
 });
 
@@ -43,6 +53,8 @@ describe("Square-1 solves", () => {
   it.each(SQ1_SOLVES.map((solve) => [solve.id, solve] as const))("%s: the solution solves the scramble", (_, solve) => {
     const scrambled = play(solve.scramble);
     expect(isSq1Solved(scrambled)).toBe(false);
-    expect(isSq1Solved(play(sq1SolutionMoves(solve), scrambled))).toBe(true);
+    const solved = play(sq1SolutionMoves(solve), scrambled);
+    expect(isSq1Solved(solved, { inStartOrientation: false })).toBe(true);
+    expect(isSq1Solved(sq1Reorientation(solved).reduce(applySq1Move, solved))).toBe(true);
   });
 });

@@ -31,6 +31,16 @@ export const SQ1_SOLVES: Sq1Solve[] = [
       { label: "PBL", moves: "0,-3/ 3,0/ -3,0/ 2,-1/ -2,1/ 5,6" },
     ],
   },
+  {
+    id: "nar-single",
+    title: "4.75 NAR single",
+    scramble: "-5,0/0,-3/6,0/-4,-4/3,0/0,-3/1,-3/0,-3/-1,0/1,-4/-4,-4/-4,0/",
+    solution: [
+      { label: "CSP", moves: "y2 /0-4/40/1-4/30/" },
+      { label: "OBL", moves: "-1-3/0-3/-30/-2-2/-1-1/" },
+      { label: "PBL", moves: "64/-30/33/0-3/36" },
+    ],
+  },
 ];
 
 /** A solve's moves in order, as one string. */

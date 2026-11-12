@@ -1,5 +1,5 @@
 import { apply, IDENTITY, multiply, type Matrix } from "./model";
-import type { Sq1Move } from "./sq1Notation";
+import { parseSq1, type Sq1Move } from "./sq1Notation";
 
 // The Square-1 as 18 pieces (8 corners, 8 edges and the two middle halves),
 // each a prism with a home shape plus a rotation matrix, like the 3×3's
@@ -127,6 +127,7 @@ export function rotation(axis: Vec3, degrees: number): Matrix {
 /** How a piece turns in a move, or null if it stays put. */
 export function pieceTurn(move: Sq1Move, piece: Sq1Piece, current: Matrix): { axis: Vec3; degrees: number } | null {
   const [, y] = apply(current, piece.centroid);
+  if (move.kind === "rotate") return { axis: [0, 1, 0], degrees: -90 * move.quarters };
   if (move.kind === "slash") return dot(apply(current, piece.centroid) as Vec3, SLASH_AXIS) > 0 ? { axis: SLASH_AXIS, degrees: 180 } : null;
   // Clockwise from above turns +x toward +z, which is rotateY(-angle).
   if (y < -0.5 && move.top) return { axis: [0, 1, 0], degrees: -30 * move.top };
@@ -153,6 +154,21 @@ export function applySq1Move(rotations: Matrix[], move: Sq1Move): Matrix[] {
 
 export const SQ1_SOLVED: Matrix[] = SQ1_PIECES.map(() => IDENTITY);
 
-/** Whether every piece is back where it started. */
-export const isSq1Solved = (rotations: Matrix[]) =>
-  rotations.every((m) => m.every((row, r) => row.every((value, c) => Math.abs(value - IDENTITY[r][c]) < EPSILON)));
+const same = (a: Matrix, b: Matrix) => a.every((row, r) => row.every((value, c) => Math.abs(value - b[r][c]) < EPSILON));
+
+/**
+ * Whether the puzzle is solved: every piece turned the same way, so it's
+ * whole, just possibly held differently. With `inStartOrientation`, it must
+ * also be held as it started (black on top, red in front).
+ */
+export function isSq1Solved(rotations: Matrix[], { inStartOrientation = true } = {}): boolean {
+  if (inStartOrientation && !same(rotations[0], IDENTITY)) return false;
+  return rotations.every((m) => same(m, rotations[0]));
+}
+
+const REORIENTATIONS = ["", "y", "y'", "y2"].map((moves) => parseSq1(moves));
+
+/** The rotation (e.g. `y2`) that turns a solved puzzle back to how it started, or [] if it already is. */
+export function sq1Reorientation(rotations: Matrix[]): Sq1Move[] {
+  return REORIENTATIONS.find((moves) => isSq1Solved(moves.reduce(applySq1Move, rotations))) ?? [];
+}
