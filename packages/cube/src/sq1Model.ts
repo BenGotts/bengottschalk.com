@@ -99,7 +99,7 @@ const CORNER: [number, number][] = [[0, 0], [1, T], [1, 1], [T, 1]];
 const CUT_FRONT: [number, number] = [-T, 1];
 const CUT_BACK: [number, number] = [T, -1];
 
-/** The pieces, solved: white on top, green in front. */
+/** The pieces, solved, in scrambling orientation: black on top, red in front. */
 export const SQ1_PIECES: Sq1Piece[] = [
   ...(["top", "bottom"] as const).flatMap((layer) => {
     const [y0, y1] = layer === "top" ? [-1, -1 / 3] : [1 / 3, 1];

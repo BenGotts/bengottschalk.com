@@ -15,8 +15,10 @@ const SLASH_MS = 420;
 const turnMs = (move: Sq1Move) => (move.kind === "slash" ? SLASH_MS : 200 + 40 * Math.max(Math.abs(move.top), Math.abs(move.bottom)));
 const PAUSE_MS = 110;
 
-// Sticker colors, matching TwistyCube.
-const COLORS: Record<Side, string> = { right: "#C41E3A", left: "#FF5800", top: "#F4F4F4", bottom: "#FFD500", front: "#009E60", back: "#0051BA" };
+// Sticker colors, in TwistyCube's shades: black on top and white on the
+// bottom, held to scramble with red (the darkest side) in front, so the slice
+// runs through red and orange. Black is a lighter gray than the plastic so it shows.
+const COLORS: Record<Side, string> = { top: "#2C2C33", bottom: "#F4F4F4", front: "#C41E3A", right: "#009E60", back: "#FF5800", left: "#0051BA" };
 const PLASTIC = "#0D0D0F";
 const STICKER_INSET = 0.08;
 
