@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { careerMilestones, competitionNumbers, isMilestoneCount } from "./careerMilestones";
-import type { HistoryEntry } from "./competitions";
+import { careerMilestones, competitionNumbers, isMilestoneCount, upcomingNumbers } from "./careerMilestones";
+import type { CompetitionsOverview, HistoryEntry } from "./competitions";
+import type { Competition } from "./schemas";
 
 function entry(id: string, start: string, overrides: Partial<HistoryEntry> = {}): HistoryEntry {
   return {
@@ -73,5 +74,45 @@ describe("careerMilestones", () => {
   it("puts both milestones on a competition that reaches two", () => {
     const history = career(10, (i) => (i === 9 ? { delegated: true } : {}));
     expect(careerMilestones(history)[0].milestones.map((m) => m.label)).toEqual(["10th competition", "First competition as Delegate"]);
+  });
+});
+
+function coming(id: string, start: string, delegates: string[] = []): Competition {
+  return {
+    id,
+    name: id,
+    short_name: id,
+    start_date: start,
+    end_date: start,
+    url: `https://www.worldcubeassociation.org/competitions/${id}`,
+    website: null,
+    city: "Portland, Oregon",
+    venue: "Venue",
+    country_iso2: "US",
+    latitude_degrees: 45.5,
+    longitude_degrees: -122.6,
+    results_posted_at: null,
+    cancelled_at: null,
+    event_ids: ["333"],
+    date_range: "",
+    delegates: delegates.map((wcaId) => ({ id: 1, name: "Delegate", wca_id: wcaId })),
+    organizers: [],
+  };
+}
+
+describe("upcomingNumbers", () => {
+  it("continues the counts in date order: registered ones as competitions, delegated ones as delegated", () => {
+    const finished = career(157, (i) => (i >= 100 && i < 160 ? { delegated: true, competed: i !== 120 } : {}));
+    const overview: CompetitionsOverview = {
+      ongoing: [coming("Now", "2026-11-14", ["2016GOTT01"])],
+      upcoming: [coming("Later", "2026-12-05"), coming("DelegateOnly", "2026-11-21", ["2016GOTT01"])],
+      competing: ["Now", "Later"],
+    };
+    // 156 competed (one of the 57 delegated was delegate-only), 57 delegated.
+    expect(Object.fromEntries(upcomingNumbers(finished, overview, "2016GOTT01"))).toEqual({
+      Now: { competition: 157, delegated: 58 },
+      DelegateOnly: { delegated: 59 },
+      Later: { competition: 158 },
+    });
   });
 });

@@ -3,6 +3,8 @@ import type { Competition, PastCompetition, UserCompetitions } from "./schemas";
 export interface CompetitionsOverview {
   ongoing: Competition[];
   upcoming: Competition[];
+  /** Ids of the ones I'm registered to compete in; the rest I'm only delegating. */
+  competing: string[];
 }
 
 /** Today's date as `YYYY-MM-DD` in UTC, the format WCA competition dates use. */
@@ -68,7 +70,10 @@ export function mergeCompetitions(
     (competition.start_date <= today ? ongoing : upcoming).push(competition);
   }
 
-  return { ongoing: ongoing.toSorted(byDate), upcoming: upcoming.toSorted(byDate) };
+  const competing = [...registered.ongoing_competitions, ...registered.upcoming_competitions]
+    .map((competition) => competition.id)
+    .filter((id) => byId.has(id));
+  return { ongoing: ongoing.toSorted(byDate), upcoming: upcoming.toSorted(byDate), competing };
 }
 
 export function hasStaffRole(

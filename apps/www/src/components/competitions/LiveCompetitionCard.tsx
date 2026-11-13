@@ -1,5 +1,6 @@
 import "@cubing/icons";
 import ExternalLink from "@/components/ExternalLink";
+import CareerCounts from "@/components/cubing/CareerCounts";
 import { WCA_ID } from "@/consts";
 import CompetitionLocation from "./CompetitionLocation";
 import LiveResults from "./LiveResults";
@@ -14,10 +15,11 @@ import {
     hasStaffRole,
     sortEventIds,
     type Competition,
+    type CompetitionNumbers,
 } from "@/lib/wca";
 
 /** A competition happening now: its details beside my groups and staff assignments from the public WCIF. */
-export default async function LiveCompetitionCard({ competition }: { competition: Competition }) {
+export default async function LiveCompetitionCard({ competition, numbers }: { competition: Competition; numbers?: CompetitionNumbers }) {
     const { isDelegate, isOrganizer } = hasStaffRole(competition, WCA_ID);
     const [schedule, livePerson] = await Promise.all([getCompetitionSchedule(competition.id), getLivePerson(competition.id)]);
     const entries = schedule.ok && schedule.data ? schedule.data.entries : [];
@@ -46,7 +48,10 @@ export default async function LiveCompetitionCard({ competition }: { competition
                         <p className="text-muted">{competition.date_range}</p>
                     </div>
 
-                    <CompetitionLocation city={competition.city} countryIso2={competition.country_iso2} />
+                    <div className="space-y-1">
+                        <CompetitionLocation city={competition.city} countryIso2={competition.country_iso2} />
+                        <CareerCounts numbers={numbers} />
+                    </div>
 
                     {(isDelegate || isOrganizer) && (
                         <div className="flex gap-2">

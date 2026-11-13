@@ -51,6 +51,7 @@ describe("mergeCompetitions", () => {
     );
     expect(overview.upcoming.map((c) => c.id)).toEqual(["DelegateOnly2026", "Registered2026"]);
     expect(overview.ongoing).toEqual([]);
+    expect(overview.competing).toEqual(["Registered2026"]);
   });
 
   it("classifies by date, including multi-day competitions", () => {
@@ -216,9 +217,9 @@ describe("Oregon City Spooktacular across UTC midnight", () => {
 
   it("only moves into the past list once it is no longer running", () => {
     const history = buildCompetitionHistory([], [spooktacular], "2026-10-25");
-    const running = { ongoing: [spooktacular], upcoming: [] };
+    const running = { ongoing: [spooktacular], upcoming: [], competing: [] };
     expect(finishedCompetitions(history, running, "2026-10-25")).toEqual([]);
-    expect(finishedCompetitions(history, { ongoing: [], upcoming: [] }, "2026-10-25").map((h) => h.id)).toEqual(["OregonCitySpooktacular2026"]);
+    expect(finishedCompetitions(history, { ongoing: [], upcoming: [], competing: [] }, "2026-10-25").map((h) => h.id)).toEqual(["OregonCitySpooktacular2026"]);
     // Without an overview, fall back to the UTC date.
     expect(finishedCompetitions(history, null, "2026-10-24")).toEqual([]);
   });

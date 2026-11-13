@@ -3,8 +3,11 @@ import { WCA_ID } from "@/consts";
 import CompetitionLocation from "./CompetitionLocation";
 import { eventIconClass, eventName, hasStaffRole, sortEventIds, type Competition } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
+import CareerCounts from "@/components/cubing/CareerCounts";
+import type { CompetitionNumbers } from "@/lib/wca/careerMilestones";
 
-export default function CompetitionCard({ competition }: { competition: Competition }) {
+/** A competition, with which one it'll be in my career (`numbers`, see `upcomingNumbers`) when known. */
+export default function CompetitionCard({ competition, numbers }: { competition: Competition; numbers?: CompetitionNumbers }) {
     const { isDelegate, isOrganizer } = hasStaffRole(competition, WCA_ID);
 
     return (
@@ -24,6 +27,7 @@ export default function CompetitionCard({ competition }: { competition: Competit
                 </div>
 
                 <CompetitionLocation city={competition.city} countryIso2={competition.country_iso2} />
+                <CareerCounts numbers={numbers} className="-mt-1" />
 
                 {(isDelegate || isOrganizer) && (
                     <div className="flex gap-2">

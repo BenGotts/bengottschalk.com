@@ -5,9 +5,8 @@ import { useSyncExternalStore } from "react";
 import ExternalLink from "@/components/ExternalLink";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import SectionHeader from "@/components/SectionHeader";
-import { LuFlag } from "react-icons/lu";
-import { isMilestoneCount } from "@/lib/wca/careerMilestones";
-import { momentsOn, ordinal, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
+import CareerCounts from "@/components/cubing/CareerCounts";
+import { momentsOn, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
 
 const subscribe = () => () => {};
 const getServer = () => null;
@@ -43,17 +42,6 @@ function Highlight({ highlight }: { highlight: MomentHighlight }) {
   );
 }
 
-/** One career count, flagged when it's a milestone (see `isMilestoneCount`), e.g. "100th competition". */
-function Count({ number, noun }: { number: number; noun: string }) {
-  if (!isMilestoneCount(number)) return <span>{ordinal(number)} {noun}</span>;
-  return (
-    <span className="inline-flex items-center gap-1 font-semibold text-base-content">
-      <LuFlag aria-hidden="true" className="size-3.5 text-primary" />
-      {number === 1 ? "First" : ordinal(number)} {noun}
-    </span>
-  );
-}
-
 /** Where it was, and which competition it was in my career, e.g. "42nd competition · 15th as Delegate". */
 function MomentDetails({ moment }: { moment: CubingMoment }) {
   const { competitionNumber, delegatedNumber } = moment;
@@ -61,11 +49,7 @@ function MomentDetails({ moment }: { moment: CubingMoment }) {
   return (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
       {moment.city && moment.countryIso2 && <CompetitionLocation city={moment.city} countryIso2={moment.countryIso2} />}
-      <span className="flex flex-wrap items-center gap-x-1.5">
-        {competitionNumber !== undefined && <Count number={competitionNumber} noun="competition" />}
-        {competitionNumber !== undefined && delegatedNumber !== undefined && <span aria-hidden="true">·</span>}
-        {delegatedNumber !== undefined && <Count number={delegatedNumber} noun="as Delegate" />}
-      </span>
+      <CareerCounts numbers={{ competition: competitionNumber, delegated: delegatedNumber }} />
     </span>
   );
 }

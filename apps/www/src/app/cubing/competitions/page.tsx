@@ -4,7 +4,8 @@ import BackToTop from "@/components/BackToTop";
 import CompetitionExplorer from "@/components/competitions/CompetitionExplorer";
 import OngoingCompetitions from "@/components/competitions/OngoingCompetitions";
 import UpcomingCompetitions from "@/components/competitions/UpcomingCompetitions"
-import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview } from "@/lib/wca";
+import { finishedCompetitions, formatDateRange, getCompetitionHistory, getCompetitionsOverview, upcomingNumbers } from "@/lib/wca";
+import { WCA_ID } from "@/consts";
 
 export const metadata: Metadata = pageMetadata({
   title: "Competitions",
@@ -17,10 +18,12 @@ export default async function CompetitionsPage() {
   const ongoing = competitions.ok ? competitions.data.ongoing : [];
   const upcoming = competitions.ok ? competitions.data.upcoming : [];
   // Competitions still running at their venue stay out of the past list.
-  const history = historyResult.ok
+  const finished = historyResult.ok
     ? finishedCompetitions(historyResult.data.history, competitions.ok ? competitions.data : null, historyResult.data.utcToday)
-        .map((entry) => ({ ...entry, date_range: formatDateRange(entry.start_date, entry.end_date) }))
     : [];
+  const history = finished.map((entry) => ({ ...entry, date_range: formatDateRange(entry.start_date, entry.end_date) }));
+  // Which competition each coming one will be in my career, e.g. "158th competition".
+  const numbers = historyResult.ok && competitions.ok ? upcomingNumbers(finished, competitions.data, WCA_ID) : undefined;
 
   return (
     <div className="space-y-14">
@@ -34,12 +37,12 @@ export default async function CompetitionsPage() {
           {ongoing.length > 0 && (
             <section aria-labelledby="ongoing-heading" className="space-y-4">
               <h2 id="ongoing-heading" className="scroll-mt-24 text-2xl font-bold">Happening now</h2>
-              <OngoingCompetitions competitions={ongoing} />
+              <OngoingCompetitions competitions={ongoing} numbers={numbers} />
             </section>
           )}
           <section aria-labelledby="upcoming-heading" className="space-y-4">
             <h2 id="upcoming-heading" className="text-2xl font-bold">Upcoming</h2>
-            <UpcomingCompetitions competitions={upcoming} />
+            <UpcomingCompetitions competitions={upcoming} numbers={numbers} />
           </section>
         </>
       ) : (

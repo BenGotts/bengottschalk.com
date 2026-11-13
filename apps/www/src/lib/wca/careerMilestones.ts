@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "./competitions";
+import { hasStaffRole, type CompetitionsOverview, type HistoryEntry } from "./competitions";
 import { ordinal } from "./onThisDay";
 
 export interface CompetitionNumbers {
@@ -21,6 +21,34 @@ export function competitionNumbers(history: HistoryEntry[]): Map<string, Competi
     numbers.set(entry.id, {
       ...(entry.competed && { competition: ++competed }),
       ...(entry.delegated && { delegated: ++delegated }),
+    });
+  }
+  return numbers;
+}
+
+/**
+ * Numbers for the competitions still to come (or underway), continuing from
+ * the finished history: one I'm registered for counts as a competition, one I'm
+ * delegating counts as delegated. A competition that has ended but has no
+ * results posted yet is in neither list, so for those few days the next
+ * competition number runs one low.
+ */
+export function upcomingNumbers(
+  finished: HistoryEntry[],
+  overview: CompetitionsOverview,
+  wcaId: string,
+): Map<string, CompetitionNumbers> {
+  let competed = finished.filter((entry) => entry.competed).length;
+  let delegated = finished.filter((entry) => entry.delegated).length;
+  const competing = new Set(overview.competing);
+  const numbers = new Map<string, CompetitionNumbers>();
+  const ahead = [...overview.ongoing, ...overview.upcoming].toSorted(
+    (a, b) => a.start_date.localeCompare(b.start_date) || a.name.localeCompare(b.name),
+  );
+  for (const competition of ahead) {
+    numbers.set(competition.id, {
+      ...(competing.has(competition.id) && { competition: ++competed }),
+      ...(hasStaffRole(competition, wcaId).isDelegate && { delegated: ++delegated }),
     });
   }
   return numbers;

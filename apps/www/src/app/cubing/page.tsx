@@ -31,7 +31,9 @@ import {
   prTimeline,
   sortEventIds,
   travelStats,
+  upcomingNumbers,
 } from "@/lib/wca";
+import { WCA_ID } from "@/consts";
 
 export const metadata: Metadata = pageMetadata({
   title: "Cubing",
@@ -54,6 +56,8 @@ export default async function CubingPage() {
     ? finishedCompetitions(historyResult.data.history, competitions.ok ? competitions.data : null, historyResult.data.utcToday)
     : [];
   const stats = person.ok && historyResult.ok ? cubingStats(person.data, history) : null;
+  // Which competition each coming one will be in my career, e.g. "158th competition".
+  const numbers = historyResult.ok && competitions.ok ? upcomingNumbers(history, competitions.data, WCA_ID) : undefined;
   const firstYear = history.findLast((entry) => entry.competed)?.start_date.slice(0, 4);
   const recent = history.slice(0, 4);
   const timeline = results.ok ? prTimeline(results.data, sortEventIds) : [];
@@ -98,13 +102,13 @@ export default async function CubingPage() {
           {ongoing.length > 0 ? (
             <div className="space-y-4">
               {ongoing.map((competition) => (
-                <LiveCompetitionSummary key={competition.id} competition={competition} />
+                <LiveCompetitionSummary key={competition.id} competition={competition} numbers={numbers?.get(competition.id)} />
               ))}
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {nextUp.map((competition) => (
-                <CompetitionCard key={competition.id} competition={competition} />
+                <CompetitionCard key={competition.id} competition={competition} numbers={numbers?.get(competition.id)} />
               ))}
             </div>
           )}
