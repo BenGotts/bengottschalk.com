@@ -13,3 +13,4 @@ export type * from "./schemas";
 export * from "./regions";
 export * from "./onThisDay";
 export * from "./moments";
+export * from "./careerMilestones";

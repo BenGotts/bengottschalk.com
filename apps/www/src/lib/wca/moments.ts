@@ -1,3 +1,4 @@
+import { competitionNumbers } from "./careerMilestones";
 import type { HistoryEntry } from "./competitions";
 import { eventIconClass, eventName, sortEventIds } from "./events";
 import { formatResult } from "./format";
@@ -52,17 +53,7 @@ export function cubingMoments(history: HistoryEntry[], results: PersonResult[]):
     const all = highlights.get(base.competitionId) ?? [];
     return { ...base, highlights: all.slice(0, MAX_HIGHLIGHTS), moreHighlights: Math.max(0, all.length - MAX_HIGHLIGHTS) };
   };
-  // Number the competitions oldest first, the way the stat tiles count them:
-  // a delegate-only competition is a delegated one but not a competition I competed in.
-  const numbers = new Map<string, { competition?: number; delegated?: number }>();
-  let competedCount = 0;
-  let delegatedCount = 0;
-  for (const entry of history.toSorted((a, b) => a.start_date.localeCompare(b.start_date) || a.name.localeCompare(b.name))) {
-    numbers.set(entry.id, {
-      ...(entry.competed && { competition: ++competedCount }),
-      ...(entry.delegated && { delegated: ++delegatedCount }),
-    });
-  }
+  const numbers = competitionNumbers(history);
 
   const moments = history.map((entry) => {
     const number = numbers.get(entry.id);
