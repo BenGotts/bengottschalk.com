@@ -9,7 +9,7 @@ function PrValue({ eventId, rank, kind, end = false }: { eventId: string; rank: 
       <span className="font-mono text-base font-medium sm:text-xl">{formatResult(eventId, rank.best, kind)}</span>
       <span className="text-xs whitespace-nowrap text-muted">
         {/* Phones have column headings instead. */}
-        <span className="capitalize sr-only sm:not-sr-only">{kind} · </span>WR {rank.world_rank.toLocaleString("en-US")}
+        <span className="capitalize sr-only sm:not-sr-only sm:whitespace-nowrap">{kind} · </span>WR {rank.world_rank.toLocaleString("en-US")}
       </span>
     </span>
   );
