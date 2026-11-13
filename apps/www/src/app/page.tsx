@@ -4,6 +4,7 @@ import Link from "next/link";
 import SectionHeader from "@/components/SectionHeader";
 import WcaAvatar from "@/components/WcaAvatar";
 import CubingStats from "@/components/cubing/CubingStats";
+import OnThisDay from "@/components/cubing/OnThisDay";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import VideoCard from "@/components/videos/VideoCard";
@@ -11,6 +12,7 @@ import { experience } from "@bengottschalk/content/experience";
 import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@bengottschalk/content/links";
 import { SITE_URL } from "@/consts";
 import {
+  cubingMoments,
   cubingStats,
   formatDelegateStatus,
   finishedCompetitions,
@@ -19,6 +21,7 @@ import {
   getCompetitionsOverview,
   getDelegateRole,
   getPerson,
+  getResults,
 } from "@/lib/wca";
 import { getLatestVideos } from "@/lib/youtube";
 import ExternalLink from "@/components/ExternalLink";
@@ -34,12 +37,13 @@ export const metadata: Metadata = {
 }
 
 export default async function Home() {
-  const [person, avatar, role, competitions, history, videos] = await Promise.all([
+  const [person, avatar, role, competitions, history, results, videos] = await Promise.all([
     getPerson(),
     getAvatar(),
     getDelegateRole(),
     getCompetitionsOverview(),
     getCompetitionHistory(),
+    getResults(),
     getLatestVideos(3),
   ]);
 
@@ -49,6 +53,8 @@ export default async function Home() {
   const stats = person.ok && history.ok
     ? cubingStats(person.data, finishedCompetitions(history.data.history, competitions.ok ? competitions.data : null, history.data.utcToday))
     : null;
+  // Every past competition with its podiums and PRs; the card picks today's in the browser.
+  const moments = history.ok ? cubingMoments(history.data.history, results.ok ? results.data : []) : [];
 
   // schema.org Person, so search engines can connect the site to these profiles.
   const personJsonLd = {
@@ -129,6 +135,8 @@ export default async function Home() {
           )}
         </section>
       )}
+
+      <OnThisDay moments={moments} />
 
       {videos.ok && videos.data.length > 0 && (
         <section aria-labelledby="videos-heading" className="space-y-4">
