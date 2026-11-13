@@ -4,11 +4,12 @@ import CompetitionLocation from "./CompetitionLocation";
 import LiveNowNext from "./LiveNowNext";
 import LiveResultsProvider from "./LiveResultsProvider";
 import { scheduleDays } from "./scheduleDays";
-import { getCompetitionSchedule, getLivePerson, type Competition } from "@/lib/wca";
+import { getCompetitionSchedule, getLivePerson, type Competition, type CompetitionNumbers } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
+import CareerCounts from "@/components/cubing/CareerCounts";
 
 /** A compact live competition for the home page; the full schedule and results are on /cubing/competitions. */
-export default async function LiveCompetitionSummary({ competition }: { competition: Competition }) {
+export default async function LiveCompetitionSummary({ competition, numbers }: { competition: Competition; numbers?: CompetitionNumbers }) {
     const [schedule, livePerson] = await Promise.all([getCompetitionSchedule(competition.id), getLivePerson(competition.id)]);
     const items = scheduleDays(schedule.ok && schedule.data ? schedule.data.entries : []).flatMap((day) => day.items);
 
@@ -31,6 +32,7 @@ export default async function LiveCompetitionSummary({ competition }: { competit
                         <span>{competition.date_range}</span>
                         <CompetitionLocation city={competition.city} countryIso2={competition.country_iso2} />
                     </div>
+                    <CareerCounts numbers={numbers} />
                     <div className="mt-auto flex flex-wrap gap-2 pt-2">
                         <Link href="/cubing/competitions#ongoing-heading" className="btn btn-error btn-sm">
                             Schedule &amp; results <LuArrowRight aria-hidden="true" />

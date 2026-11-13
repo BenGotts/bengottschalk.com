@@ -3,6 +3,7 @@
 import "@cubing/icons";
 import Link from "next/link";
 import { Fragment } from "react";
+import { LuFlag } from "react-icons/lu";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
@@ -100,11 +101,27 @@ export default function PrTimeline({ rows, pageSize = 12, compact = false, showE
                       {row.competitionName}
                     </ExternalLink>
                   </h3>
+                  {row.milestones.length > 0 && (
+                    <ul aria-label="Milestones" className="mt-1.5 flex flex-wrap justify-center gap-1">
+                      {row.milestones.map((milestone) => (
+                        <li
+                          key={milestone.kind}
+                          className={`badge badge-sm gap-1 font-semibold ${
+                            milestone.kind === "competition" ? "border-primary bg-primary/15" : "border-secondary bg-secondary/15"
+                          }`}
+                        >
+                          <LuFlag aria-hidden="true" className="size-3" />
+                          {milestone.label}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                <div className="grid grid-cols-2">
+                {/* A milestone competition with no PRs is just its node. */}
+                {(row.singles.length > 0 || row.averages.length > 0) && <div className="grid grid-cols-2">
                   <Side items={row.singles} side="left" label="Single PRs" showEvent={showEvent} />
                   <Side items={row.averages} side="right" label="Average PRs" showEvent={showEvent} />
-                </div>
+                </div>}
               </li>
             </Fragment>
           );

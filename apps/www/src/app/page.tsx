@@ -4,13 +4,15 @@ import Link from "next/link";
 import SectionHeader from "@/components/SectionHeader";
 import WcaAvatar from "@/components/WcaAvatar";
 import CubingStats from "@/components/cubing/CubingStats";
+import OnThisDay from "@/components/cubing/OnThisDay";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
 import VideoCard from "@/components/videos/VideoCard";
 import { experience } from "@bengottschalk/content/experience";
 import { SOCIAL_LINKS, WCA_PROFILE_URL } from "@bengottschalk/content/links";
-import { SITE_URL } from "@/consts";
+import { SITE_URL, WCA_ID } from "@/consts";
 import {
+  cubingMoments,
   cubingStats,
   formatDelegateStatus,
   finishedCompetitions,
@@ -19,6 +21,8 @@ import {
   getCompetitionsOverview,
   getDelegateRole,
   getPerson,
+  getResults,
+  upcomingNumbers,
 } from "@/lib/wca";
 import { getLatestVideos } from "@/lib/youtube";
 import ExternalLink from "@/components/ExternalLink";
@@ -34,21 +38,27 @@ export const metadata: Metadata = {
 }
 
 export default async function Home() {
-  const [person, avatar, role, competitions, history, videos] = await Promise.all([
+  const [person, avatar, role, competitions, history, results, videos] = await Promise.all([
     getPerson(),
     getAvatar(),
     getDelegateRole(),
     getCompetitionsOverview(),
     getCompetitionHistory(),
+    getResults(),
     getLatestVideos(3),
   ]);
 
   const ongoing = competitions.ok ? competitions.data.ongoing : [];
   const nextUp = competitions.ok ? competitions.data.upcoming.slice(0, 2) : [];
   const currentJob = experience.find((job) => job.end === null);
-  const stats = person.ok && history.ok
-    ? cubingStats(person.data, finishedCompetitions(history.data.history, competitions.ok ? competitions.data : null, history.data.utcToday))
+  const finished = history.ok
+    ? finishedCompetitions(history.data.history, competitions.ok ? competitions.data : null, history.data.utcToday)
     : null;
+  const stats = person.ok && finished ? cubingStats(person.data, finished) : null;
+  // Which competition each coming one will be in my career, e.g. "158th competition".
+  const numbers = finished && competitions.ok ? upcomingNumbers(finished, competitions.data, WCA_ID) : undefined;
+  // Every past competition with its podiums and PRs; the card picks today's in the browser.
+  const moments = history.ok ? cubingMoments(history.data.history, results.ok ? results.data : []) : [];
 
   // schema.org Person, so search engines can connect the site to these profiles.
   const personJsonLd = {
@@ -117,18 +127,20 @@ export default async function Home() {
           {ongoing.length > 0 ? (
             <div className="space-y-4">
               {ongoing.map((competition) => (
-                <LiveCompetitionSummary key={competition.id} competition={competition} />
+                <LiveCompetitionSummary key={competition.id} competition={competition} numbers={numbers?.get(competition.id)} />
               ))}
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {nextUp.map((competition) => (
-                <CompetitionCard key={competition.id} competition={competition} />
+                <CompetitionCard key={competition.id} competition={competition} numbers={numbers?.get(competition.id)} />
               ))}
             </div>
           )}
         </section>
       )}
+
+      <OnThisDay moments={moments} />
 
       {videos.ok && videos.data.length > 0 && (
         <section aria-labelledby="videos-heading" className="space-y-4">

@@ -3,7 +3,17 @@ import { pageMetadata } from "@/lib/metadata";
 import StatTile from "@/components/StatTile";
 import PrTimeline from "@/components/results/PrTimeline";
 import { timelineRows } from "@/components/results/timelineRows";
-import { competitionDateLabels, getCompetitionHistory, getResults, prDroughts, prStreaks, prTimeline, sortEventIds } from "@/lib/wca";
+import {
+  careerMilestones,
+  competitionDateLabels,
+  finishedCompetitions,
+  getCompetitionHistory,
+  getResults,
+  prDroughts,
+  prStreaks,
+  prTimeline,
+  sortEventIds,
+} from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "PR timeline",
@@ -23,12 +33,14 @@ export default async function TimelinePage() {
   const firstYear = timeline.at(-1)?.date.slice(0, 4);
   const streaks = results.ok ? prStreaks(results.data, timeline) : null;
   const droughts = history.ok ? prDroughts(timeline, history.data.utcToday) : null;
+  // Milestones count every competition, so they come from the history; ones still running wait until they end.
+  const milestones = history.ok ? careerMilestones(finishedCompetitions(history.data.history, null, history.data.utcToday)) : [];
 
   return (
     <div className="space-y-12">
       <header>
         <h1 className="text-4xl font-bold">PR timeline</h1>
-        <p className="mt-2 text-lg text-muted">Every personal record I&apos;ve set, in every event, newest first.</p>
+        <p className="mt-2 text-lg text-muted">Every personal record I&apos;ve set, in every event, newest first, with my competition milestones along the way.</p>
       </header>
 
       {streaks?.longest && (
@@ -64,7 +76,7 @@ export default async function TimelinePage() {
       )}
 
       {results.ok ? (
-        <PrTimeline rows={timelineRows(timeline, competitionDateLabels(history.ok ? history.data.history : []))} />
+        <PrTimeline rows={timelineRows(timeline, competitionDateLabels(history.ok ? history.data.history : []), milestones)} />
       ) : (
         <div role="alert" className="alert alert-warning">Results couldn&apos;t be loaded from the WCA right now. Please try again later.</div>
       )}
