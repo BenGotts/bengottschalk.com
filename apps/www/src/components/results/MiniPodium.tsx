@@ -3,10 +3,11 @@ import Link from "next/link";
 import type { PodiumItem } from "@/lib/wca/podiumItems";
 
 // `step` is the medal's block on the big podium filter (PodiumTimeline), `mini` on a competition's podium.
+// `icon` colours the events standing on a step, so each is easy to match to its place.
 export const MEDAL_STYLES = {
-  gold: { label: "1st", place: "First", step: "h-28 bg-medal-gold", mini: "h-9 bg-medal-gold" },
-  silver: { label: "2nd", place: "Second", step: "h-20 bg-medal-silver", mini: "h-6 bg-medal-silver" },
-  bronze: { label: "3rd", place: "Third", step: "h-14 bg-medal-bronze", mini: "h-4 bg-medal-bronze" },
+  gold: { label: "1st", place: "First", step: "h-28 bg-medal-gold", mini: "h-9 bg-medal-gold", icon: "text-ink-gold" },
+  silver: { label: "2nd", place: "Second", step: "h-20 bg-medal-silver", mini: "h-6 bg-medal-silver", icon: "text-ink-silver" },
+  bronze: { label: "3rd", place: "Third", step: "h-14 bg-medal-bronze", mini: "h-4 bg-medal-bronze", icon: "text-ink-bronze" },
 } as const;
 export const PODIUM_ORDER = ["silver", "gold", "bronze"] as const;
 
@@ -14,7 +15,7 @@ export const PODIUM_ORDER = ["silver", "gold", "bronze"] as const;
 function PodiumEvent({ item }: { item: PodiumItem }) {
   const content = (
     <>
-      <span className={`${item.iconClass} text-2xl leading-none`} aria-hidden="true" />
+      <span className={`${item.iconClass} text-2xl leading-none ${MEDAL_STYLES[item.medal].icon}`} aria-hidden="true" />
       <span className="font-mono text-[11px] font-medium sm:text-xs">{item.value}</span>
       <span className="sr-only">{`${MEDAL_STYLES[item.medal].place} in ${item.eventName}, ${item.kind} ${item.value}`}</span>
     </>
