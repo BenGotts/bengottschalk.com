@@ -3,13 +3,14 @@
 // the browser can match against its own date (see components/cubing/OnThisDay).
 // The moments themselves are built on the server by `cubingMoments` in moments.ts.
 
+import type { PodiumItem } from "./podiumItems";
+
+/** A PR set at the competition. */
 export interface MomentHighlight {
   key: string;
-  kind: "podium" | "pr";
-  /** e.g. "Gold in Square-1" or "3x3x3 Cube single · 7.12". */
+  /** e.g. "3x3x3 Cube single · 7.12". */
   label: string;
   iconClass: string;
-  medal?: "gold" | "silver" | "bronze";
   /** "NR", "CR", "WR" etc. when a PR was also a regional record. */
   record?: string;
   /** A barrier a PR broke, e.g. "Sub-10". */
@@ -34,7 +35,9 @@ export interface CubingMoment {
   competitionNumber?: number;
   /** Which competition I delegated this was, counting every one I delegated. */
   delegatedNumber?: number;
-  /** Podiums first, then the most notable PRs; at most a few, with `moreHighlights` counting the rest. */
+  /** Every podium there, for its podium (see MiniPodium). */
+  podiums: PodiumItem[];
+  /** The most notable PRs; at most a few, with `moreHighlights` counting the rest. */
   highlights: MomentHighlight[];
   moreHighlights: number;
 }

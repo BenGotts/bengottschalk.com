@@ -1,70 +1,11 @@
 "use client";
 
-import "@cubing/icons";
-import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
+import MiniPodium, { MEDAL_STYLES, PODIUM_ORDER } from "./MiniPodium";
 import type { PodiumItem, PodiumRow } from "./podiumRows";
-
-// `step` is the medal's block on the big podium filter, `mini` on each competition's podium.
-const MEDAL_STYLES = {
-  gold: { label: "1st", place: "First", step: "h-28 bg-medal-gold", mini: "h-9 bg-medal-gold" },
-  silver: { label: "2nd", place: "Second", step: "h-20 bg-medal-silver", mini: "h-6 bg-medal-silver" },
-  bronze: { label: "3rd", place: "Third", step: "h-14 bg-medal-bronze", mini: "h-4 bg-medal-bronze" },
-} as const;
-const PODIUM_ORDER = ["silver", "gold", "bronze"] as const;
-
-/** One event standing on a step: its icon, with the result that placed underneath. */
-function PodiumEvent({ item }: { item: PodiumItem }) {
-  const content = (
-    <>
-      <span className={`${item.iconClass} text-2xl leading-none`} aria-hidden="true" />
-      <span className="font-mono text-[11px] font-medium sm:text-xs">{item.value}</span>
-      <span className="sr-only">{`${MEDAL_STYLES[item.medal].place} in ${item.eventName}, ${item.kind} ${item.value}`}</span>
-    </>
-  );
-  // Two fit side by side on a step, even on phones.
-  const className = "flex w-[3.25rem] flex-col items-center gap-1 rounded-field py-1 sm:w-16 sm:px-1";
-  return (
-    <li title={item.eventName}>
-      {/* Retired events have no results page to link to. */}
-      {item.href ? <Link href={item.href} className={`${className} transition-colors hover:bg-base-300/60 hover:text-primary`}>{content}</Link> : <span className={className}>{content}</span>}
-    </li>
-  );
-}
-
-/**
- * A competition's podiums as a podium: 2nd, 1st and 3rd steps, with the events
- * I placed in standing on each. Steps without a podium there stay faint.
- */
-function CompetitionPodium({ row }: { row: PodiumRow }) {
-  return (
-    // A solid background, so the timeline's centre line doesn't run through the podium.
-    <div className="relative mx-auto flex w-fit items-end gap-1 bg-base-100 px-2">
-      {PODIUM_ORDER.map((medal) => {
-        const items = row.medals.filter((item) => item.medal === medal);
-        const style = MEDAL_STYLES[medal];
-        return (
-          <div key={medal} className="flex w-[6.75rem] flex-col items-center sm:w-36">
-            {items.length > 0 && (
-              <ul aria-label={`${style.label} place at ${row.competitionName}`} className="flex flex-wrap items-end justify-center pb-1">
-                {items.map((item) => <PodiumEvent key={item.key} item={item} />)}
-              </ul>
-            )}
-            <span
-              aria-hidden="true"
-              className={`flex w-full justify-center rounded-t-md font-display text-xs font-bold leading-4 text-black/80 ${style.mini} ${items.length > 0 ? "" : "opacity-25"}`}
-            >
-              {style.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 type Medal = PodiumItem["medal"];
 
@@ -157,7 +98,8 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
                   </ExternalLink>
                 </h3>
               </div>
-              <CompetitionPodium row={row} />
+              {/* A solid background, so the centre line doesn't run through the podium. */}
+              <MiniPodium medals={row.medals} competitionName={row.competitionName} className="relative mx-auto bg-base-100 px-2" />
             </li>
           </Fragment>
         ))}
