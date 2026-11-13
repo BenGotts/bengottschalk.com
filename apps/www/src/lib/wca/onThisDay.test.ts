@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HistoryEntry } from "./competitions";
 import { cubingMoments } from "./moments";
-import { momentsOn, type CubingMoment } from "./onThisDay";
+import { momentsOn, ordinal, type CubingMoment } from "./onThisDay";
 import type { PersonResult } from "./schemas";
 
 function moment(id: string, start: string, end = start): CubingMoment {
@@ -138,8 +138,32 @@ describe("cubingMoments", () => {
     expect(champs?.highlights[0]).toMatchObject({ label: "Square-1 single · 4.45", record: "NAR", milestone: "Sub-5" });
   });
 
+  it("numbers competitions oldest first, counting delegate-only ones only as delegated", () => {
+    const history = [
+      entry("Third", "2023-05-06", "2023-05-06", { delegated: true }),
+      entry("DelegateOnly", "2022-11-12", "2022-11-12", { competed: false, delegated: true }),
+      entry("Second", "2022-11-11", "2022-11-11", { delegated: true }),
+      entry("First", "2016-04-09", "2016-04-09"),
+    ];
+    const byId = new Map(cubingMoments(history, []).map((m) => [m.competitionId, m]));
+    expect(byId.get("First")).toMatchObject({ competitionNumber: 1, city: "Portland, Oregon", countryIso2: "US" });
+    expect(byId.get("First")?.delegatedNumber).toBeUndefined();
+    expect(byId.get("Second")).toMatchObject({ competitionNumber: 2, delegatedNumber: 1 });
+    expect(byId.get("DelegateOnly")?.competitionNumber).toBeUndefined();
+    expect(byId.get("DelegateOnly")?.delegatedNumber).toBe(2);
+    expect(byId.get("Third")).toMatchObject({ competitionNumber: 3, delegatedNumber: 3 });
+  });
+
   it("keeps a result's competition that's missing from the history, on its start date", () => {
     const [missing] = cubingMoments([], [result("Old2016", "2016-04-09", "333", "1", 30, 2500)]);
     expect(missing).toMatchObject({ competitionId: "Old2016", start: "2016-04-09", end: "2016-04-09", competed: true });
+  });
+});
+
+describe("ordinal", () => {
+  it("adds English ordinal suffixes", () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111, 112, 113, 122].map(ordinal)).toEqual([
+      "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th", "112th", "113th", "122nd",
+    ]);
   });
 });

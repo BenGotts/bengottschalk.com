@@ -52,17 +52,34 @@ export function cubingMoments(history: HistoryEntry[], results: PersonResult[]):
     const all = highlights.get(base.competitionId) ?? [];
     return { ...base, highlights: all.slice(0, MAX_HIGHLIGHTS), moreHighlights: Math.max(0, all.length - MAX_HIGHLIGHTS) };
   };
-  const moments = history.map((entry) =>
-    moment({
+  // Number the competitions oldest first, the way the stat tiles count them:
+  // a delegate-only competition is a delegated one but not a competition I competed in.
+  const numbers = new Map<string, { competition?: number; delegated?: number }>();
+  let competedCount = 0;
+  let delegatedCount = 0;
+  for (const entry of history.toSorted((a, b) => a.start_date.localeCompare(b.start_date) || a.name.localeCompare(b.name))) {
+    numbers.set(entry.id, {
+      ...(entry.competed && { competition: ++competedCount }),
+      ...(entry.delegated && { delegated: ++delegatedCount }),
+    });
+  }
+
+  const moments = history.map((entry) => {
+    const number = numbers.get(entry.id);
+    return moment({
       competitionId: entry.id,
       competitionName: entry.name,
       url: entry.url,
       start: entry.start_date,
       end: entry.end_date,
+      city: entry.city,
+      countryIso2: entry.country_iso2,
       competed: entry.competed,
       delegated: entry.delegated,
-    }),
-  );
+      ...(number?.competition !== undefined && { competitionNumber: number.competition }),
+      ...(number?.delegated !== undefined && { delegatedNumber: number.delegated }),
+    });
+  });
 
   // A result whose competition is missing from the history still counts, on its start date.
   const known = new Set(history.map((entry) => entry.id));

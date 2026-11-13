@@ -25,11 +25,25 @@ export interface CubingMoment {
   url: string;
   start: string;
   end: string;
+  /** "City, State" as the WCA writes it; absent for a competition only known from its results. */
+  city?: string;
+  countryIso2?: string;
   competed: boolean;
   delegated: boolean;
+  /** Which competition this was in my career (1 for the first); delegate-only competitions don't count. */
+  competitionNumber?: number;
+  /** Which competition I delegated this was, counting every one I delegated. */
+  delegatedNumber?: number;
   /** Podiums first, then the most notable PRs; at most a few, with `moreHighlights` counting the rest. */
   highlights: MomentHighlight[];
   moreHighlights: number;
+}
+
+/** 1 → "1st", 22 → "22nd", 113 → "113th". */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
+  return `${n}${suffix}`;
 }
 
 export interface MomentMatch extends CubingMoment {

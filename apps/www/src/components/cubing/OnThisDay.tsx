@@ -3,8 +3,9 @@
 import "@cubing/icons";
 import { useSyncExternalStore } from "react";
 import ExternalLink from "@/components/ExternalLink";
+import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import SectionHeader from "@/components/SectionHeader";
-import { momentsOn, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
+import { momentsOn, ordinal, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
 
 const subscribe = () => () => {};
 const getServer = () => null;
@@ -37,6 +38,21 @@ function Highlight({ highlight }: { highlight: MomentHighlight }) {
       {highlight.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{highlight.record}</span>}
       {highlight.milestone && <span className="badge badge-sm border-primary bg-primary/15 font-semibold whitespace-nowrap">{highlight.milestone}</span>}
     </li>
+  );
+}
+
+/** Where it was, and which competition it was in my career, e.g. "42nd competition · 15th as Delegate". */
+function MomentDetails({ moment }: { moment: CubingMoment }) {
+  const counts = [
+    moment.competitionNumber && `${ordinal(moment.competitionNumber)} competition`,
+    moment.delegatedNumber && `${ordinal(moment.delegatedNumber)} as Delegate`,
+  ].filter(Boolean);
+  if (!moment.city && counts.length === 0) return null;
+  return (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
+      {moment.city && moment.countryIso2 && <CompetitionLocation city={moment.city} countryIso2={moment.countryIso2} />}
+      {counts.length > 0 && <span>{counts.join(" · ")}</span>}
+    </span>
   );
 }
 
@@ -74,6 +90,7 @@ export default function OnThisDay({ moments }: { moments: CubingMoment[] }) {
                   {moment.delegated && <span className="badge badge-sm border-secondary bg-secondary/10">Delegated</span>}
                 </span>
               </span>
+              <MomentDetails moment={moment} />
               {moment.highlights.length > 0 && (
                 <ul className="flex flex-col gap-1 text-sm">
                   {moment.highlights.map((highlight) => <Highlight key={highlight.key} highlight={highlight} />)}
