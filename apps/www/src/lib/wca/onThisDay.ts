@@ -39,6 +39,16 @@ export interface CubingMoment {
   moreHighlights: number;
 }
 
+const monthDayFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+/** A competition's days without the year: "Nov 11", "Nov 11–12" or "Oct 31 – Nov 1". */
+export function monthDayRange(start: string, end: string): string {
+  const from = monthDayFormat.format(toTime(start));
+  if (end <= start) return from;
+  if (start.slice(0, 7) === end.slice(0, 7)) return `${from}–${Number(end.slice(8))}`;
+  return `${from} – ${monthDayFormat.format(toTime(end))}`;
+}
+
 /** 1 → "1st", 22 → "22nd", 113 → "113th". */
 export function ordinal(n: number): string {
   const tens = n % 100;

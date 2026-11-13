@@ -8,37 +8,61 @@ import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import type { PodiumItem, PodiumRow } from "./podiumRows";
 
-// The chip tint is a gradient over the solid page colour, so the centre line
-// doesn't show through. `step` is the medal's block on the podium.
+// `step` is the medal's block on the big podium filter, `mini` on each competition's podium.
 const MEDAL_STYLES = {
-  gold: { label: "1st", dot: "bg-medal-gold", chip: "border-medal-gold/70 bg-linear-to-b from-medal-gold/10 to-medal-gold/10", step: "h-28 bg-medal-gold" },
-  silver: { label: "2nd", dot: "bg-medal-silver", chip: "border-medal-silver/70 bg-linear-to-b from-medal-silver/10 to-medal-silver/10", step: "h-20 bg-medal-silver" },
-  bronze: { label: "3rd", dot: "bg-medal-bronze", chip: "border-medal-bronze/70 bg-linear-to-b from-medal-bronze/10 to-medal-bronze/10", step: "h-14 bg-medal-bronze" },
+  gold: { label: "1st", place: "First", step: "h-28 bg-medal-gold", mini: "h-9 bg-medal-gold" },
+  silver: { label: "2nd", place: "Second", step: "h-20 bg-medal-silver", mini: "h-6 bg-medal-silver" },
+  bronze: { label: "3rd", place: "Third", step: "h-14 bg-medal-bronze", mini: "h-4 bg-medal-bronze" },
 } as const;
 const PODIUM_ORDER = ["silver", "gold", "bronze"] as const;
 
-/** One podium: the place, the event and the result, edged in its medal's colour. */
-function Medal({ item }: { item: PodiumItem }) {
-  const style = MEDAL_STYLES[item.medal];
-  const name = (
-    <span className="flex items-center gap-1.5 text-sm">
-      <span className={`${item.iconClass} shrink-0`} aria-hidden="true" />
-      {item.eventName}
-    </span>
+/** One event standing on a step: its icon, with the result that placed underneath. */
+function PodiumEvent({ item }: { item: PodiumItem }) {
+  const content = (
+    <>
+      <span className={`${item.iconClass} text-2xl leading-none`} aria-hidden="true" />
+      <span className="font-mono text-[11px] font-medium sm:text-xs">{item.value}</span>
+      <span className="sr-only">{`${MEDAL_STYLES[item.medal].place} in ${item.eventName}, ${item.kind} ${item.value}`}</span>
+    </>
   );
+  // Two fit side by side on a step, even on phones.
+  const className = "flex w-[3.25rem] flex-col items-center gap-1 rounded-field py-1 sm:w-16 sm:px-1";
   return (
-    <li className={`flex flex-col items-center gap-0.5 rounded-box border bg-base-100 px-3 py-1.5 ${style.chip}`}>
-      <span className="flex items-center gap-1.5 text-xs font-semibold">
-        <span className={`size-2.5 rounded-full ${style.dot}`} aria-hidden="true" />
-        {style.label}
-      </span>
+    <li title={item.eventName}>
       {/* Retired events have no results page to link to. */}
-      {item.href ? <Link href={item.href} className="hover:text-primary">{name}</Link> : name}
-      <span className="font-mono text-sm font-medium">
-        {item.value}
-        <span className="sr-only"> {item.kind}</span>
-      </span>
+      {item.href ? <Link href={item.href} className={`${className} transition-colors hover:bg-base-300/60 hover:text-primary`}>{content}</Link> : <span className={className}>{content}</span>}
     </li>
+  );
+}
+
+/**
+ * A competition's podiums as a podium: 2nd, 1st and 3rd steps, with the events
+ * I placed in standing on each. Steps without a podium there stay faint.
+ */
+function CompetitionPodium({ row }: { row: PodiumRow }) {
+  return (
+    // A solid background, so the timeline's centre line doesn't run through the podium.
+    <div className="relative mx-auto flex w-fit items-end gap-1 bg-base-100 px-2">
+      {PODIUM_ORDER.map((medal) => {
+        const items = row.medals.filter((item) => item.medal === medal);
+        const style = MEDAL_STYLES[medal];
+        return (
+          <div key={medal} className="flex w-[6.75rem] flex-col items-center sm:w-36">
+            {items.length > 0 && (
+              <ul aria-label={`${style.label} place at ${row.competitionName}`} className="flex flex-wrap items-end justify-center pb-1">
+                {items.map((item) => <PodiumEvent key={item.key} item={item} />)}
+              </ul>
+            )}
+            <span
+              aria-hidden="true"
+              className={`flex w-full justify-center rounded-t-md font-display text-xs font-bold leading-4 text-black/80 ${style.mini} ${items.length > 0 ? "" : "opacity-25"}`}
+            >
+              {style.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -133,9 +157,7 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
                   </ExternalLink>
                 </h3>
               </div>
-              <ul aria-label={`Podiums at ${row.competitionName}`} className="relative flex flex-wrap justify-center gap-2">
-                {row.medals.map((item) => <Medal key={item.key} item={item} />)}
-              </ul>
+              <CompetitionPodium row={row} />
             </li>
           </Fragment>
         ))}

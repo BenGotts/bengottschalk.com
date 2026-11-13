@@ -6,7 +6,7 @@ import ExternalLink from "@/components/ExternalLink";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import SectionHeader from "@/components/SectionHeader";
 import CareerCounts from "@/components/cubing/CareerCounts";
-import { momentsOn, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
+import { monthDayRange, momentsOn, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
 
 const subscribe = () => () => {};
 const getServer = () => null;
@@ -78,6 +78,8 @@ export default function OnThisDay({ moments }: { moments: CubingMoment[] }) {
           <li key={moment.competitionId} className="flex gap-4 py-4">
             <span className="flex shrink-0 flex-col whitespace-nowrap">
               <span className="font-display text-xl font-bold text-primary">{moment.start.slice(0, 4)}</span>
+              {/* Within the week, the day isn't today's, so say which it was. */}
+              {day.range === "week" && <span className="text-sm font-medium">{monthDayRange(moment.start, moment.end)}</span>}
               <span className="text-xs text-muted">{moment.yearsAgo === 1 ? "1 year ago" : `${moment.yearsAgo} years ago`}</span>
             </span>
             <span className="min-w-0 flex-1 space-y-1.5">

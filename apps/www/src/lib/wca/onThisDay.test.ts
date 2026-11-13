@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HistoryEntry } from "./competitions";
 import { cubingMoments } from "./moments";
-import { momentsOn, ordinal, type CubingMoment } from "./onThisDay";
+import { monthDayRange, momentsOn, ordinal, type CubingMoment } from "./onThisDay";
 import type { PersonResult } from "./schemas";
 
 function moment(id: string, start: string, end = start): CubingMoment {
@@ -165,5 +165,14 @@ describe("ordinal", () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111, 112, 113, 122].map(ordinal)).toEqual([
       "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th", "112th", "113th", "122nd",
     ]);
+  });
+});
+
+describe("monthDayRange", () => {
+  it("shows a competition's days without the year", () => {
+    expect(monthDayRange("2022-11-11", "2022-11-11")).toBe("Nov 11");
+    expect(monthDayRange("2022-11-11", "2022-11-12")).toBe("Nov 11–12");
+    expect(monthDayRange("2021-10-31", "2021-11-01")).toBe("Oct 31 – Nov 1");
+    expect(monthDayRange("2020-12-31", "2021-01-02")).toBe("Dec 31 – Jan 2");
   });
 });
