@@ -15,9 +15,11 @@ export default function Header() {
       <nav aria-label="Main" className="navbar mx-auto min-h-15 max-w-6xl gap-2 px-4 sm:px-6">
         {/* A flex row, so the name lines up with the buttons instead of sitting on a text baseline. */}
         <div className="flex flex-1 items-center">
-          <Link href="/" className="group inline-flex items-center gap-3 font-display text-xl font-bold">
+          <Link href="/" className="group inline-flex items-center gap-3">
             <BrandMark />
-            Ben Gottschalk
+            {/* A signature script; it reads small, so it's set larger than the other header text, and
+                its tall capitals and loops sit it high, so it's nudged down to centre with the logo. */}
+            <span className="translate-y-0.5 font-signature text-[1.75rem] leading-none">Ben Gottschalk</span>
           </Link>
         </div>
         {/* The live dot streams in, so it never holds up the page. */}
