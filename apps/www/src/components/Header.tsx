@@ -17,9 +17,9 @@ export default function Header() {
         <div className="flex flex-1 items-center">
           <Link href="/" className="group inline-flex items-center gap-3">
             <BrandMark />
-            {/* A signature script; it reads small, so it's set larger than the other header text, and
-                its tall capitals and loops sit it high, so it's nudged down to centre with the logo. */}
-            <span className="translate-y-0.5 font-signature text-[1.75rem] leading-none">Ben Gottschalk</span>
+            {/* A bold script, set larger than the other header text since script reads small, and
+                nudged up 2px, where its letters centre on the logo and buttons. */}
+            <span className="-translate-y-0.5 font-signature text-[1.625rem] leading-none">Ben Gottschalk</span>
           </Link>
         </div>
         {/* The live dot streams in, so it never holds up the page. */}

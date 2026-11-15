@@ -3,9 +3,9 @@
 @import '@bengottschalk/theme/theme.css';
 @import '@bengottschalk/cube/twisty-cube.css';
 
-/* The signature script for my name in the header; --font-satisfy comes from next/font in the root layout. */
+/* The script for my name in the header; --font-lobster comes from next/font in the root layout. */
 @theme inline {
-  --font-signature: var(--font-satisfy), cursive;
+  --font-signature: var(--font-lobster), cursive;
 }
 
 /* Leaflet (competition map) in theme colors. Prefixed with .leaflet-container to beat leaflet.css. */

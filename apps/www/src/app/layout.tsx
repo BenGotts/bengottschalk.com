@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { DM_Mono, DM_Sans, Satisfy } from 'next/font/google'
+import { DM_Mono, DM_Sans, Lobster } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -9,8 +9,8 @@ import { SITE_DESCRIPTION } from '@bengottschalk/content/site'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans', display: 'swap' })
 const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-dm-mono', display: 'swap' })
-// A signature script, just for my name in the header (`font-signature`).
-const satisfy = Satisfy({ subsets: ['latin'], weight: '400', variable: '--font-satisfy', display: 'swap' })
+// A bold script, just for my name in the header (`font-signature`).
+const lobster = Lobster({ subsets: ['latin'], weight: '400', variable: '--font-lobster', display: 'swap' })
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       data-theme={THEMES.dark}
-      className={`${dmSans.variable} ${dmMono.variable} ${satisfy.variable}`}
+      className={`${dmSans.variable} ${dmMono.variable} ${lobster.variable}`}
       // The theme script may change data-theme before React hydrates.
       suppressHydrationWarning
     >
