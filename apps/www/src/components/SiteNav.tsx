@@ -82,7 +82,7 @@ export default function SiteNav({ cubingIndicator, menuIndicator }: {
 
   return (
     <>
-      <ul className="menu menu-horizontal hidden gap-0.5 text-[15px] lg:flex">
+      <ul className="menu menu-horizontal hidden gap-0.5 p-0 text-[15px] lg:flex">
         {HEADER_LINKS.map((link) => (
           <NavItem key={link.href} link={link} active={isActive(link.href)} indicator={indicatorFor(link)} />
         ))}

@@ -9,10 +9,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-base-300 bg-base-200/90 backdrop-blur">
-      {/* Overlaid, so the header keeps the height sticky offsets (top-16) expect. */}
-      <CubeStripe className="absolute inset-x-0 top-0" />
-      <nav aria-label="Main" className="navbar mx-auto max-w-6xl gap-2 px-4 sm:px-6">
-        <div className="flex-1">
+      <CubeStripe />
+      {/* 4px shorter than DaisyUI's navbar, to make room for the stripe: the header keeps
+          the height sticky offsets (top-16) expect, and its contents sit centred under the stripe. */}
+      <nav aria-label="Main" className="navbar mx-auto min-h-15 max-w-6xl gap-2 px-4 sm:px-6">
+        {/* A flex row, so the name lines up with the buttons instead of sitting on a text baseline. */}
+        <div className="flex flex-1 items-center">
           <Link href="/" className="group inline-flex items-center gap-3 font-display text-xl font-bold">
             <BrandMark />
             Ben Gottschalk
