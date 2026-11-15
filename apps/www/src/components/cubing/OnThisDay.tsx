@@ -6,7 +6,8 @@ import ExternalLink from "@/components/ExternalLink";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import SectionHeader from "@/components/SectionHeader";
 import CareerCounts from "@/components/cubing/CareerCounts";
-import { momentsOn, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
+import MiniPodium from "@/components/results/MiniPodium";
+import { monthDayRange, momentsOn, type CubingMoment, type MomentHighlight } from "@/lib/wca/onThisDay";
 
 const subscribe = () => () => {};
 const getServer = () => null;
@@ -24,16 +25,12 @@ function viewerToday(): string {
   return [now.getFullYear(), now.getMonth() + 1, now.getDate()].map((n) => String(n).padStart(2, "0")).join("-");
 }
 
-const MEDAL_DOT = { gold: "bg-medal-gold", silver: "bg-medal-silver", bronze: "bg-medal-bronze" } as const;
-
 function Highlight({ highlight }: { highlight: MomentHighlight }) {
   return (
     <li className="flex items-center gap-1.5">
-      {highlight.medal
-        ? <span className={`size-2.5 shrink-0 rounded-full ${MEDAL_DOT[highlight.medal]}`} aria-hidden="true" />
-        : <span className={`${highlight.iconClass} shrink-0 text-muted`} aria-hidden="true" />}
+      <span className={`${highlight.iconClass} shrink-0 text-muted`} aria-hidden="true" />
       <span>
-        {highlight.kind === "pr" && <span className="font-semibold text-success">{highlight.first ? "First " : "PR "}</span>}
+        <span className="font-semibold text-success">{highlight.first ? "First " : "PR "}</span>
         {highlight.label}
       </span>
       {highlight.record && <span className="badge badge-sm border-accent bg-accent/15 font-semibold">{highlight.record}</span>}
@@ -73,14 +70,18 @@ export default function OnThisDay({ moments }: { moments: CubingMoment[] }) {
         href="/cubing/competitions#past-heading"
         linkLabel="Full history"
       />
-      <ol className="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200 px-5">
+      <ol className="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200 px-4 sm:px-5">
         {day.moments.map((moment) => (
-          <li key={moment.competitionId} className="flex gap-4 py-4">
-            <span className="flex shrink-0 flex-col whitespace-nowrap">
+          // Wide screens: the year, then the competition with its PRs, then its podium on the right.
+          // Narrower: the podium and PRs go under the competition, across the full width on phones.
+          <li key={moment.competitionId} className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 py-4 lg:grid-cols-[auto_1fr_auto]">
+            <span className="flex shrink-0 flex-col whitespace-nowrap lg:row-span-2">
               <span className="font-display text-xl font-bold text-primary">{moment.start.slice(0, 4)}</span>
+              {/* Within the week, the day isn't today's, so say which it was. */}
+              {day.range === "week" && <span className="text-sm font-medium">{monthDayRange(moment.start, moment.end)}</span>}
               <span className="text-xs text-muted">{moment.yearsAgo === 1 ? "1 year ago" : `${moment.yearsAgo} years ago`}</span>
             </span>
-            <span className="min-w-0 flex-1 space-y-1.5">
+            <span className="min-w-0 space-y-1.5">
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <ExternalLink href={moment.url} className="link link-hover font-medium">{moment.competitionName}</ExternalLink>
                 <span className="flex gap-1.5">
@@ -89,15 +90,20 @@ export default function OnThisDay({ moments }: { moments: CubingMoment[] }) {
                 </span>
               </span>
               <MomentDetails moment={moment} />
-              {moment.highlights.length > 0 && (
-                <ul className="flex flex-col gap-1 text-sm">
-                  {moment.highlights.map((highlight) => <Highlight key={highlight.key} highlight={highlight} />)}
-                  {moment.moreHighlights > 0 && (
-                    <li className="text-muted">+{moment.moreHighlights} more {moment.moreHighlights === 1 ? "result" : "results"}</li>
-                  )}
-                </ul>
-              )}
             </span>
+            {moment.podiums.length > 0 && (
+              <div className="col-span-2 sm:col-span-1 sm:col-start-2 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:self-end">
+                <MiniPodium medals={moment.podiums} competitionName={moment.competitionName} />
+              </div>
+            )}
+            {moment.highlights.length > 0 && (
+              <ul aria-label="PRs" className="col-span-2 flex flex-col gap-1 text-sm sm:col-span-1 sm:col-start-2">
+                {moment.highlights.map((highlight) => <Highlight key={highlight.key} highlight={highlight} />)}
+                {moment.moreHighlights > 0 && (
+                  <li className="text-muted">+{moment.moreHighlights} more {moment.moreHighlights === 1 ? "PR" : "PRs"}</li>
+                )}
+              </ul>
+            )}
           </li>
         ))}
       </ol>

@@ -49,6 +49,10 @@
   --ink-red: #FF6B81;
   --ink-orange: #FF8A4C;
   --ink-yellow: #FFD23F;
+  /* Medal colors, readable as icons on these backgrounds (the steps themselves use medal-*). */
+  --ink-gold: #E2B13C;
+  --ink-silver: #C3CAD4;
+  --ink-bronze: #D9904F;
 }
 
 /* "Daylight": a soft blue-green tint, with the cube's own blue and green. All text/background pairs pass WCAG AA. */
@@ -87,6 +91,9 @@
   --ink-red: #B8162F;
   --ink-orange: #B84300;
   --ink-yellow: #8A6100;
+  --ink-gold: #9A6F00;
+  --ink-silver: #5E6B7A;
+  --ink-bronze: #A04E12;
 }
 
 @theme inline {
@@ -104,6 +111,11 @@
   --color-ink-red: var(--ink-red);
   --color-ink-orange: var(--ink-orange);
   --color-ink-yellow: var(--ink-yellow);
+
+  /* Medal colors for icons and text, e.g. `text-ink-gold` on a podium. */
+  --color-ink-gold: var(--ink-gold);
+  --color-ink-silver: var(--ink-silver);
+  --color-ink-bronze: var(--ink-bronze);
 }
 
 @theme {

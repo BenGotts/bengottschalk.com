@@ -14,3 +14,4 @@ export * from "./regions";
 export * from "./onThisDay";
 export * from "./moments";
 export * from "./careerMilestones";
+export * from "./podiumItems";

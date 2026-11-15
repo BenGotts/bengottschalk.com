@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HistoryEntry } from "./competitions";
 import { cubingMoments } from "./moments";
-import { momentsOn, ordinal, type CubingMoment } from "./onThisDay";
+import { monthDayRange, momentsOn, ordinal, type CubingMoment } from "./onThisDay";
 import type { PersonResult } from "./schemas";
 
 function moment(id: string, start: string, end = start): CubingMoment {
@@ -13,6 +13,7 @@ function moment(id: string, start: string, end = start): CubingMoment {
     end,
     competed: true,
     delegated: false,
+    podiums: [],
     highlights: [],
     moreHighlights: 0,
   };
@@ -109,19 +110,28 @@ function result(competitionId: string, date: string, eventId: string, roundTypeI
 }
 
 describe("cubingMoments", () => {
-  it("gathers each competition's podiums and PRs, podiums first", () => {
+  it("gathers each competition's podiums, and its PRs", () => {
     const history = [entry("Open2022", "2022-11-12", "2022-11-13"), entry("Delegated2023", "2023-03-04", "2023-03-04", { competed: false, delegated: true })];
-    const results = [result("Open2022", "2022-11-12", "sq1", "f", 1, 1000, 1200), result("Open2022", "2022-11-12", "333", "1", 20, 712)];
+    const results = [
+      result("Open2022", "2022-11-12", "sq1", "f", 1, 1000, 1200),
+      result("Open2022", "2022-11-12", "333", "f", 3, 712, 900),
+      result("Open2022", "2022-11-12", "222", "1", 20, 300),
+    ];
     const [open, delegated] = cubingMoments(history, results);
     expect(open.end).toBe("2022-11-13");
-    expect(open.highlights.map((h) => h.label)).toEqual([
-      "Gold in Square-1",
-      "3x3x3 Cube single · 7.12",
-      "Square-1 single · 10.00",
+    // Golds first; the average is what placed.
+    expect(open.podiums.map((p) => [p.medal, p.eventName, p.value])).toEqual([
+      ["gold", "Square-1", "12.00"],
+      ["bronze", "3x3x3 Cube", "9.00"],
     ]);
-    expect(open.highlights[1]).toMatchObject({ first: true });
-    expect(open.moreHighlights).toBe(1);
-    expect(delegated).toMatchObject({ delegated: true, competed: false, highlights: [] });
+    expect(open.highlights.map((h) => h.label)).toEqual([
+      "3x3x3 Cube single · 7.12",
+      "3x3x3 Cube average · 9.00",
+      "2x2x2 Cube single · 3.00",
+    ]);
+    expect(open.highlights[0]).toMatchObject({ first: true });
+    expect(open.moreHighlights).toBe(2);
+    expect(delegated).toMatchObject({ delegated: true, competed: false, podiums: [], highlights: [] });
   });
 
   it("puts records and broken barriers ahead of routine PRs", () => {
@@ -165,5 +175,14 @@ describe("ordinal", () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111, 112, 113, 122].map(ordinal)).toEqual([
       "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th", "112th", "113th", "122nd",
     ]);
+  });
+});
+
+describe("monthDayRange", () => {
+  it("shows a competition's days without the year", () => {
+    expect(monthDayRange("2022-11-11", "2022-11-11")).toBe("Nov 11");
+    expect(monthDayRange("2022-11-11", "2022-11-12")).toBe("Nov 11–12");
+    expect(monthDayRange("2021-10-31", "2021-11-01")).toBe("Oct 31 – Nov 1");
+    expect(monthDayRange("2020-12-31", "2021-01-02")).toBe("Dec 31 – Jan 2");
   });
 });

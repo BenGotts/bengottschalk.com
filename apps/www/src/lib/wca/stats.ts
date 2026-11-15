@@ -1,5 +1,4 @@
 import { historyStats, type HistoryEntry, type HistoryStats } from "./competitions";
-import { isCurrentEvent } from "./events";
 import type { Person, PersonResult } from "./schemas";
 
 export interface CubingStats extends HistoryStats {
@@ -36,17 +35,6 @@ export function podiums(results: PersonResult[]): Podium[] {
     .filter((result) => FINAL_ROUNDS.has(result.round_type_id) && result.pos >= 1 && result.pos <= 3 && result.best > 0)
     .toSorted((a, b) => b.competition_start_date.localeCompare(a.competition_start_date) || a.pos - b.pos)
     .map((result) => ({ medal: MEDALS[result.pos - 1], result }));
-}
-
-/**
- * Events to feature: 3x3 first when there's a result, then the current events
- * whose single has the best world rank.
- */
-export function highlightEvents(records: Person["personal_records"], count: number): string[] {
-  const others = Object.keys(records)
-    .filter((eventId) => eventId !== "333" && isCurrentEvent(eventId))
-    .toSorted((a, b) => records[a].single.world_rank - records[b].single.world_rank);
-  return [...(records["333"] ? ["333"] : []), ...others].slice(0, count);
 }
 
 export interface PodiumStats {

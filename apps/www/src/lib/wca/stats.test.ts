@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { highlightEvents, podiums, podiumStats } from "./stats";
+import { podiums, podiumStats } from "./stats";
 import type { PersonResult } from "./schemas";
 
 function result(date: string, roundTypeId: string, pos: number, best: number): PersonResult {
@@ -42,23 +42,6 @@ describe("podiums", () => {
         result("2018-01-01", "f", 1, -1),
       ]),
     ).toEqual([]);
-  });
-});
-
-const rank = (worldRank: number) => ({ best: 100, world_rank: worldRank, continent_rank: 1, country_rank: 1 });
-
-describe("highlightEvents", () => {
-  it("puts 3x3 first, then the best world-ranked singles", () => {
-    const records = { "222": { single: rank(900) }, "333": { single: rank(5000) }, pyram: { single: rank(300) }, skewb: { single: rank(600) } };
-    expect(highlightEvents(records, 3)).toEqual(["333", "pyram", "skewb"]);
-  });
-
-  it("leaves out retired events", () => {
-    expect(highlightEvents({ "333ft": { single: rank(10) }, pyram: { single: rank(300) } }, 4)).toEqual(["pyram"]);
-  });
-
-  it("works without a 3x3 result", () => {
-    expect(highlightEvents({ "222": { single: rank(900) }, pyram: { single: rank(300) } }, 4)).toEqual(["pyram", "222"]);
   });
 });
 

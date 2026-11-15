@@ -3,18 +3,18 @@ import type { HistoryEntry } from "./competitions";
 import { eventIconClass, eventName, sortEventIds } from "./events";
 import { formatResult } from "./format";
 import type { CubingMoment, MomentHighlight } from "./onThisDay";
+import { podiumItems } from "./podiumItems";
 import { prTimeline, type TimelinePr } from "./progression";
 import type { PersonResult } from "./schemas";
-import { podiums } from "./stats";
+import { podiums, type Podium } from "./stats";
 
-const MEDAL_NAMES = { gold: "Gold", silver: "Silver", bronze: "Bronze" } as const;
 const MAX_HIGHLIGHTS = 3;
 
 /** Records first, then barriers broken, then improvements, then first results in an event. */
 const notability = (pr: TimelinePr) => (pr.record ? 4 : 0) + (pr.milestone ? 2 : 0) + (pr.previous === undefined ? 0 : 1);
 
 /**
- * Every competition I competed in or delegated, with its podiums and PRs,
+ * Every competition I competed in or delegated, with all its podiums and its most notable PRs,
  * formatted on the server so the browser only has to match dates (see
  * `momentsOn`). Results only carry a competition's start date, so the end date
  * comes from the history when it's there.
@@ -24,22 +24,13 @@ export function cubingMoments(history: HistoryEntry[], results: PersonResult[]):
   const add = (competitionId: string, highlight: MomentHighlight) =>
     highlights.set(competitionId, [...(highlights.get(competitionId) ?? []), highlight]);
 
-  for (const { medal, result } of podiums(results)) {
-    add(result.competition_id, {
-      key: `podium-${result.event_id}`,
-      kind: "podium",
-      label: `${MEDAL_NAMES[medal]} in ${eventName(result.event_id)}`,
-      iconClass: eventIconClass(result.event_id),
-      medal,
-    });
-  }
+  const podiumsAt = Map.groupBy(podiums(results), (podium: Podium) => podium.result.competition_id);
   // prTimeline lists each competition's PRs in event order, singles first; the
   // most notable go first, so records and barriers aren't hidden behind "+N more".
   for (const entry of prTimeline(results, sortEventIds)) {
     for (const pr of entry.prs.toSorted((a, b) => notability(b) - notability(a))) {
       add(entry.competitionId, {
-        key: `pr-${pr.eventId}-${pr.kind}`,
-        kind: "pr",
+        key: `${pr.eventId}-${pr.kind}`,
         label: `${eventName(pr.eventId)} ${pr.kind} · ${formatResult(pr.eventId, pr.value, pr.kind)}`,
         iconClass: eventIconClass(pr.eventId),
         ...(pr.record && { record: pr.record }),
@@ -49,9 +40,14 @@ export function cubingMoments(history: HistoryEntry[], results: PersonResult[]):
     }
   }
 
-  const moment = (base: Omit<CubingMoment, "highlights" | "moreHighlights">): CubingMoment => {
+  const moment = (base: Omit<CubingMoment, "podiums" | "highlights" | "moreHighlights">): CubingMoment => {
     const all = highlights.get(base.competitionId) ?? [];
-    return { ...base, highlights: all.slice(0, MAX_HIGHLIGHTS), moreHighlights: Math.max(0, all.length - MAX_HIGHLIGHTS) };
+    return {
+      ...base,
+      podiums: podiumItems(podiumsAt.get(base.competitionId) ?? []),
+      highlights: all.slice(0, MAX_HIGHLIGHTS),
+      moreHighlights: Math.max(0, all.length - MAX_HIGHLIGHTS),
+    };
   };
   const numbers = competitionNumbers(history);
 

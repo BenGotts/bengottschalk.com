@@ -10,7 +10,7 @@ import CompetitionLocation from "@/components/competitions/CompetitionLocation";
 import { Miles } from "@/components/competitions/TravelStats";
 import StatTile from "@/components/StatTile";
 import LiveCompetitionSummary from "@/components/competitions/LiveCompetitionSummary";
-import PrCard from "@/components/results/PrCard";
+import PrGrid from "@/components/results/PrGrid";
 import PrTimeline from "@/components/results/PrTimeline";
 import { timelineRows } from "@/components/results/timelineRows";
 import {
@@ -25,7 +25,6 @@ import {
   getDelegateRole,
   getPerson,
   getResults,
-  highlightEvents,
   prDroughts,
   prStreaks,
   prTimeline,
@@ -123,12 +122,8 @@ export default async function CubingPage() {
 
       {person.ok && (
         <section aria-labelledby="highlights-heading" className="space-y-4">
-          <SectionHeader id="highlights-heading" title="Personal records" href="/cubing/results" linkLabel="All events" />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {highlightEvents(person.data.personal_records, 4).map((eventId) => (
-              <PrCard key={eventId} eventId={eventId} record={person.data.personal_records[eventId]} />
-            ))}
-          </div>
+          <SectionHeader id="highlights-heading" title="Personal records" href="/cubing/results" linkLabel="Ranks and podiums" />
+          <PrGrid records={person.data.personal_records} />
         </section>
       )}
 
