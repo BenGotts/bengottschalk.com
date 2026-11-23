@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LuArrowRight, LuMap } from "react-icons/lu";
 import ExternalLink from "@/components/ExternalLink";
 import SectionHeader from "@/components/SectionHeader";
+import BadgeCollection from "@/components/cubing/BadgeCollection";
 import CubingStats from "@/components/cubing/CubingStats";
 import CompetitionCard from "@/components/competitions/CompetitionCard";
 import CompetitionLocation from "@/components/competitions/CompetitionLocation";
@@ -16,6 +17,7 @@ import { timelineRows } from "@/components/results/timelineRows";
 import {
   competitionDateLabels,
   cubingStats,
+  earnedBadges,
   eventName,
   finishedCompetitions,
   formatDateRange,
@@ -23,13 +25,17 @@ import {
   getCompetitionHistory,
   getCompetitionsOverview,
   getDelegateRole,
+  getMainEvents,
   getPerson,
   getResults,
+  podiumGoal,
+  podiums,
   prDroughts,
   prStreaks,
   prTimeline,
   sortEventIds,
   travelStats,
+  tripleCrowns,
   upcomingNumbers,
 } from "@/lib/wca";
 import { WCA_ID } from "@/consts";
@@ -61,6 +67,23 @@ export default async function CubingPage() {
   const recent = history.slice(0, 4);
   const timeline = results.ok ? prTimeline(results.data, sortEventIds) : [];
   const latestPrs = timeline.slice(0, 3);
+
+  // Badges: triple crowns, then the fun ones. Main events decide competition wins.
+  const podiumList = results.ok ? podiums(results.data) : [];
+  const crowns = tripleCrowns(podiumGoal(podiumList));
+  const badges =
+    person.ok && results.ok && stats && historyResult.ok
+      ? earnedBadges({
+          person: person.data,
+          results: results.data,
+          podiums: podiumList,
+          history,
+          stats,
+          mainEvents: await getMainEvents(podiumList),
+          isDelegate: role.ok && role.data !== null,
+          today: historyResult.data.utcToday,
+        })
+      : [];
 
   // Fun stats, each linking to where it's explained in full.
   const travel = history.length > 1 ? travelStats(history) : null;
@@ -124,6 +147,13 @@ export default async function CubingPage() {
         <section aria-labelledby="highlights-heading" className="space-y-4">
           <SectionHeader id="highlights-heading" title="Personal records" href="/cubing/results" linkLabel="Ranks and records" />
           <PrGrid records={person.data.personal_records} />
+        </section>
+      )}
+
+      {(crowns.length > 0 || badges.length > 0) && (
+        <section aria-labelledby="badges-heading" className="space-y-4">
+          <SectionHeader id="badges-heading" title="Badges" href="/cubing/podiums" linkLabel="Every podium" />
+          <BadgeCollection crowns={crowns} badges={badges} />
         </section>
       )}
 

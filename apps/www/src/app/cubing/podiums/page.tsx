@@ -4,7 +4,7 @@ import PodiumGoal from "@/components/results/PodiumGoal";
 import PodiumStatTiles from "@/components/results/PodiumStatTiles";
 import PodiumTimeline from "@/components/results/PodiumTimeline";
 import { podiumRows } from "@/components/results/podiumRows";
-import { competitionDateLabels, getCompetitionHistory, getMainEventId, getResults, podiumGoal, podiums, podiumStats } from "@/lib/wca";
+import { competitionDateLabels, getCompetitionHistory, getMainEvents, getResults, podiumGoal, podiums, podiumStats } from "@/lib/wca";
 
 export const metadata: Metadata = pageMetadata({
   title: "Podiums",
@@ -34,13 +34,8 @@ export default async function PodiumsPage() {
   }
 
   const podiumList = podiums(results.data);
-  // Main events decide competition wins, so only competitions with a gold need one.
-  const goldCompetitions = [...new Set(podiumList.filter((podium) => podium.medal === "gold").map((podium) => podium.result.competition_id))];
-  const mainEvents = new Map(
-    (await Promise.all(goldCompetitions.map(async (id) => [id, await getMainEventId(id)] as const))).flatMap(([id, main]) =>
-      main.ok ? [[id, main.data] as const] : [],
-    ),
-  );
+  // Main events decide competition wins.
+  const mainEvents = await getMainEvents(podiumList);
   return (
     <div className="space-y-12">
       {header}

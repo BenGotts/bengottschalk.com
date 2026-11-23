@@ -16,3 +16,4 @@ export * from "./moments";
 export * from "./careerMilestones";
 export * from "./podiumItems";
 export * from "./podiumGoal";
+export * from "./badges";

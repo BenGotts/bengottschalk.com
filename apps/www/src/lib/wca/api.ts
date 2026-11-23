@@ -17,6 +17,7 @@ import {
 } from "./competitions";
 import { findLivePerson, type LivePerson } from "./live";
 import { getPersonSchedule, type PersonSchedule } from "./schedule";
+import type { Podium } from "./stats";
 import {
   CompetitionMainEventSchema,
   CompetitionScheduleSchema,
@@ -197,6 +198,17 @@ export async function getMainEventId(competitionId: string): Promise<Result<stri
   cacheTag("wca", `wca-main-event-${competitionId}`);
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}`, CompetitionMainEventSchema);
   return settle(result.ok ? ok(result.data.main_event_id ?? "333") : result, "max");
+}
+
+/**
+ * The main events of the competitions where a podium was gold: all that's
+ * needed to spot competition wins. Each lookup is cached by getMainEventId;
+ * ones that fail are left out.
+ */
+export async function getMainEvents(podiums: Podium[]): Promise<Map<string, string>> {
+  const ids = [...new Set(podiums.filter((podium) => podium.medal === "gold").map((podium) => podium.result.competition_id))];
+  const found = await Promise.all(ids.map(async (id) => [id, await getMainEventId(id)] as const));
+  return new Map(found.flatMap(([id, main]) => (main.ok ? [[id, main.data] as const] : [])));
 }
 
 /**
