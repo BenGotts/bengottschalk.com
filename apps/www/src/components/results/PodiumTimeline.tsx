@@ -14,17 +14,19 @@ type Medal = PodiumItem["medal"];
 const BADGE_STYLE: Record<Badge["kind"], string> = {
   win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/85",
-  complete: "bg-ink-purple/15 text-ink-purple",
-  // Other milestones share the silver of their cards.
-  "first-gold": "bg-ink-silver/15 text-ink-silver",
-  first: "bg-ink-silver/15 text-ink-silver",
-  count: "bg-ink-silver/15 text-ink-silver",
+  complete: "bg-secondary/15 text-secondary",
+  // Other milestones share the purple of their cards.
+  "first-gold": "bg-ink-purple/15 text-ink-purple",
+  first: "bg-ink-purple/15 text-ink-purple",
+  count: "bg-ink-purple/15 text-ink-purple",
 };
 
 // Each symbol has one meaning, on the cards, their badges and the trophy cabinet:
 // a blue trophy for a competition win, a gold medal for every 50th podium, and
-// a purple ★ for all three placements in an event, as on the cabinet's
-// nameplates, and silver sparkles for any other milestone.
+// a green ★ for all three placements in an event, as on the cabinet's
+// nameplates (and green like the goal's progress bar), and purple sparkles for
+// any other milestone. Silver and bronze stay for medals, and red is left out
+// so it never sits next to the green.
 type Highlight = "win" | "overall" | "complete" | "milestone" | "none";
 
 // Full class names, so Tailwind finds them.
@@ -34,9 +36,9 @@ const CARD_STYLE: Record<Highlight, string> = {
   overall:
     "border-2 border-ink-gold bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-medal-gold)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_24px_-6px_var(--color-medal-gold)]",
   complete:
-    "border-2 border-ink-purple/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-ink-purple)_16%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_22px_-7px_var(--color-ink-purple)]",
+    "border-2 border-secondary/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-secondary)_16%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_22px_-7px_var(--color-secondary)]",
   milestone:
-    "border-2 border-ink-silver/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-ink-silver)_16%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_20px_-7px_var(--color-ink-silver)]",
+    "border-2 border-ink-purple/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-ink-purple)_16%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_22px_-7px_var(--color-ink-purple)]",
   none: "border border-base-300 bg-base-200",
 };
 
@@ -51,8 +53,8 @@ function Symbol({ highlight, className = "" }: { highlight: Exclude<Highlight, "
 const SEAL_STYLE = {
   win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/80",
-  complete: "bg-ink-purple text-base-100",
-  milestone: "bg-ink-silver text-base-100",
+  complete: "bg-secondary text-secondary-content",
+  milestone: "bg-ink-purple text-base-100",
 } as const;
 
 function highlightOf(badges: Badge[]): Highlight {

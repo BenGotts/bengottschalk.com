@@ -49,7 +49,7 @@
   --ink-red: #FF6B81;
   --ink-orange: #FF8A4C;
   --ink-yellow: #FFD23F;
-  /* Purple for rare achievements, e.g. all three placements in an event. */
+  /* Purple, beyond the cube colors, e.g. for podium milestones. */
   --ink-purple: #B794FF;
   /* Medal colors, readable as icons on these backgrounds (the steps themselves use medal-*). */
   --ink-gold: #E2B13C;
