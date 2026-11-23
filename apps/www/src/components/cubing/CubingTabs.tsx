@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { TONE_BORDER, type Tone } from "@/lib/tones";
 
 // Each tab underlines in its own cube color.
@@ -11,7 +11,8 @@ const TABS: { label: string; href: string; tone: Tone }[] = [
   { label: "Competitions", href: "/cubing/competitions", tone: "green" },
   { label: "Places", href: "/cubing/places", tone: "red" },
   { label: "Results", href: "/cubing/results", tone: "orange" },
-  { label: "Timeline", href: "/cubing/timeline", tone: "yellow" },
+  { label: "Podiums", href: "/cubing/podiums", tone: "yellow" },
+  { label: "Timeline", href: "/cubing/timeline", tone: "blue" },
 ];
 
 /** The Cubing section's tabs. Event pages count as Results. */
@@ -21,10 +22,16 @@ export default function CubingTabs({ competitionsIndicator }: {
 }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/cubing" ? pathname === href : pathname.startsWith(href));
+  // On phones the tabs scroll sideways; keep the current one in view.
+  const listRef = useRef<HTMLUListElement>(null);
+  const activeHref = TABS.find((tab) => isActive(tab.href))?.href;
+  useEffect(() => {
+    if (activeHref) listRef.current?.querySelector(`a[href="${activeHref}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeHref]);
 
   return (
     <nav aria-label="Cubing" className="border-b border-base-300">
-      <ul className="-mb-px flex overflow-x-auto sm:gap-1">
+      <ul ref={listRef} className="-mb-px flex overflow-x-auto sm:gap-1">
         {TABS.map((tab) => {
           const active = isActive(tab.href);
           return (

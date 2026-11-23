@@ -1,14 +1,130 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { LuMedal, LuSparkles, LuTrophy } from "react-icons/lu";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import MiniPodium, { MEDAL_STYLES, PODIUM_ORDER } from "./MiniPodium";
-import type { PodiumItem, PodiumRow } from "./podiumRows";
+import type { Badge, PodiumItem, PodiumRow } from "./podiumRows";
 
 type Medal = PodiumItem["medal"];
 
+// Each kind of milestone in its own style; overall milestones stand out most.
+const BADGE_STYLE: Record<Badge["kind"], string> = {
+  win: "bg-primary text-primary-content",
+  overall: "bg-medal-gold text-black/85",
+  complete: "bg-secondary/15 text-secondary",
+  // Other milestones share the purple of their cards.
+  "first-gold": "bg-ink-purple/15 text-ink-purple",
+  first: "bg-ink-purple/15 text-ink-purple",
+  count: "bg-ink-purple/15 text-ink-purple",
+};
+
+// Each symbol has one meaning, on the cards, their badges and the trophy cabinet:
+// a blue trophy for a competition win, a gold medal for every 50th podium, and
+// a green ★ for all three placements in an event, as on the cabinet's
+// nameplates (and green like the goal's progress bar), and purple sparkles for
+// any other milestone. Silver and bronze stay for medals, and red is left out
+// so it never sits next to the green.
+type Highlight = "win" | "overall" | "complete" | "milestone" | "none";
+
+// Full class names, so Tailwind finds them.
+const CARD_STYLE: Record<Highlight, string> = {
+  win:
+    "border-2 border-primary bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_28px_-6px_var(--color-primary)]",
+  overall:
+    "border-2 border-ink-gold bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-medal-gold)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_24px_-6px_var(--color-medal-gold)]",
+  complete:
+    "border-2 border-secondary/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-secondary)_16%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_22px_-7px_var(--color-secondary)]",
+  milestone:
+    "border-2 border-ink-purple/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-ink-purple)_16%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_22px_-7px_var(--color-ink-purple)]",
+  none: "border border-base-300 bg-base-200",
+};
+
+/** The symbol for each kind of highlight, on the card's seal and in the legend. */
+function Symbol({ highlight, className = "" }: { highlight: Exclude<Highlight, "none">; className?: string }) {
+  if (highlight === "win") return <LuTrophy className={className} aria-hidden="true" />;
+  if (highlight === "overall") return <LuMedal className={className} aria-hidden="true" />;
+  if (highlight === "milestone") return <LuSparkles className={className} aria-hidden="true" />;
+  return <span aria-hidden="true">★</span>;
+}
+
+const SEAL_STYLE = {
+  win: "bg-primary text-primary-content",
+  overall: "bg-medal-gold text-black/80",
+  complete: "bg-secondary text-secondary-content",
+  milestone: "bg-ink-purple text-base-100",
+} as const;
+
+function highlightOf(badges: Badge[]): Highlight {
+  for (const kind of ["win", "overall", "complete"] as const) {
+    if (badges.some((badge) => badge.kind === kind)) return kind;
+  }
+  return badges.length > 0 ? "milestone" : "none";
+}
+
+/** What the seals mean, shown once above the timeline. */
+function Legend() {
+  const items = [
+    ["win", "Won the competition"],
+    ["overall", "Every 50th podium"],
+    ["complete", "All three placements in an event"],
+    ["milestone", "First podiums and golds, podium counts"],
+  ] as const;
+  return (
+    <ul aria-label="Milestone symbols" className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
+      {items.map(([highlight, label]) => (
+        <li key={highlight} className="flex items-center gap-1.5">
+          <span className={`flex size-5 items-center justify-center rounded-full text-[11px] font-bold ${SEAL_STYLE[highlight]}`}>
+            <Symbol highlight={highlight} className="size-3" />
+          </span>
+          {label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The milestones a competition reached, as small badges in its card. */
+function Badges({ badges }: { badges: Badge[] }) {
+  return (
+    <ul aria-label="Milestones" className="mt-2 flex flex-wrap justify-center gap-1">
+      {badges.map((badge) => (
+        <li key={badge.key} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 ${BADGE_STYLE[badge.kind]}`}>
+          {(badge.kind === "win" || badge.kind === "overall" || badge.kind === "complete") && <Symbol highlight={badge.kind} className="size-3" />}
+          {badge.iconClass && <span className={badge.iconClass} aria-hidden="true" />}
+          {badge.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A competition's date, name and milestones, standing out when it reached one. */
+function CompetitionCard({ row }: { row: PodiumRow }) {
+  const highlight = highlightOf(row.badges);
+  return (
+    <div className={`relative mx-auto mb-3 w-fit max-w-[85%] rounded-box px-4 py-2 text-center ${CARD_STYLE[highlight]}`}>
+      {highlight !== "none" && (
+        // A seal on the corner, so milestones catch the eye while scrolling.
+        <span
+          aria-hidden="true"
+          className={`absolute -right-2.5 -top-2.5 flex size-6 items-center justify-center rounded-full text-xs font-bold shadow ring-2 ring-base-100 ${SEAL_STYLE[highlight]}`}
+        >
+          <Symbol highlight={highlight} className="size-3.5" />
+        </span>
+      )}
+      <p className="text-xs text-muted">{row.dateLabel}</p>
+      <h3 className="font-semibold leading-snug">
+        <ExternalLink href={`https://www.worldcubeassociation.org/competitions/${row.competitionId}`} className="link link-hover">
+          {row.competitionName}
+        </ExternalLink>
+      </h3>
+      {row.badges.length > 0 && <Badges badges={row.badges} />}
+    </div>
+  );
+}
 
 /**
  * Podiums down a centre line, one node per competition with its medals below,
@@ -79,6 +195,8 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
         </div>
       </fieldset>
 
+      <Legend />
+
       <ol className="relative">
         {/* The centre line. */}
         <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-base-300" aria-hidden="true" />
@@ -90,14 +208,7 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
               </li>
             )}
             <li className="relative pb-10">
-              <div className="relative mx-auto mb-3 w-fit max-w-[85%] rounded-box border border-base-300 bg-base-200 px-4 py-2 text-center">
-                <p className="text-xs text-muted">{row.dateLabel}</p>
-                <h3 className="font-semibold leading-snug">
-                  <ExternalLink href={`https://www.worldcubeassociation.org/competitions/${row.competitionId}`} className="link link-hover">
-                    {row.competitionName}
-                  </ExternalLink>
-                </h3>
-              </div>
+              <CompetitionCard row={row} />
               {/* A solid background, so the centre line doesn't run through the podium. */}
               <MiniPodium medals={row.medals} competitionName={row.competitionName} className="relative mx-auto bg-base-100 px-2" />
             </li>

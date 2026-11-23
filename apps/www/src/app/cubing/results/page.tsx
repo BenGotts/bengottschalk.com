@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import "@cubing/icons";
-import PodiumTimeline from "@/components/results/PodiumTimeline";
-import { podiumRows } from "@/components/results/podiumRows";
+import Link from "next/link";
+import { LuArrowRight } from "react-icons/lu";
+import { MedalCounts } from "@/components/cubing/CubingStats";
 import PrTable from "@/components/results/PrTable";
-import StatTile from "@/components/StatTile";
 import {
   competitionDateLabels,
-  eventIconClass,
   eventName,
   formatResult,
   getCompetitionHistory,
   getPerson,
   getRegionalRecords,
   getResults,
+  podiumGoal,
   podiums,
-  podiumStats,
-  type PodiumStats,
 } from "@/lib/wca";
 import ExternalLink from "@/components/ExternalLink";
 
@@ -40,9 +38,8 @@ export default async function ResultsPage() {
     );
   }
 
-  const { personal_records, person: profile } = person.data;
-  const podiumList = results.ok ? podiums(results.data) : [];
-  const podiumNumbers = results.ok ? podiumStats(results.data) : null;
+  const { personal_records, person: profile, medals } = person.data;
+  const goal = results.ok ? podiumGoal(podiums(results.data)) : null;
   const recordRows = regionalRecords.ok
     ? regionalRecords.data.flatMap((result) => [
         ...(result.regional_single_record ? [{ result, kind: "single" as const, value: result.best, record: result.regional_single_record }] : []),
@@ -83,57 +80,27 @@ export default async function ResultsPage() {
         </section>
       )}
 
-      {podiumList.length > 0 && (
-        <section aria-labelledby="podiums-heading" className="space-y-6">
-          {/* The placement filter below shows the medal counts. */}
-          <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
-          {podiumNumbers && <PodiumStatTiles stats={podiumNumbers} dateLabel={dateLabel} />}
-          <PodiumTimeline rows={podiumRows(podiumList, dateLabel)} />
-        </section>
-      )}
-    </div>
-  )
-}
-
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-
-/** An event's name with its icon, kept together on one line. */
-function EventName({ eventId }: { eventId: string }) {
-  return (
-    <span className="whitespace-nowrap">
-      <span className={`${eventIconClass(eventId)} mr-1 align-[-0.125em]`} aria-hidden="true" />
-      {eventName(eventId)}
-    </span>
-  );
-}
-
-/** Podium numbers beyond the medal counts: where and when. */
-function PodiumStatTiles({ stats, dateLabel }: { stats: PodiumStats; dateLabel: ReturnType<typeof competitionDateLabels> }) {
-  const { events, topEvent, bestCompetition, bestYear, firstPodium, currentStreak } = stats;
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-      <StatTile tone="blue" value={events} label={events === 1 ? "Event with a podium" : "Different events with a podium"} />
-      <StatTile tone="red" value={currentStreak} label={currentStreak === 1 ? "Competition in a row with a podium" : "Competitions in a row with a podium"} />
-      {topEvent && (
-        <StatTile tone="green" value={topEvent.count} label={<>Podiums in <EventName eventId={topEvent.eventId} />, my most in one event</>} />
-      )}
-      {bestCompetition && (
-        <StatTile
-          tone="yellow"
-          value={bestCompetition.count}
-          label={`Podiums at ${bestCompetition.name}, my most at one competition (${dateLabel(bestCompetition.id, bestCompetition.startDate)})`}
-        />
-      )}
-      {bestYear && (
-        <StatTile tone="orange" value={bestYear.year} label={`My best year, with ${plural(bestYear.count, "podium")} in ${plural(bestYear.events, "event")}`} />
-      )}
-      {firstPodium && (
-        <StatTile
-          tone="blue"
-          value={firstPodium.result.competition_start_date.slice(0, 4)}
-          label={<>First podium: <EventName eventId={firstPodium.result.event_id} /> at {firstPodium.result.competition_short_name}</>}
-        />
-      )}
+      <section aria-labelledby="podiums-heading" className="space-y-4">
+        <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
+        <Link href="/cubing/podiums" className="group block space-y-4 rounded-box border border-base-300 bg-base-200 p-5 transition-colors hover:border-ink-yellow">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div>
+              <p className="font-display text-4xl font-bold">{medals.total}</p>
+              <MedalCounts medals={medals} />
+            </div>
+            {goal && (
+              <p className="text-sm text-muted">
+                <span className="font-semibold text-base-content">{goal.done} / {goal.total}</span> toward 1st, 2nd and 3rd in every event
+              </p>
+            )}
+          </div>
+          {goal && <progress className="progress progress-secondary w-full" value={goal.done} max={goal.total} aria-label="Podium placements done" />}
+          <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+            See every podium
+            <LuArrowRight className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          </span>
+        </Link>
+      </section>
     </div>
   );
 }

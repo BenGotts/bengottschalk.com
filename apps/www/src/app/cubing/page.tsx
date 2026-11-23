@@ -122,7 +122,7 @@ export default async function CubingPage() {
 
       {person.ok && (
         <section aria-labelledby="highlights-heading" className="space-y-4">
-          <SectionHeader id="highlights-heading" title="Personal records" href="/cubing/results" linkLabel="Ranks and podiums" />
+          <SectionHeader id="highlights-heading" title="Personal records" href="/cubing/results" linkLabel="Ranks and records" />
           <PrGrid records={person.data.personal_records} />
         </section>
       )}

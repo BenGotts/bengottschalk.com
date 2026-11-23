@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LuArrowLeft, LuArrowRight } from "react-icons/lu";
 import EventSwitcher from "@/components/results/EventSwitcher";
+import { PlacementSlot } from "@/components/results/PodiumGoal";
 import PrTimeline from "@/components/results/PrTimeline";
 import ProgressionChart from "@/components/results/ProgressionChart";
 import { timelineRows } from "@/components/results/timelineRows";
@@ -24,6 +25,9 @@ import {
   sortEventIds,
   currentEventIds,
   isCurrentEvent,
+  podiumGoal,
+  podiums,
+  type PodiumGoalRow,
   type PrPoint,
   type Rank,
 } from "@/lib/wca";
@@ -74,6 +78,29 @@ function PrCard({ label, value, rank, setAt, dateLabel }: { label: string; value
   );
 }
 
+/** This event's 1st, 2nd and 3rd: the event's row of the podium goal. */
+function EventPodiums({ row, dateLabel }: { row: PodiumGoalRow; dateLabel: DateLabel }) {
+  const done = row.cells.filter((cell) => cell.count > 0).length;
+  const event = eventName(row.eventId);
+  return (
+    <section aria-labelledby="podiums-heading" className="space-y-4 rounded-box border border-base-300 bg-base-200 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="podiums-heading" className="text-xl font-bold">Podiums</h2>
+        <p className="text-sm text-muted">
+          {row.complete ? <span className="font-medium text-secondary">All three placements ✓</span> : `${done} of 3 placements`}
+          {" · "}
+          <Link href="/cubing/podiums" className="link link-hover text-primary">All events</Link>
+        </p>
+      </div>
+      <ul className="grid grid-cols-3 gap-2">
+        {row.cells.map((cell) => (
+          <li key={cell.medal}><PlacementSlot cell={cell} event={event} dateLabel={dateLabel} className="h-14" /></li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 // Same shape as the page, shown only for event URLs that weren't prerendered.
 function EventResultsSkeleton() {
   return (
@@ -113,6 +140,7 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
   if (person.ok && !pr) notFound();
 
   const progression = results.ok ? prProgression(results.data) : null;
+  const podiumRow = results.ok ? podiumGoal(podiums(results.data)).rows.find((row) => row.eventId === event) : undefined;
   const timeline = results.ok ? prTimeline(results.data, sortEventIds) : [];
   const eventIds = person.ok ? currentEventIds(Object.keys(person.data.personal_records)) : [];
   const index = eventIds.indexOf(event);
@@ -137,6 +165,8 @@ async function EventResults({ params }: Pick<PageProps<"/cubing/results/[event]"
           )}
         </section>
       )}
+
+      {podiumRow && <EventPodiums row={podiumRow} dateLabel={dateLabel} />}
 
       {progression ? (
         <>
