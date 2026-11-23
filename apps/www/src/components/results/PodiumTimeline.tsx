@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { LuTrophy } from "react-icons/lu";
+import { LuMedal, LuTrophy } from "react-icons/lu";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
@@ -20,30 +20,63 @@ const BADGE_STYLE: Record<Badge["kind"], string> = {
   count: "bg-base-300 text-base-content",
 };
 
-// Cards that reached a milestone stand out: blue with a trophy for a
-// competition win, gold for an overall milestone (every 50th podium), green
-// for any other, plain otherwise.
-type Highlight = "win" | "overall" | "milestone" | "none";
+// Each symbol has one meaning, on the cards, their badges and the trophy cabinet:
+// a blue trophy for a competition win, a gold medal for every 50th podium, and
+// a green ★ for all three placements in an event, as on the cabinet's
+// nameplates. Other milestones get a subtler card and no seal.
+type Highlight = "win" | "overall" | "complete" | "milestone" | "none";
+
+// Full class names, so Tailwind finds them.
 const CARD_STYLE: Record<Highlight, string> = {
   win:
     "border-2 border-primary bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_28px_-6px_var(--color-primary)]",
   overall:
     "border-2 border-ink-gold bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-medal-gold)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_24px_-6px_var(--color-medal-gold)]",
-  milestone:
-    "border-2 border-secondary/60 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-secondary)_12%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_20px_-8px_var(--color-secondary)]",
+  complete:
+    "border-2 border-secondary/70 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-secondary)_14%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_20px_-8px_var(--color-secondary)]",
+  milestone: "border-2 border-base-content/25 bg-base-200",
   none: "border border-base-300 bg-base-200",
 };
-const SEAL_STYLE: Record<Highlight, string> = {
+
+/** The symbol for each kind of highlight, on the card's seal and in the legend. */
+function Symbol({ highlight, className = "" }: { highlight: "win" | "overall" | "complete"; className?: string }) {
+  if (highlight === "win") return <LuTrophy className={className} aria-hidden="true" />;
+  if (highlight === "overall") return <LuMedal className={className} aria-hidden="true" />;
+  return <span aria-hidden="true">★</span>;
+}
+
+const SEAL_STYLE = {
   win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/80",
-  milestone: "bg-secondary text-secondary-content",
-  none: "",
-};
+  complete: "bg-secondary text-secondary-content",
+} as const;
 
 function highlightOf(badges: Badge[]): Highlight {
-  if (badges.some((badge) => badge.kind === "win")) return "win";
-  if (badges.some((badge) => badge.kind === "overall")) return "overall";
+  for (const kind of ["win", "overall", "complete"] as const) {
+    if (badges.some((badge) => badge.kind === kind)) return kind;
+  }
   return badges.length > 0 ? "milestone" : "none";
+}
+
+/** What the seals mean, shown once above the timeline. */
+function Legend() {
+  const items = [
+    ["win", "Won the competition"],
+    ["overall", "Every 50th podium"],
+    ["complete", "All three placements in an event"],
+  ] as const;
+  return (
+    <ul aria-label="Milestone symbols" className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
+      {items.map(([highlight, label]) => (
+        <li key={highlight} className="flex items-center gap-1.5">
+          <span className={`flex size-5 items-center justify-center rounded-full text-[11px] font-bold ${SEAL_STYLE[highlight]}`}>
+            <Symbol highlight={highlight} className="size-3" />
+          </span>
+          {label}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** The milestones a competition reached, as small badges in its card. */
@@ -52,8 +85,7 @@ function Badges({ badges }: { badges: Badge[] }) {
     <ul aria-label="Milestones" className="mt-2 flex flex-wrap justify-center gap-1">
       {badges.map((badge) => (
         <li key={badge.key} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 ${BADGE_STYLE[badge.kind]}`}>
-          {badge.kind === "win" && <LuTrophy className="size-3" aria-hidden="true" />}
-          {badge.kind === "complete" || badge.kind === "overall" ? <span aria-hidden="true">★</span> : null}
+          {(badge.kind === "win" || badge.kind === "overall" || badge.kind === "complete") && <Symbol highlight={badge.kind} className="size-3" />}
           {badge.iconClass && <span className={badge.iconClass} aria-hidden="true" />}
           {badge.label}
         </li>
@@ -67,13 +99,13 @@ function CompetitionCard({ row }: { row: PodiumRow }) {
   const highlight = highlightOf(row.badges);
   return (
     <div className={`relative mx-auto mb-3 w-fit max-w-[85%] rounded-box px-4 py-2 text-center ${CARD_STYLE[highlight]}`}>
-      {highlight !== "none" && (
-        // A seal on the corner, so milestone cards catch the eye while scrolling.
+      {(highlight === "win" || highlight === "overall" || highlight === "complete") && (
+        // A seal on the corner, so the biggest milestones catch the eye while scrolling.
         <span
           aria-hidden="true"
           className={`absolute -right-2.5 -top-2.5 flex size-6 items-center justify-center rounded-full text-xs font-bold shadow ring-2 ring-base-100 ${SEAL_STYLE[highlight]}`}
         >
-          {highlight === "win" ? <LuTrophy className="size-3.5" /> : "★"}
+          <Symbol highlight={highlight} className="size-3.5" />
         </span>
       )}
       <p className="text-xs text-muted">{row.dateLabel}</p>
@@ -155,6 +187,8 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
           )}
         </div>
       </fieldset>
+
+      <Legend />
 
       <ol className="relative">
         {/* The centre line. */}
