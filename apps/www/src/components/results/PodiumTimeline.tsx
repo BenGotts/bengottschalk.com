@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { LuMedal, LuTrophy } from "react-icons/lu";
+import { LuMedal, LuSparkles, LuTrophy } from "react-icons/lu";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
@@ -15,15 +15,16 @@ const BADGE_STYLE: Record<Badge["kind"], string> = {
   win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/85",
   complete: "bg-secondary/15 text-secondary",
-  "first-gold": "border border-ink-gold/60 text-ink-gold",
-  first: "bg-primary/15 text-primary",
-  count: "bg-base-300 text-base-content",
+  // Other milestones share the red of their cards.
+  "first-gold": "bg-ink-red/15 text-ink-red",
+  first: "bg-ink-red/15 text-ink-red",
+  count: "bg-ink-red/15 text-ink-red",
 };
 
 // Each symbol has one meaning, on the cards, their badges and the trophy cabinet:
 // a blue trophy for a competition win, a gold medal for every 50th podium, and
 // a green ★ for all three placements in an event, as on the cabinet's
-// nameplates. Other milestones get a subtler card and no seal.
+// nameplates, and red sparkles for any other milestone.
 type Highlight = "win" | "overall" | "complete" | "milestone" | "none";
 
 // Full class names, so Tailwind finds them.
@@ -34,14 +35,16 @@ const CARD_STYLE: Record<Highlight, string> = {
     "border-2 border-ink-gold bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-medal-gold)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_24px_-6px_var(--color-medal-gold)]",
   complete:
     "border-2 border-secondary/70 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-secondary)_14%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_20px_-8px_var(--color-secondary)]",
-  milestone: "border-2 border-base-content/25 bg-base-200",
+  milestone:
+    "border-2 border-ink-red/70 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-ink-red)_14%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_20px_-8px_var(--color-ink-red)]",
   none: "border border-base-300 bg-base-200",
 };
 
 /** The symbol for each kind of highlight, on the card's seal and in the legend. */
-function Symbol({ highlight, className = "" }: { highlight: "win" | "overall" | "complete"; className?: string }) {
+function Symbol({ highlight, className = "" }: { highlight: Exclude<Highlight, "none">; className?: string }) {
   if (highlight === "win") return <LuTrophy className={className} aria-hidden="true" />;
   if (highlight === "overall") return <LuMedal className={className} aria-hidden="true" />;
+  if (highlight === "milestone") return <LuSparkles className={className} aria-hidden="true" />;
   return <span aria-hidden="true">★</span>;
 }
 
@@ -49,6 +52,7 @@ const SEAL_STYLE = {
   win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/80",
   complete: "bg-secondary text-secondary-content",
+  milestone: "bg-ink-red text-base-100",
 } as const;
 
 function highlightOf(badges: Badge[]): Highlight {
@@ -64,6 +68,7 @@ function Legend() {
     ["win", "Won the competition"],
     ["overall", "Every 50th podium"],
     ["complete", "All three placements in an event"],
+    ["milestone", "First podiums and golds, podium counts"],
   ] as const;
   return (
     <ul aria-label="Milestone symbols" className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
@@ -99,8 +104,8 @@ function CompetitionCard({ row }: { row: PodiumRow }) {
   const highlight = highlightOf(row.badges);
   return (
     <div className={`relative mx-auto mb-3 w-fit max-w-[85%] rounded-box px-4 py-2 text-center ${CARD_STYLE[highlight]}`}>
-      {(highlight === "win" || highlight === "overall" || highlight === "complete") && (
-        // A seal on the corner, so the biggest milestones catch the eye while scrolling.
+      {highlight !== "none" && (
+        // A seal on the corner, so milestones catch the eye while scrolling.
         <span
           aria-hidden="true"
           className={`absolute -right-2.5 -top-2.5 flex size-6 items-center justify-center rounded-full text-xs font-bold shadow ring-2 ring-base-100 ${SEAL_STYLE[highlight]}`}
