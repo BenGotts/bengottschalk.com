@@ -7,6 +7,7 @@ import {
   groupMapLocations,
   hasStaffRole,
   historyStats,
+  isAwaitingResults,
   isMultiLocation,
   isNearToday,
   localDateString,
@@ -222,5 +223,35 @@ describe("Oregon City Spooktacular across UTC midnight", () => {
     expect(finishedCompetitions(history, { ongoing: [], upcoming: [], competing: [] }, "2026-10-25").map((h) => h.id)).toEqual(["OregonCitySpooktacular2026"]);
     // Without an overview, fall back to the UTC date.
     expect(finishedCompetitions(history, null, "2026-10-24")).toEqual([]);
+  });
+});
+
+function posted(at: string): Competition {
+  return competition("UOFall2026", "2026-11-21", "2026-11-21", { results_posted_at: at });
+}
+
+describe("isAwaitingResults", () => {
+  // The evening after UOFall2026 (Nov 21), Pacific time.
+  const now = new Date("2026-11-23T02:00:00Z");
+
+  it("waits for results from the start of a competition until posted", () => {
+    expect(isAwaitingResults(competition("Ongoing", "2026-11-22", "2026-11-23"), now)).toBe(true);
+    expect(isAwaitingResults(competition("Ended", "2026-11-21", "2026-11-21"), now)).toBe(true);
+    expect(isAwaitingResults(competition("TwoWeeksAgo", "2026-11-09", "2026-11-09"), now)).toBe(true);
+  });
+
+  it("counts a competition starting tomorrow in UTC, which may already be today at its venue", () => {
+    expect(isAwaitingResults(competition("Tomorrow", "2026-11-24", "2026-11-24"), now)).toBe(true);
+    expect(isAwaitingResults(competition("Later", "2026-11-25", "2026-11-25"), now)).toBe(false);
+  });
+
+  it("keeps waiting for a few hours after posting, then stops", () => {
+    expect(isAwaitingResults(posted("2026-11-23T00:58:46.000Z"), now)).toBe(true);
+    expect(isAwaitingResults(posted("2026-11-22T19:00:00.000Z"), now)).toBe(false);
+  });
+
+  it("gives up on long-finished and cancelled competitions", () => {
+    expect(isAwaitingResults(competition("Old", "2026-11-01", "2026-11-08"), now)).toBe(false);
+    expect(isAwaitingResults(competition("Cancelled", "2026-11-21", "2026-11-21", { cancelled_at: "2026-11-01T00:00:00Z" }), now)).toBe(false);
   });
 });

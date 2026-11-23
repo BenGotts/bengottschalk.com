@@ -33,6 +33,35 @@ export function isNearToday(competition: { start_date: string; end_date: string 
   return competition.start_date <= addDays(utcToday, 1) && competition.end_date >= addDays(utcToday, -1);
 }
 
+/** How long after a competition ends its results might still be on the way. */
+export const RESULTS_WAIT_DAYS = 14;
+/**
+ * How long after results are posted to keep refreshing: the WCA updates
+ * profiles and rankings a little after posting, and the competition list that
+ * says results are posted is itself cached for up to an hour.
+ */
+export const RESULTS_SETTLE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Whether a competition's results may be posted, or just were, so data built
+ * from results should refresh often: it has started, ended within
+ * `RESULTS_WAIT_DAYS`, wasn't cancelled, and its results aren't posted or were
+ * posted within `RESULTS_SETTLE_MS`.
+ */
+export function isAwaitingResults(
+  competition: { start_date: string; end_date: string; results_posted_at: string | null; cancelled_at: string | null },
+  now: Date,
+): boolean {
+  const utcToday = utcDateString(now);
+  if (competition.cancelled_at) return false;
+  // Ahead of UTC, a competition can start on what is still tomorrow in UTC.
+  if (competition.start_date > addDays(utcToday, 1)) return false;
+  if (competition.end_date < addDays(utcToday, -RESULTS_WAIT_DAYS)) return false;
+  if (!competition.results_posted_at) return true;
+  const posted = Date.parse(competition.results_posted_at);
+  return Number.isFinite(posted) && now.getTime() - posted < RESULTS_SETTLE_MS;
+}
+
 function byDate(a: Competition, b: Competition): number {
   return a.start_date.localeCompare(b.start_date) || a.end_date.localeCompare(b.end_date);
 }

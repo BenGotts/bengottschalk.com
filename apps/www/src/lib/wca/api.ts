@@ -7,6 +7,7 @@ import { fetchWca } from "./client";
 import {
   addDays,
   buildCompetitionHistory,
+  isAwaitingResults,
   isNearToday,
   localDateString,
   mergeCompetitions,
@@ -66,10 +67,43 @@ function settle<T>(result: Result<T>, profile: CacheProfile): Result<T> {
   return result;
 }
 
+/**
+ * Whether results from one of the person's competitions may be posted any
+ * minute, or just were. Data that changes when results go up (profile, PRs,
+ * results, records, competition history) is then cached for minutes instead of
+ * its usual hours or days, and goes back once the results have settled.
+ *
+ * Only competitions the person delegates are known after they end: the WCA
+ * lists a competitor's competitions only while upcoming or in progress, and
+ * after the results are posted.
+ */
+export async function getAwaitingResults(wcaId = WCA_ID): Promise<boolean> {
+  "use cache: remote";
+  cacheTag("wca", `wca-awaiting-results-${wcaId}`);
+  const delegated = await getDelegatedCompetitions(wcaId);
+  if (!delegated.ok) {
+    cacheLife("minutes");
+    return false;
+  }
+  const now = new Date();
+  const awaiting = delegated.data.some((competition) => isAwaitingResults(competition, now));
+  cacheFor(awaiting ? "minutes" : "hours");
+  return awaiting;
+}
+
+/** `profile`, or minutes while results may be arriving (see `getAwaitingResults`). */
+async function untilResultsSettle(profile: CacheProfile, wcaId: string): Promise<CacheProfile> {
+  return (await getAwaitingResults(wcaId)) ? "minutes" : profile;
+}
+
 export async function getPerson(wcaId = WCA_ID): Promise<Result<Person>> {
   "use cache: remote";
   cacheTag("wca", `wca-person-${wcaId}`);
-  return settle(await fetchWca(`/v0/persons/${wcaId}`, PersonSchema), "hours");
+  const [person, profile] = await Promise.all([
+    fetchWca(`/v0/persons/${wcaId}`, PersonSchema),
+    untilResultsSettle("hours", wcaId),
+  ]);
+  return settle(person, profile);
 }
 
 export interface Avatar extends ImageSize {
@@ -186,10 +220,13 @@ export async function getLiveWindows(wcaId = WCA_ID): Promise<Result<LiveWindow[
 export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCompetition[]>> {
   "use cache: remote";
   cacheTag("wca", `wca-past-competitions-${wcaId}`);
-  const result = await fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema));
+  const [result, profile] = await Promise.all([
+    fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
+    untilResultsSettle("days", wcaId),
+  ]);
   return settle(
     result.ok ? ok(result.data.toSorted((a, b) => b.start_date.localeCompare(a.start_date))) : result,
-    "days",
+    profile,
   );
 }
 
@@ -204,17 +241,19 @@ export async function getCompetitionHistory(
   "use cache: remote";
   cacheTag("wca", `wca-history-${wcaId}`);
   const utcToday = utcDateString(new Date());
-  const [competed, delegated] = await Promise.all([
+  const [competed, delegated, profile] = await Promise.all([
     fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
     getDelegatedCompetitions(wcaId),
+    untilResultsSettle("days", wcaId),
   ]);
   if (!competed.ok) return settle(competed, "days");
   if (!delegated.ok) return settle(delegated, "days");
-  // Refresh often around a competition so it moves into history soon after it ends.
+  // Refresh often around a competition so it moves into history soon after it
+  // ends, and while its results may be posted.
   const nearCompetition = [...competed.data, ...delegated.data].some((c) => isNearToday(c, utcToday));
   return settle(
     ok({ history: buildCompetitionHistory(competed.data, delegated.data, utcToday), utcToday }),
-    nearCompetition ? "minutes" : "days",
+    nearCompetition ? "minutes" : profile,
   );
 }
 
@@ -236,19 +275,24 @@ export async function getDelegatedCompetitions(wcaId = WCA_ID): Promise<Result<C
 export async function getResults(eventId?: string, wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
   "use cache: remote";
   cacheTag("wca", `wca-results-${wcaId}`);
+  const profile = await untilResultsSettle("days", wcaId);
   if (eventId) {
     const all = await getResults(undefined, wcaId);
-    return settle(all.ok ? ok(all.data.filter((result) => result.event_id === eventId)) : all, "days");
+    return settle(all.ok ? ok(all.data.filter((result) => result.event_id === eventId)) : all, profile);
   }
   // Every result in every event is a large, slow response.
-  return settle(await fetchWca(`/v1/persons/${wcaId}/results`, z.array(PersonResultSchema), { timeoutMs: 40_000 }), "days");
+  return settle(await fetchWca(`/v1/persons/${wcaId}/results`, z.array(PersonResultSchema), { timeoutMs: 40_000 }), profile);
 }
 
 /** Results that set a regional record (NR, CR or WR). */
 export async function getRegionalRecords(wcaId = WCA_ID): Promise<Result<PersonResult[]>> {
   "use cache: remote";
   cacheTag("wca", `wca-records-${wcaId}`);
-  return settle(await fetchWca(`/v1/persons/${wcaId}/records`, z.array(PersonResultSchema)), "days");
+  const [records, profile] = await Promise.all([
+    fetchWca(`/v1/persons/${wcaId}/records`, z.array(PersonResultSchema)),
+    untilResultsSettle("days", wcaId),
+  ]);
+  return settle(records, profile);
 }
 
 /** Current world, continental and national records for every event. */
