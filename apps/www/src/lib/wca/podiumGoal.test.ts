@@ -43,6 +43,7 @@ describe("podiumGoal", () => {
     const cube = goal.rows.find((row) => row.eventId === "333")!;
     expect(cube.cells.map((cell) => [cell.medal, cell.count])).toEqual([["gold", 2], ["silver", 1], ["bronze", 1]]);
     expect(cube.cells[0].first).toEqual({ competitionId: "Comp2018-05-01", competitionName: "Comp 2018-05-01", startDate: "2018-05-01" });
+    expect(cube.cells[0].latest).toEqual({ competitionId: "Comp2020-01-01", competitionName: "Comp 2020-01-01", startDate: "2020-01-01" });
     expect(cube.complete).toBe(true);
   });
 
@@ -50,6 +51,7 @@ describe("podiumGoal", () => {
     const skewb = goal.rows.find((row) => row.eventId === "skewb")!;
     expect(skewb.cells.map((cell) => cell.count)).toEqual([0, 0, 1]);
     expect(skewb.cells[0].first).toBeNull();
+    expect(skewb.cells[0].latest).toBeNull();
     expect(skewb.complete).toBe(false);
   });
 

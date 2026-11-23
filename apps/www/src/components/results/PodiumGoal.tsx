@@ -1,7 +1,7 @@
 import "@cubing/icons";
-import Link from "next/link";
-import { eventIconClass, eventName, type PodiumGoal as Goal, type PodiumGoalCell } from "@/lib/wca";
+import { type PodiumGoal as Goal, type PodiumGoalCell } from "@/lib/wca";
 import { MEDAL_STYLES } from "./MiniPodium";
+import TrophyCabinet from "./TrophyCabinet";
 
 const FILL = { gold: "bg-medal-gold", silver: "bg-medal-silver", bronze: "bg-medal-bronze" } as const;
 
@@ -38,13 +38,13 @@ export function PlacementSlot({ cell, event, dateLabel, className = "h-11" }: { 
 
 /**
  * The goal of placing 1st, 2nd and 3rd in every current event: overall
- * progress, then a row per event with each placement filled in once done.
+ * progress, then the trophy cabinet with a shelf per event.
  */
 export default function PodiumGoal({ goal, dateLabel }: { goal: Goal; dateLabel: DateLabel }) {
   const { rows, done, total, completeEvents } = goal;
   return (
     <section aria-labelledby="podium-goal-heading" className="space-y-4 rounded-box border border-base-300 bg-base-200 p-5">
-      <h2 id="podium-goal-heading" className="scroll-mt-24 text-xl font-bold">Every podium in every event</h2>
+      <h2 id="podium-goal-heading" className="scroll-mt-24 text-xl font-bold">Trophy cabinet</h2>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <p>
           <span className="font-display text-4xl font-bold text-secondary">{done}</span>
@@ -57,47 +57,8 @@ export default function PodiumGoal({ goal, dateLabel }: { goal: Goal; dateLabel:
       </div>
       <progress className="progress progress-secondary w-full" value={done} max={total} aria-label="Podium placements done" />
 
-      <table className="w-full table-fixed border-separate border-spacing-0">
-        <caption className="sr-only">Podium placements by event</caption>
-        <colgroup>
-          <col />
-          <col className="w-14 sm:w-20" />
-          <col className="w-14 sm:w-20" />
-          <col className="w-14 sm:w-20" />
-        </colgroup>
-        <thead>
-          <tr className="text-xs text-muted">
-            <th scope="col" className="pb-1 text-left font-medium">Event</th>
-            {(["gold", "silver", "bronze"] as const).map((medal) => (
-              <th key={medal} scope="col" className="pb-1 font-medium">{MEDAL_STYLES[medal].label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const event = eventName(row.eventId);
-            return (
-              <tr key={row.eventId}>
-                <th scope="row" className="py-0.5 pr-2 text-left font-normal">
-                  <Link href={`/cubing/results/${row.eventId}`} className="flex min-w-0 items-center gap-2 hover:text-primary">
-                    <span className={`${eventIconClass(row.eventId)} shrink-0 text-xl`} aria-hidden="true" />
-                    <span className="leading-tight">{event}</span>
-                    {row.complete && (
-                      <span className="shrink-0 text-secondary" title="All three placements">
-                        <span aria-hidden="true">✓</span>
-                        <span className="sr-only">, all three placements</span>
-                      </span>
-                    )}
-                  </Link>
-                </th>
-                {row.cells.map((cell) => (
-                  <td key={cell.medal} className="p-0.5"><PlacementSlot cell={cell} event={event} dateLabel={dateLabel} /></td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <TrophyCabinet rows={rows} dateLabel={dateLabel} />
+      <p className="text-sm text-muted">Tap a medal for when and where. Each empty hook is a placement still to win; a ★ marks an event with all three.</p>
     </section>
   );
 }
