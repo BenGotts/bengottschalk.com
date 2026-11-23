@@ -3,17 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
-import { TONE_BORDER, type Tone } from "@/lib/tones";
+import { CUBING_SECTIONS as TABS } from "@/content/nav";
+import { TONE_BORDER } from "@/lib/tones";
 
 // Each tab underlines in its own cube color.
-const TABS: { label: string; href: string; tone: Tone }[] = [
-  { label: "Overview", href: "/cubing", tone: "blue" },
-  { label: "Competitions", href: "/cubing/competitions", tone: "green" },
-  { label: "Places", href: "/cubing/places", tone: "red" },
-  { label: "Results", href: "/cubing/results", tone: "orange" },
-  { label: "Podiums", href: "/cubing/podiums", tone: "yellow" },
-  { label: "Timeline", href: "/cubing/timeline", tone: "blue" },
-];
 
 /** The Cubing section's tabs. Event pages count as Results. */
 export default function CubingTabs({ competitionsIndicator }: {
