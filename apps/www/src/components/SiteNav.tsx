@@ -36,6 +36,10 @@ function NavItem({ link, active, indicator, onClick, children }: {
   );
 }
 
+// Hovering either the Cubing link or its arrow highlights both, like daisyUI's
+// own menu hover, so they read as one item.
+const PAIR_HOVER = "[@media(hover:hover)]:group-hover/cubing:bg-base-content/10";
+
 /**
  * The desktop header's Cubing link, with a menu of the Cubing section's pages.
  * The link still goes to the overview; the menu opens on hover (CSS), or with
@@ -77,8 +81,9 @@ function CubingMenu({ active, indicator, isActive }: { active: boolean; indicato
   }, [open]);
 
   return (
-    <li ref={itemRef} className="group/cubing relative flex-row items-center">
-      <Link href="/cubing" aria-current={active ? "page" : undefined} className={`rounded-r-none pr-1.5 ${active ? "menu-active" : ""}`}>
+    // The link and arrow stretch to the same height, so when active they read as one pill.
+    <li ref={itemRef} className="group/cubing relative flex-row items-stretch">
+      <Link href="/cubing" aria-current={active ? "page" : undefined} className={`rounded-r-none pr-1.5 ${active ? "menu-active" : PAIR_HOVER}`}>
         Cubing
         {indicator}
       </Link>
@@ -89,7 +94,7 @@ function CubingMenu({ active, indicator, isActive }: { active: boolean; indicato
         aria-controls={menuId}
         aria-label="Cubing pages"
         onClick={() => setOpen((o) => !o)}
-        className={`rounded-l-none px-1.5 ${active ? "menu-active" : ""}`}
+        className={`flex items-center rounded-l-none px-1.5 ${active ? "menu-active" : PAIR_HOVER}`}
       >
         <LuChevronDown className={`size-4 transition-transform group-hover/cubing:rotate-180 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
