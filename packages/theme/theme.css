@@ -49,6 +49,8 @@
   --ink-red: #FF6B81;
   --ink-orange: #FF8A4C;
   --ink-yellow: #FFD23F;
+  /* Purple for rare achievements, e.g. all three placements in an event. */
+  --ink-purple: #B794FF;
   /* Medal colors, readable as icons on these backgrounds (the steps themselves use medal-*). */
   --ink-gold: #E2B13C;
   --ink-silver: #C3CAD4;
@@ -91,6 +93,7 @@
   --ink-red: #B8162F;
   --ink-orange: #B84300;
   --ink-yellow: #8A6100;
+  --ink-purple: #6B3FD4;
   --ink-gold: #9A6F00;
   --ink-silver: #5E6B7A;
   --ink-bronze: #A04E12;
@@ -106,11 +109,13 @@
   /* Secondary text, e.g. dates and labels: `text-muted`. */
   --color-muted: var(--muted);
 
-  /* Red, orange and yellow cube colors for text and borders, e.g. `text-ink-red`.
-     Blue and green are the theme's primary and secondary. */
+  /* Red, orange and yellow cube colors for text and borders, e.g. `text-ink-red`,
+     plus purple for rare achievements. Blue and green are the theme's primary
+     and secondary. */
   --color-ink-red: var(--ink-red);
   --color-ink-orange: var(--ink-orange);
   --color-ink-yellow: var(--ink-yellow);
+  --color-ink-purple: var(--ink-purple);
 
   /* Medal colors for icons and text, e.g. `text-ink-gold` on a podium. */
   --color-ink-gold: var(--ink-gold);
