@@ -25,7 +25,7 @@ export default function CubingStats({ stats }: { stats: Stats }) {
         value={stats.medals.total}
         tone="yellow"
         label={<MedalCounts medals={stats.medals} stacked />}
-        href={stats.medals.total > 0 ? "/cubing/results#podiums-heading" : undefined}
+        href={stats.medals.total > 0 ? "/cubing/podiums" : undefined}
       />
       <StatTile
         value={stats.records.total}
