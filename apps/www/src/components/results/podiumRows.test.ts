@@ -44,30 +44,36 @@ describe("podiumRows", () => {
     expect(row.medals.map((m) => [m.kind, m.value])).toEqual([["average", "12.00"], ["single", "10.00"]]);
   });
 
-  it("keeps running medal totals from the oldest competition, with what each added", () => {
+  it("badges an event's first podium, its first gold later, and completing all three", () => {
     const rows = podiumRows(
       podiums([
-        result("2019-01-01", "333", 1),
-        result("2019-01-01", "222", 3),
-        result("2018-01-01", "444", 2),
-        result("2017-01-01", "555", 1),
+        result("2017-01-01", "clock", 3),
+        result("2018-01-01", "clock", 2),
+        result("2019-01-01", "clock", 1),
+        result("2019-01-01", "skewb", 1),
       ]),
       (_, date) => date,
     );
-    expect(rows.map((row) => [row.competitionId, row.totals, row.added.total])).toEqual([
-      ["Comp2019-01-01", { gold: 2, silver: 1, bronze: 1, total: 4 }, 2],
-      ["Comp2018-01-01", { gold: 1, silver: 1, bronze: 0, total: 2 }, 1],
-      ["Comp2017-01-01", { gold: 1, silver: 0, bronze: 0, total: 1 }, 1],
+    expect(rows.map((row) => [row.competitionId, row.badges.map((badge) => badge.label)])).toEqual([
+      ["Comp2019-01-01", ["All three in Clock", "First Clock gold", "First Skewb podium · gold"]],
+      ["Comp2018-01-01", []],
+      ["Comp2017-01-01", ["First Clock podium"]],
     ]);
   });
 
-  it("marks the competition that reaches each round 50 podiums", () => {
-    // 26 competitions with two podiums each: 52 in all, passing 50 at the 25th.
+  it("badges every 50th podium overall and round counts in one event", () => {
+    // 26 competitions with a 3x3x3 and a 2x2x2 podium each: 52 in all.
     const list = Array.from({ length: 26 }, (_, i) => {
       const date = `20${String(i).padStart(2, "0")}-01-01`;
-      return [result(date, "333", 1), result(date, "222", 2)];
+      return [result(date, "333", 2), result(date, "222", 3)];
     }).flat();
-    const rows = podiumRows(podiums(list), (_, date) => date);
-    expect(rows.filter((row) => row.milestone).map((row) => [row.competitionId, row.milestone])).toEqual([["Comp2024-01-01", 50]]);
+    const withBadges = podiumRows(podiums(list), (_, date) => date)
+      .filter((row) => row.badges.length > 0)
+      .map((row) => [row.competitionId, row.badges.map((badge) => badge.label)]);
+    expect(withBadges).toEqual([
+      ["Comp2024-01-01", ["50th podium", "25 3x3x3 Cube podiums", "25 2x2x2 Cube podiums"]],
+      ["Comp2009-01-01", ["10 3x3x3 Cube podiums", "10 2x2x2 Cube podiums"]],
+      ["Comp2000-01-01", ["First 3x3x3 Cube podium", "First 2x2x2 Cube podium"]],
+    ]);
   });
 });

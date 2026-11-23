@@ -5,34 +5,33 @@ import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
 import MiniPodium, { MEDAL_STYLES, PODIUM_ORDER } from "./MiniPodium";
-import type { PodiumItem, PodiumRow } from "./podiumRows";
+import type { Badge, PodiumItem, PodiumRow } from "./podiumRows";
 
 type Medal = PodiumItem["medal"];
 
-const DOT: Record<Medal, string> = { gold: "bg-medal-gold", silver: "bg-medal-silver", bronze: "bg-medal-bronze" };
+// Each kind of milestone in its own style; overall milestones stand out most.
+const BADGE_STYLE: Record<Badge["kind"], string> = {
+  overall: "bg-medal-gold text-black/85",
+  complete: "bg-secondary/15 text-secondary",
+  "first-gold": "border border-ink-gold/60 text-ink-gold",
+  first: "bg-primary/15 text-primary",
+  count: "bg-base-300 text-base-content",
+};
 
-/**
- * The career medal totals once this competition is counted, with what it
- * added highlighted, so the timeline reads as a running tally.
- */
-function RunningTotal({ row }: { row: PodiumRow }) {
-  const { totals, added } = row;
-  const label = `Career total after ${row.competitionName}: ${totals.gold} gold, ${totals.silver} silver, ${totals.bronze} bronze, ${totals.total} ${totals.total === 1 ? "podium" : "podiums"}`;
+/** The milestones a competition reached, as small badges in its card. */
+function Badges({ badges }: { badges: Badge[] }) {
   return (
-    <p className="relative mx-auto mt-2 flex w-fit items-center gap-3 rounded-full border border-base-300 bg-base-100 px-3 py-1 text-xs tabular-nums">
-      <span className="sr-only">{label}</span>
-      {(["gold", "silver", "bronze"] as const).map((medal) => (
-        <span key={medal} aria-hidden="true" className={`flex items-center gap-1 ${added[medal] > 0 ? "font-semibold text-base-content" : "text-muted"}`}>
-          <span className={`size-2 rounded-full ${DOT[medal]}`} />
-          {totals[medal]}
-          {added[medal] > 0 && <span className={`${MEDAL_STYLES[medal].icon} font-bold`}>+{added[medal]}</span>}
-        </span>
+    <ul aria-label="Milestones" className="mt-2 flex flex-wrap justify-center gap-1">
+      {badges.map((badge) => (
+        <li key={badge.key} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 ${BADGE_STYLE[badge.kind]}`}>
+          {badge.kind === "complete" || badge.kind === "overall" ? <span aria-hidden="true">★</span> : null}
+          {badge.iconClass && <span className={badge.iconClass} aria-hidden="true" />}
+          {badge.label}
+        </li>
       ))}
-      <span aria-hidden="true" className="border-l border-base-300 pl-3 font-semibold">{totals.total}</span>
-    </p>
+    </ul>
   );
 }
-
 
 /**
  * Podiums down a centre line, one node per competition with its medals below,
@@ -114,11 +113,6 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
               </li>
             )}
             <li className="relative pb-10">
-              {row.milestone && (
-                <p className="relative mx-auto mb-2 w-fit rounded-full bg-medal-gold px-3 py-0.5 text-xs font-bold text-black/80 shadow">
-                  ★ {row.milestone} podiums
-                </p>
-              )}
               <div className="relative mx-auto mb-3 w-fit max-w-[85%] rounded-box border border-base-300 bg-base-200 px-4 py-2 text-center">
                 <p className="text-xs text-muted">{row.dateLabel}</p>
                 <h3 className="font-semibold leading-snug">
@@ -126,10 +120,10 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
                     {row.competitionName}
                   </ExternalLink>
                 </h3>
+                {row.badges.length > 0 && <Badges badges={row.badges} />}
               </div>
               {/* A solid background, so the centre line doesn't run through the podium. */}
               <MiniPodium medals={row.medals} competitionName={row.competitionName} className="relative mx-auto bg-base-100 px-2" />
-              <RunningTotal row={row} />
             </li>
           </Fragment>
         ))}
