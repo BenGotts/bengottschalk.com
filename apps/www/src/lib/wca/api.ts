@@ -18,6 +18,7 @@ import {
 import { findLivePerson, type LivePerson } from "./live";
 import { getPersonSchedule, type PersonSchedule } from "./schedule";
 import {
+  CompetitionMainEventSchema,
   CompetitionScheduleSchema,
   CompetitionSchema,
   PastCompetitionSchema,
@@ -176,6 +177,17 @@ export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<Co
   // Around a competition day the status can change at any local midnight.
   cacheFor(!delegated.ok || near.size > 0 ? "minutes" : "hours");
   return ok(overview);
+}
+
+/**
+ * A competition's main event, which decides who wins the competition. The WCA
+ * leaves it unset on some competitions; those default to 3x3x3, as on the WCA site.
+ */
+export async function getMainEventId(competitionId: string): Promise<Result<string>> {
+  "use cache: remote";
+  cacheTag("wca", `wca-main-event-${competitionId}`);
+  const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}`, CompetitionMainEventSchema);
+  return settle(result.ok ? ok(result.data.main_event_id ?? "333") : result, "days");
 }
 
 /** The time zone of a competition's (first) venue, from its public schedule. */

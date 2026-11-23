@@ -76,4 +76,21 @@ describe("podiumRows", () => {
       ["Comp2000-01-01", ["First 3x3x3 Cube podium", "First 2x2x2 Cube podium"]],
     ]);
   });
+
+  it("badges a win: gold in the competition's main event", () => {
+    const list = podiums([
+      result("2020-01-01", "333fm", 1),
+      result("2021-01-01", "333", 2),
+      result("2021-01-01", "sq1", 1),
+      result("2022-01-01", "333", 1),
+    ]);
+    const mainEvents = new Map([["Comp2020-01-01", "333fm"], ["Comp2021-01-01", "333"], ["Comp2022-01-01", "333"]]);
+    const wins = podiumRows(list, (_, date) => date, mainEvents)
+      .filter((row) => row.badges.some((badge) => badge.kind === "win"))
+      .map((row) => [row.competitionId, row.badges[0].label]);
+    expect(wins).toEqual([
+      ["Comp2022-01-01", "Won the competition · 3x3x3 Cube"],
+      ["Comp2020-01-01", "Won the competition · 3x3x3 Fewest Moves"],
+    ]);
+  });
 });

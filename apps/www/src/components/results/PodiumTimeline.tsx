@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { LuTrophy } from "react-icons/lu";
 import BackToTop from "@/components/BackToTop";
 import ExternalLink from "@/components/ExternalLink";
 import { useIncrementalList } from "@/lib/useIncrementalList";
@@ -11,6 +12,7 @@ type Medal = PodiumItem["medal"];
 
 // Each kind of milestone in its own style; overall milestones stand out most.
 const BADGE_STYLE: Record<Badge["kind"], string> = {
+  win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/85",
   complete: "bg-secondary/15 text-secondary",
   "first-gold": "border border-ink-gold/60 text-ink-gold",
@@ -18,10 +20,13 @@ const BADGE_STYLE: Record<Badge["kind"], string> = {
   count: "bg-base-300 text-base-content",
 };
 
-// Cards that reached a milestone stand out: gold for an overall milestone
-// (every 50th podium), green for any other, plain otherwise.
-type Highlight = "overall" | "milestone" | "none";
+// Cards that reached a milestone stand out: blue with a trophy for a
+// competition win, gold for an overall milestone (every 50th podium), green
+// for any other, plain otherwise.
+type Highlight = "win" | "overall" | "milestone" | "none";
 const CARD_STYLE: Record<Highlight, string> = {
+  win:
+    "border-2 border-primary bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_28px_-6px_var(--color-primary)]",
   overall:
     "border-2 border-ink-gold bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-medal-gold)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_24px_-6px_var(--color-medal-gold)]",
   milestone:
@@ -29,12 +34,14 @@ const CARD_STYLE: Record<Highlight, string> = {
   none: "border border-base-300 bg-base-200",
 };
 const SEAL_STYLE: Record<Highlight, string> = {
+  win: "bg-primary text-primary-content",
   overall: "bg-medal-gold text-black/80",
   milestone: "bg-secondary text-secondary-content",
   none: "",
 };
 
 function highlightOf(badges: Badge[]): Highlight {
+  if (badges.some((badge) => badge.kind === "win")) return "win";
   if (badges.some((badge) => badge.kind === "overall")) return "overall";
   return badges.length > 0 ? "milestone" : "none";
 }
@@ -45,6 +52,7 @@ function Badges({ badges }: { badges: Badge[] }) {
     <ul aria-label="Milestones" className="mt-2 flex flex-wrap justify-center gap-1">
       {badges.map((badge) => (
         <li key={badge.key} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 ${BADGE_STYLE[badge.kind]}`}>
+          {badge.kind === "win" && <LuTrophy className="size-3" aria-hidden="true" />}
           {badge.kind === "complete" || badge.kind === "overall" ? <span aria-hidden="true">★</span> : null}
           {badge.iconClass && <span className={badge.iconClass} aria-hidden="true" />}
           {badge.label}
@@ -65,7 +73,7 @@ function CompetitionCard({ row }: { row: PodiumRow }) {
           aria-hidden="true"
           className={`absolute -right-2.5 -top-2.5 flex size-6 items-center justify-center rounded-full text-xs font-bold shadow ring-2 ring-base-100 ${SEAL_STYLE[highlight]}`}
         >
-          ★
+          {highlight === "win" ? <LuTrophy className="size-3.5" /> : "★"}
         </span>
       )}
       <p className="text-xs text-muted">{row.dateLabel}</p>

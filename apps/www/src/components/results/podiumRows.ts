@@ -4,6 +4,7 @@ export type { PodiumItem };
 
 /**
  * A milestone a competition reached:
+ * - `win`: 1st place in the competition's main event, which wins the competition
  * - `overall`: every 50th podium in all events
  * - `complete`: 1st, 2nd and 3rd all won in an event
  * - `first-gold`: the first gold in an event, after an earlier podium there
@@ -12,9 +13,9 @@ export type { PodiumItem };
  */
 export interface Badge {
   key: string;
-  kind: "overall" | "complete" | "first-gold" | "first" | "count";
+  kind: "win" | "overall" | "complete" | "first-gold" | "first" | "count";
   label: string;
-  /** The event's icon; none for overall milestones. */
+  /** The event's icon (the main event's, for a win); none for overall milestones. */
   iconClass: string | null;
 }
 
@@ -33,13 +34,14 @@ export const OVERALL_EVERY = 50;
 /** Podium counts in one event worth a badge. */
 export const EVENT_COUNTS = [10, 25, 50, 100];
 
-const KIND_ORDER: Badge["kind"][] = ["overall", "complete", "first-gold", "first", "count"];
+const KIND_ORDER: Badge["kind"][] = ["win", "overall", "complete", "first-gold", "first", "count"];
 
 /**
  * Milestones across the podiums, oldest competition first, so each badge goes
- * to the competition that reached it. Returns the badges by competition id.
+ * to the competition that reached it. `mainEvents` gives each competition's
+ * main event, for wins. Returns the badges by competition id.
  */
-function milestones(oldestFirst: { competitionId: string; podiums: Podium[] }[]): Map<string, Badge[]> {
+function milestones(oldestFirst: { competitionId: string; podiums: Podium[] }[], mainEvents: ReadonlyMap<string, string>): Map<string, Badge[]> {
   const byCompetition = new Map<string, Badge[]>();
   let total = 0;
   const counts = new Map<string, number>();
@@ -47,6 +49,10 @@ function milestones(oldestFirst: { competitionId: string; podiums: Podium[] }[])
 
   for (const { competitionId, podiums } of oldestFirst) {
     const badges: Badge[] = [];
+    const mainEvent = mainEvents.get(competitionId);
+    if (mainEvent && podiums.some((podium) => podium.medal === "gold" && podium.result.event_id === mainEvent)) {
+      badges.push({ key: "win", kind: "win", label: `Won the competition · ${eventName(mainEvent)}`, iconClass: eventIconClass(mainEvent) });
+    }
     const before = total;
     total += podiums.length;
     const reached = Math.floor(total / OVERALL_EVERY) * OVERALL_EVERY;
@@ -88,9 +94,14 @@ function milestones(oldestFirst: { competitionId: string; podiums: Podium[] }[])
 /**
  * Podiums grouped by competition, newest first, formatted on the server so the
  * browser only renders them. Within a competition: golds first, then by event.
- * Each competition carries the milestones it reached.
+ * Each competition carries the milestones it reached; pass each competition's
+ * main event (see `getMainEventId`) to include wins.
  */
-export function podiumRows(podiums: Podium[], dateLabel: (competitionId: string, startDate: string) => string): PodiumRow[] {
+export function podiumRows(
+  podiums: Podium[],
+  dateLabel: (competitionId: string, startDate: string) => string,
+  mainEvents: ReadonlyMap<string, string> = new Map(),
+): PodiumRow[] {
   type Group = Pick<PodiumRow, "competitionId" | "competitionName" | "dateLabel" | "year"> & { podiums: Podium[] };
   const rows = new Map<string, Group>();
   for (const podium of podiums) {
@@ -107,6 +118,6 @@ export function podiumRows(podiums: Podium[], dateLabel: (competitionId: string,
   }
 
   const groups = [...rows.values()];
-  const badges = milestones(groups.toReversed());
+  const badges = milestones(groups.toReversed(), mainEvents);
   return groups.map(({ podiums: list, ...row }) => ({ ...row, medals: podiumItems(list), badges: badges.get(row.competitionId) ?? [] }));
 }
