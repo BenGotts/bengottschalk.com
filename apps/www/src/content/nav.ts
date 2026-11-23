@@ -30,7 +30,7 @@ export interface CubingSection extends NavLink {
 
 /** The Cubing section's pages: its tabs, and the header's Cubing menu. */
 export const CUBING_SECTIONS: CubingSection[] = [
-  { label: "Overview", href: "/cubing", description: "Stats, badges, PRs and what's next", icon: LuLayoutDashboard, tone: "blue" },
+  { label: "Overview", href: "/cubing", description: "Stats, PRs and what's coming up", icon: LuLayoutDashboard, tone: "blue" },
   { label: "Competitions", href: "/cubing/competitions", description: "Upcoming, live and every past competition", icon: LuCalendarDays, tone: "green" },
   { label: "Places", href: "/cubing/places", description: "States and countries I've competed in", icon: LuMapPin, tone: "red" },
   { label: "Results", href: "/cubing/results", description: "Personal records and ranks in every event", icon: LuTimer, tone: "orange" },
