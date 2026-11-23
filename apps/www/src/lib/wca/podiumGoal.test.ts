@@ -55,6 +55,10 @@ describe("podiumGoal", () => {
     expect(skewb.complete).toBe(false);
   });
 
+  it("keeps retired events with podiums apart, out of the goal", () => {
+    expect(goal.retired.map((row) => [row.eventId, row.cells.map((cell) => cell.count)])).toEqual([["magic", [1, 0, 0]]]);
+  });
+
   it("tallies placements and complete events", () => {
     expect(goal.done).toBe(4);
     expect(goal.completeEvents).toBe(1);

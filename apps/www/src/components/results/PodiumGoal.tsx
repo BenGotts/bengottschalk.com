@@ -57,8 +57,8 @@ export default function PodiumGoal({ goal, dateLabel }: { goal: Goal; dateLabel:
       </div>
       <progress className="progress progress-secondary w-full" value={done} max={total} aria-label="Podium placements done" />
 
-      <TrophyCabinet rows={rows} dateLabel={dateLabel} />
-      <p className="text-sm text-muted">Tap a medal for when and where. Each empty hook is a placement still to win; a ★ marks an event with all three.</p>
+      <TrophyCabinet rows={rows} retired={goal.retired} dateLabel={dateLabel} />
+      <p className="text-sm text-muted">Tap a medal for when and where. Each empty hook is a placement still to win; a ★ marks an event with all three. Retired events are kept for the record and don’t count toward the goal.</p>
     </section>
   );
 }

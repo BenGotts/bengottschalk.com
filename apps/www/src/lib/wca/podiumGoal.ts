@@ -1,4 +1,4 @@
-import { CURRENT_EVENT_IDS } from "./events";
+import { CURRENT_EVENT_IDS, RETIRED_EVENT_IDS } from "./events";
 import type { Medal, Podium } from "./stats";
 
 const MEDALS: Medal[] = ["gold", "silver", "bronze"];
@@ -35,6 +35,11 @@ export interface PodiumGoalRow {
 
 export interface PodiumGoal {
   rows: PodiumGoalRow[];
+  /**
+   * Retired events with at least one podium, in WCA order. They're kept for
+   * the record but don't count toward the goal, since they can't be won any more.
+   */
+  retired: PodiumGoalRow[];
   /** Placements done, out of `total` (three for each current event). */
   done: number;
   total: number;
@@ -44,8 +49,8 @@ export interface PodiumGoal {
 
 /**
  * The goal of placing 1st, 2nd and 3rd in every current event: a row per event
- * in WCA order, with each placement's count and first time. Retired events
- * don't count.
+ * in WCA order, with each placement's count and first and latest times.
+ * Retired events don't count; the ones with podiums are listed apart.
  */
 export function podiumGoal(podiums: Podium[]): PodiumGoal {
   const byKey = new Map<string, Podium[]>();
@@ -54,7 +59,7 @@ export function podiumGoal(podiums: Podium[]): PodiumGoal {
     byKey.set(key, [...(byKey.get(key) ?? []), podium]);
   }
 
-  const rows = CURRENT_EVENT_IDS.map((eventId): PodiumGoalRow => {
+  const rowFor = (eventId: string): PodiumGoalRow => {
     const cells = MEDALS.map((medal): PodiumGoalCell => {
       const list = (byKey.get(`${eventId}:${medal}`) ?? []).toSorted((a, b) =>
         a.result.competition_start_date.localeCompare(b.result.competition_start_date),
@@ -62,10 +67,13 @@ export function podiumGoal(podiums: Podium[]): PodiumGoal {
       return { medal, count: list.length, first: competitionOf(list[0]), latest: competitionOf(list.at(-1)) };
     });
     return { eventId, cells, complete: cells.every((cell) => cell.count > 0) };
-  });
+  };
+  const rows = CURRENT_EVENT_IDS.map(rowFor);
+  const retired = RETIRED_EVENT_IDS.map(rowFor).filter((r) => r.cells.some((cell) => cell.count > 0));
 
   return {
     rows,
+    retired,
     done: rows.reduce((sum, row) => sum + row.cells.filter((cell) => cell.count > 0).length, 0),
     total: rows.length * MEDALS.length,
     completeEvents: rows.filter((row) => row.complete).length,
