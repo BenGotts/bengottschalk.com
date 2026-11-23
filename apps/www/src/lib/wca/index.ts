@@ -15,3 +15,4 @@ export * from "./onThisDay";
 export * from "./moments";
 export * from "./careerMilestones";
 export * from "./podiumItems";
+export * from "./podiumGoal";

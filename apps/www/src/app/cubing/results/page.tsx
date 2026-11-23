@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
 import "@cubing/icons";
+import PodiumGoal from "@/components/results/PodiumGoal";
 import PodiumTimeline from "@/components/results/PodiumTimeline";
 import { podiumRows } from "@/components/results/podiumRows";
 import PrTable from "@/components/results/PrTable";
@@ -14,6 +15,7 @@ import {
   getPerson,
   getRegionalRecords,
   getResults,
+  podiumGoal,
   podiums,
   podiumStats,
   type PodiumStats,
@@ -43,6 +45,7 @@ export default async function ResultsPage() {
   const { personal_records, person: profile } = person.data;
   const podiumList = results.ok ? podiums(results.data) : [];
   const podiumNumbers = results.ok ? podiumStats(results.data) : null;
+  const goal = results.ok ? podiumGoal(podiumList) : null;
   const recordRows = regionalRecords.ok
     ? regionalRecords.data.flatMap((result) => [
         ...(result.regional_single_record ? [{ result, kind: "single" as const, value: result.best, record: result.regional_single_record }] : []),
@@ -88,6 +91,7 @@ export default async function ResultsPage() {
           {/* The placement filter below shows the medal counts. */}
           <h2 id="podiums-heading" className="scroll-mt-24 text-2xl font-bold">Podiums</h2>
           {podiumNumbers && <PodiumStatTiles stats={podiumNumbers} dateLabel={dateLabel} />}
+          {goal && <PodiumGoal goal={goal} dateLabel={dateLabel} />}
           <PodiumTimeline rows={podiumRows(podiumList, dateLabel)} />
         </section>
       )}
