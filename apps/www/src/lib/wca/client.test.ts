@@ -2,16 +2,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { fetchWca } from "./client";
 
+function stubFetch() {
+  const fetch = vi.fn(async () => Response.json({ id: "2016GOTT01", name: "Ben" }));
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
 describe("fetchWca", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
-
-  function stubFetch() {
-    const fetch = vi.fn(async () => Response.json({ id: "2016GOTT01", name: "Ben" }));
-    vi.stubGlobal("fetch", fetch);
-    return fetch;
-  }
 
   it("shares one request between identical calls in flight, each with its own schema", async () => {
     const fetch = stubFetch();
