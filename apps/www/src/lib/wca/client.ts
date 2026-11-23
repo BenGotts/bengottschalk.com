@@ -52,24 +52,43 @@ async function fetchWithRetry(url: string, path: string, timeoutMs: number): Pro
   }
 }
 
+async function fetchJson(path: string, timeoutMs: number): Promise<Result<unknown>> {
+  const response = await fetchWithRetry(`${WCA_API_URL}${path}`, path, timeoutMs);
+  if (!response.ok) return response;
+  try {
+    return ok(await response.data.json());
+  } catch {
+    return fail(`WCA response was not JSON: ${path}`);
+  }
+}
+
+// Requests in flight, by path. A cached entry is only saved once its request
+// finishes, so pages rendering at the same moment (a build renders many at
+// once, and a burst of visitors can expire the same entry together) would each
+// ask the WCA for the same thing. They share the one request instead.
+const inFlight = new Map<string, Promise<Result<unknown>>>();
+
+function fetchJsonOnce(path: string, timeoutMs: number): Promise<Result<unknown>> {
+  const pending = inFlight.get(path);
+  if (pending) return pending;
+  const request = fetchJson(path, timeoutMs).finally(() => inFlight.delete(path));
+  inFlight.set(path, request);
+  return request;
+}
+
 /**
  * Fetches a WCA API path (e.g. `/v0/persons/2016GOTT01`) and validates the JSON.
- * `timeoutMs` is per attempt; raise it for large responses.
+ * Identical requests already in flight share one response. `timeoutMs` is per
+ * attempt; raise it for large responses.
  */
 export async function fetchWca<S extends z.ZodType>(
   path: string,
   schema: S,
   { timeoutMs = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {},
 ): Promise<Result<z.output<S>>> {
-  const response = await fetchWithRetry(`${WCA_API_URL}${path}`, path, timeoutMs);
+  const response = await fetchJsonOnce(path, timeoutMs);
   if (!response.ok) return response;
-
-  let json: unknown;
-  try {
-    json = await response.data.json();
-  } catch {
-    return fail(`WCA response was not JSON: ${path}`);
-  }
+  const json = response.data;
 
   const parsed = schema.safeParse(json);
   if (!parsed.success) {

@@ -29,7 +29,6 @@ import {
   UserRoleSchema,
   WcifSchema,
   type Competition,
-  type PastCompetition,
   type Person,
   type PersonResult,
   type Records,
@@ -46,7 +45,7 @@ import {
 // instead of asking the WCA again, and the WCA's rate limit is safe however
 // much traffic the site gets.
 
-type CacheProfile = "minutes" | "hours" | "days";
+type CacheProfile = "minutes" | "hours" | "days" | "weeks" | "max";
 
 // cacheLife's types take one literal profile name per overload.
 function cacheFor(profile: CacheProfile): void {
@@ -59,6 +58,12 @@ function cacheFor(profile: CacheProfile): void {
       break;
     case "days":
       cacheLife("days");
+      break;
+    case "weeks":
+      cacheLife("weeks");
+      break;
+    case "max":
+      cacheLife("max");
       break;
   }
 }
@@ -102,7 +107,9 @@ export async function getPerson(wcaId = WCA_ID): Promise<Result<Person>> {
   cacheTag("wca", `wca-person-${wcaId}`);
   const [person, profile] = await Promise.all([
     fetchWca(`/v0/persons/${wcaId}`, PersonSchema),
-    untilResultsSettle("hours", wcaId),
+    // PRs only change when my results are posted, and those refresh in minutes
+    // (see getAwaitingResults); ranks shifting with others' results can wait a day.
+    untilResultsSettle("days", wcaId),
   ]);
   return settle(person, profile);
 }
@@ -182,20 +189,25 @@ export async function getCompetitionsOverview(wcaId = WCA_ID): Promise<Result<Co
 /**
  * A competition's main event, which decides who wins the competition. The WCA
  * leaves it unset on some competitions; those default to 3x3x3, as on the WCA site.
+ * Only asked for finished competitions (ones I won a gold at), whose main event
+ * won't change, so it's kept as long as the cache allows.
  */
 export async function getMainEventId(competitionId: string): Promise<Result<string>> {
   "use cache: remote";
   cacheTag("wca", `wca-main-event-${competitionId}`);
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}`, CompetitionMainEventSchema);
-  return settle(result.ok ? ok(result.data.main_event_id ?? "333") : result, "days");
+  return settle(result.ok ? ok(result.data.main_event_id ?? "333") : result, "max");
 }
 
-/** The time zone of a competition's (first) venue, from its public schedule. */
+/**
+ * The time zone of a competition's (first) venue, from its public schedule.
+ * A venue rarely changes once announced, so it's kept for weeks.
+ */
 export async function getCompetitionTimezone(competitionId: string): Promise<Result<string | null>> {
   "use cache: remote";
   cacheTag("wca", `wca-timezone-${competitionId}`);
   const result = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/schedule`, CompetitionScheduleSchema);
-  return settle(result.ok ? ok(result.data.venues[0]?.timezone ?? null) : result, "days");
+  return settle(result.ok ? ok(result.data.venues[0]?.timezone ?? null) : result, "weeks");
 }
 
 export interface LiveWindow {
@@ -226,20 +238,6 @@ export async function getLiveWindows(wcaId = WCA_ID): Promise<Result<LiveWindow[
     }),
   );
   return settle(ok(windows), "hours");
-}
-
-/** Every competition the person has competed in, newest first. */
-export async function getPastCompetitions(wcaId = WCA_ID): Promise<Result<PastCompetition[]>> {
-  "use cache: remote";
-  cacheTag("wca", `wca-past-competitions-${wcaId}`);
-  const [result, profile] = await Promise.all([
-    fetchWca(`/v0/persons/${wcaId}/competitions`, z.array(PastCompetitionSchema)),
-    untilResultsSettle("days", wcaId),
-  ]);
-  return settle(
-    result.ok ? ok(result.data.toSorted((a, b) => b.start_date.localeCompare(a.start_date))) : result,
-    profile,
-  );
 }
 
 /**
