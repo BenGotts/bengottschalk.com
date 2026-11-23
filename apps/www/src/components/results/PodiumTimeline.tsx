@@ -18,6 +18,27 @@ const BADGE_STYLE: Record<Badge["kind"], string> = {
   count: "bg-base-300 text-base-content",
 };
 
+// Cards that reached a milestone stand out: gold for an overall milestone
+// (every 50th podium), green for any other, plain otherwise.
+type Highlight = "overall" | "milestone" | "none";
+const CARD_STYLE: Record<Highlight, string> = {
+  overall:
+    "border-2 border-ink-gold bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-medal-gold)_22%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_24px_-6px_var(--color-medal-gold)]",
+  milestone:
+    "border-2 border-secondary/60 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-secondary)_12%,var(--color-base-200)),var(--color-base-200)_75%)] shadow-[0_0_20px_-8px_var(--color-secondary)]",
+  none: "border border-base-300 bg-base-200",
+};
+const SEAL_STYLE: Record<Highlight, string> = {
+  overall: "bg-medal-gold text-black/80",
+  milestone: "bg-secondary text-secondary-content",
+  none: "",
+};
+
+function highlightOf(badges: Badge[]): Highlight {
+  if (badges.some((badge) => badge.kind === "overall")) return "overall";
+  return badges.length > 0 ? "milestone" : "none";
+}
+
 /** The milestones a competition reached, as small badges in its card. */
 function Badges({ badges }: { badges: Badge[] }) {
   return (
@@ -30,6 +51,31 @@ function Badges({ badges }: { badges: Badge[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A competition's date, name and milestones, standing out when it reached one. */
+function CompetitionCard({ row }: { row: PodiumRow }) {
+  const highlight = highlightOf(row.badges);
+  return (
+    <div className={`relative mx-auto mb-3 w-fit max-w-[85%] rounded-box px-4 py-2 text-center ${CARD_STYLE[highlight]}`}>
+      {highlight !== "none" && (
+        // A seal on the corner, so milestone cards catch the eye while scrolling.
+        <span
+          aria-hidden="true"
+          className={`absolute -right-2.5 -top-2.5 flex size-6 items-center justify-center rounded-full text-xs font-bold shadow ring-2 ring-base-100 ${SEAL_STYLE[highlight]}`}
+        >
+          ★
+        </span>
+      )}
+      <p className="text-xs text-muted">{row.dateLabel}</p>
+      <h3 className="font-semibold leading-snug">
+        <ExternalLink href={`https://www.worldcubeassociation.org/competitions/${row.competitionId}`} className="link link-hover">
+          {row.competitionName}
+        </ExternalLink>
+      </h3>
+      {row.badges.length > 0 && <Badges badges={row.badges} />}
+    </div>
   );
 }
 
@@ -113,15 +159,7 @@ export default function PodiumTimeline({ rows, pageSize = 10 }: { rows: PodiumRo
               </li>
             )}
             <li className="relative pb-10">
-              <div className="relative mx-auto mb-3 w-fit max-w-[85%] rounded-box border border-base-300 bg-base-200 px-4 py-2 text-center">
-                <p className="text-xs text-muted">{row.dateLabel}</p>
-                <h3 className="font-semibold leading-snug">
-                  <ExternalLink href={`https://www.worldcubeassociation.org/competitions/${row.competitionId}`} className="link link-hover">
-                    {row.competitionName}
-                  </ExternalLink>
-                </h3>
-                {row.badges.length > 0 && <Badges badges={row.badges} />}
-              </div>
+              <CompetitionCard row={row} />
               {/* A solid background, so the centre line doesn't run through the podium. */}
               <MiniPodium medals={row.medals} competitionName={row.competitionName} className="relative mx-auto bg-base-100 px-2" />
             </li>
