@@ -20,18 +20,32 @@ const DISC: Record<Medal, string> = {
 };
 const NUMBER: Record<Medal, string> = { gold: "1", silver: "2", bronze: "3" };
 
-/** A medal on its ribbon: a V of ribbon above a disc engraved with the placement. */
-function MedalArt({ medal, className = "", style }: { medal: Medal; className?: string; style?: CSSProperties }) {
+/**
+ * A medal on its ribbon: a V of ribbon, a brass clasp stamped with the
+ * placement, and a disc engraved with the event's icon. The icon is a font
+ * glyph laid over the SVG, sized in container units so it scales with the
+ * medal. `className` sizes and positions the medal.
+ */
+function MedalArt({ medal, eventId, className = "", style }: { medal: Medal; eventId?: string; className?: string; style?: CSSProperties }) {
   return (
-    <svg viewBox="0 0 40 56" className={className} style={style} aria-hidden="true">
-      <path d="M8 0h9l7 22h-9z" fill="#b3262f" />
-      <path d="M23 0h9l-7 22h-9z" fill="#8f1d25" />
-      <path d="M11 0h3l7 22h-3z M26 0h3l-7 22h-3z" fill="#f3efe6" opacity="0.85" />
-      <circle cx="20" cy="38" r="15" fill={DISC[medal]} />
-      <circle cx="20" cy="38" r="11.5" fill="none" stroke="#000" strokeOpacity="0.18" strokeWidth="1.5" />
-      <path d="M9 31a13 13 0 0 1 12-8" fill="none" stroke="#fff" strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" />
-      <text x="20" y="43.5" textAnchor="middle" fontSize="15" fontWeight="800" fill="#000" fillOpacity="0.5">{NUMBER[medal]}</text>
-    </svg>
+    <span className={`@container block ${className}`} style={style} aria-hidden="true">
+      <svg viewBox="0 0 40 56" className="absolute inset-0 size-full">
+        <path d="M8 0h9l7 22h-9z" fill="#b3262f" />
+        <path d="M23 0h9l-7 22h-9z" fill="#8f1d25" />
+        <path d="M11 0h3l7 22h-3z M26 0h3l-7 22h-3z" fill="#f3efe6" opacity="0.85" />
+        <circle cx="20" cy="38" r="15" fill={DISC[medal]} />
+        <circle cx="20" cy="38" r="12.5" fill="none" stroke="#000" strokeOpacity="0.2" strokeWidth="1.2" />
+        <path d="M9 31a13 13 0 0 1 12-8" fill="none" stroke="#fff" strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" />
+        <rect x="13.5" y="16.5" width="13" height="9" rx="2" fill="#e3c46a" stroke="#7d5f1c" strokeWidth="0.6" />
+        <text x="20" y="23.6" textAnchor="middle" fontSize="7.5" fontWeight="800" fill="#2b1d07">{NUMBER[medal]}</text>
+      </svg>
+      {eventId && (
+        // Embossed: dark glyph with a light edge below.
+        <span
+          className={`${eventIconClass(eventId)} absolute left-1/2 top-[68%] -translate-x-1/2 -translate-y-1/2 text-[36cqw] leading-none text-black/55 [text-shadow:0_1px_0_rgba(255,255,255,0.45)]`}
+        />
+      )}
+    </span>
   );
 }
 
@@ -92,7 +106,11 @@ function Hook({ cell, eventId, retired, dateLabel }: { cell: PodiumGoalCell; eve
               style={{ transform: `translateX(${(behind - i) * 5}px) rotate(${(behind - i) * 6}deg)`, transformOrigin: "50% 0" }}
             />
           ))}
-          <MedalArt medal={cell.medal} className="absolute inset-0 size-full drop-shadow-[0_3px_3px_rgba(0,0,0,0.5)] transition-transform group-hover:rotate-[-4deg]" />
+          <MedalArt
+            medal={cell.medal}
+            eventId={eventId}
+            className="absolute inset-0 size-full drop-shadow-[0_3px_3px_rgba(0,0,0,0.5)] transition-transform group-hover:rotate-[-4deg]"
+          />
         </span>
         {cell.count > 1 && (
           <span className="absolute -right-2 top-0 rounded-full bg-black/70 px-1.5 font-display text-[11px] font-bold leading-5 text-white ring-1 ring-white/25">
@@ -106,7 +124,7 @@ function Hook({ cell, eventId, retired, dateLabel }: { cell: PodiumGoalCell; eve
         className="m-auto w-[min(20rem,calc(100vw-2rem))] rounded-box border border-base-300 bg-base-100 p-5 text-base-content shadow-2xl backdrop:bg-black/40"
       >
         <div className="flex items-center gap-3">
-          <MedalArt medal={cell.medal} className="h-14 w-10 shrink-0" />
+          <MedalArt medal={cell.medal} eventId={eventId} className="relative h-[4.2rem] w-12 shrink-0" />
           <div>
             <p className="font-bold">{MEDAL_STYLES[cell.medal].place} place</p>
             <p className="flex items-center gap-1.5 text-sm text-muted">
