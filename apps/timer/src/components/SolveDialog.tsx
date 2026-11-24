@@ -12,6 +12,7 @@ import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, setSotd, updateSolve } from "@/lib/db";
 import { formatDateTime, formatDay, formatSolve } from "@/lib/format";
 import Modal from "./Modal";
+import type { ColorScheme } from "@/lib/colorSchemes";
 import ScrambleImage from "./ScrambleImage";
 
 interface Props {
@@ -26,6 +27,8 @@ interface Props {
   sotdDetails: (solve: Solve) => SotdDetails;
   /** Read-only when the solve's branch was merged or discarded, or it came from a competition. */
   readOnly: boolean;
+  /** Scramble picture colors for an event (the solve's own event's colors). */
+  colorsFor: (eventId: string) => ColorScheme;
 }
 
 const PENALTIES: { value: Penalty; label: string }[] = [
@@ -34,10 +37,10 @@ const PENALTIES: { value: Penalty; label: string }[] = [
   { value: "dnf", label: "DNF" },
 ];
 
-export default function SolveDialog({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly }: Props) {
+export default function SolveDialog({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props) {
   return (
     <Modal open={solve !== null} onClose={onClose} title={solve ? formatSolve(solve, precision) : "Solve"}>
-      {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByDate={sotdByDate} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={readOnly} />}
+      {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByDate={sotdByDate} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={readOnly} colorsFor={colorsFor} />}
     </Modal>
   );
 }
@@ -81,7 +84,7 @@ function CompetitionDetails({ solve, competition, precision }: { solve: Solve; c
   );
 }
 
-function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly }: Props & { solve: Solve }) {
+function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props & { solve: Solve }) {
   const [comment, setComment] = useState(solve.comment);
   const [copied, setCopied] = useState<string | null>(null);
   const event = timerEvent(solve.eventId);
@@ -142,7 +145,7 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotd
         {/* Multi-Blind has several scrambles, so no single picture. */}
         {solve.scramble && event.puzzleId && event.kind !== "multi-blind" && (
           <div className="mt-2 h-40 w-full">
-            <ScrambleImage puzzleId={event.puzzleId} scramble={solve.scramble} />
+            <ScrambleImage puzzleId={event.puzzleId} scramble={solve.scramble} scheme={colorsFor(solve.eventId)} />
           </div>
         )}
       </div>
