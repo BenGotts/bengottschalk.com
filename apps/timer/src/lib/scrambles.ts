@@ -2,6 +2,7 @@
 // scrambling. It runs its search in a web worker, so the page never stalls.
 
 import { timerEvent } from "@bengottschalk/timer-core/events";
+import { parseSquare1 } from "@bengottschalk/timer-core/square1";
 import { loadAlg, loadPuzzles, loadScramble } from "./cubing";
 
 /**
@@ -48,4 +49,38 @@ export async function solvesScramble(scramble: string, solution: string): Promis
   } catch {
     return false;
   }
+}
+
+export type ScrambleCheck = { ok: true; scramble: string } | { ok: false; error: string };
+
+/**
+ * Checks a typed-in scramble for an event: every move has to be one the
+ * puzzle has (cubing.js's model of it, or our Square-1 reader). Returns the
+ * scramble tidied (one space between moves) when it reads.
+ */
+export async function checkScramble(eventId: string, text: string): Promise<ScrambleCheck> {
+  const event = timerEvent(eventId);
+  const trimmed = text.trim().replace(/\s+/g, " ");
+  if (!trimmed) return { ok: false, error: "Type or paste a scramble." };
+  if (event.puzzleId === "square1") {
+    return parseSquare1(trimmed) ? { ok: true, scramble: trimmed } : { ok: false, error: "That isn't Square-1 notation, like (1,0) / (-3,3) / …" };
+  }
+  const { Alg } = await loadAlg();
+  let alg: InstanceType<typeof Alg>;
+  try {
+    alg = new Alg(trimmed);
+  } catch (error) {
+    return { ok: false, error: `That isn't move notation: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  const loader = event.puzzleId ? (await loadPuzzles()).puzzles[event.puzzleId] : undefined;
+  if (loader?.kpuzzle) {
+    try {
+      const kpuzzle = await loader.kpuzzle();
+      kpuzzle.defaultPattern().applyAlg(alg);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: `Not a ${event.shortName} scramble: ${detail}` };
+    }
+  }
+  return { ok: true, scramble: alg.toString() };
 }

@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaPen, FaXmark, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve, type TimingMethod } from "@bengottschalk/timer-core/solve";
@@ -22,6 +22,7 @@ import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
 import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
 import AverageDialog, { type AverageView } from "./AverageDialog";
 import CurrentAverages from "./CurrentAverages";
+import CustomScrambleDialog from "./CustomScrambleDialog";
 import EventPicker from "./EventPicker";
 import SourceFilter, { type SourceFilterValue } from "./SourceFilter";
 import FmcPanel, { type FmcResult } from "./FmcPanel";
@@ -45,7 +46,7 @@ import StatsPanel from "./StatsPanel";
 import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
-type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | null;
+type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | null;
 /** Which screen a phone shows (wide screens show the timer and the side panel together). */
 type MobileView = "timer" | "solves" | "stats" | "sotd";
 
@@ -390,17 +391,32 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} scheme={colorsFor(activeEventId)} />
             ) : (
               <>
+                {/* The buttons sit above the scramble, so they stay put whatever its length. */}
+                <div className="mb-1 flex items-center justify-center gap-1">
+                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble" title="Previous scramble"><FaArrowLeft aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => scramble.scramble && void navigator.clipboard.writeText(scramble.scramble)} aria-label="Copy scramble" title="Copy scramble"><FaRegCopy aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("custom-scramble")} aria-label="Enter a scramble" title="Enter a scramble"><FaPen aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.next} aria-label="Next scramble" title="Next scramble (N)"><FaArrowRight aria-hidden /></button>
+                  {scramble.custom && <span className="badge badge-soft badge-sm">Entered</span>}
+                </div>
                 <p className={`timer-digits mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
                   {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
                 </p>
-                <div className="mt-1 flex justify-center gap-1">
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble"><FaArrowLeft aria-hidden /></button>
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => scramble.scramble && void navigator.clipboard.writeText(scramble.scramble)} aria-label="Copy scramble"><FaRegCopy aria-hidden /></button>
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.next} aria-label="Next scramble"><FaArrowRight aria-hidden /></button>
-                </div>
               </>
             )}
           </section>}
+
+          {/* During inspection or a solve: a way out of an accidental start without saving anything (Escape does the same). */}
+          {usesTimer && (timer.phase === "inspecting" || timer.phase === "running") && (
+            <button
+              type="button"
+              data-timer-cancel
+              className="btn btn-outline btn-sm absolute bottom-4 left-1/2 z-10 -translate-x-1/2 gap-2 bg-base-100 lg:bottom-6"
+              onClick={timer.cancel}
+            >
+              <FaXmark aria-hidden /> Cancel solve <kbd className="kbd kbd-xs hidden lg:inline-flex">Esc</kbd>
+            </button>
+          )}
 
           {/* On phones with a scramble picture, the time sits under the scramble and the picture fills the space below; otherwise the time is centred. */}
           <div className={`flex min-h-0 flex-col items-center justify-center gap-1 px-4 py-4 lg:flex-1 [@media(max-height:700px)]:py-1 ${scrambleImage ? "flex-none" : "flex-1"}`}>
@@ -553,6 +569,16 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         </>
       )}
       <AverageDialog view={averageView} onClose={() => setAverageView(null)} eventId={activeEventId} solves={viewSolves} precision={settings.precision} onOpenSolve={(s) => setOpenSolveId(s.id)} />
+      <CustomScrambleDialog
+        open={dialog === "custom-scramble"}
+        eventId={activeEventId}
+        scheme={colorsFor(activeEventId)}
+        onClose={() => setDialog(null)}
+        onUse={(text) => {
+          scramble.setCustom(text);
+          setDialog(null);
+        }}
+      />
       <Modal open={dialog === "scramble"} onClose={() => setDialog(null)} title="Scramble" wide>
         {event.puzzleId && scramble.scramble && event.kind !== "fewest-moves" && (
           <div className="space-y-3">

@@ -35,15 +35,15 @@ const recentSpec = (format: EventFormat): AverageSpec => (format === "mo3" ? { k
  * last five, then its best result, points and successes, and no brackets. Wide screens have all this in the sidebar instead.
  */
 export default function ScreenStats({ eventId, format, stats, specs, solves, precision, onOpenAverage, onOpenSolve }: Props) {
-  const spec = recentSpec(format);
-  const recent = solves.slice(-spec.size);
-  const full = recent.length === spec.size && format !== "best";
+  const recentAverage = recentSpec(format);
+  const recent = solves.slice(-recentAverage.size);
+  const full = recent.length === recentAverage.size && format !== "best";
   const averages = specs.flatMap((spec) => {
     const average = stats.averages.find((a) => a.label === averageLabel(spec));
     return average ? [average] : [];
   });
   // Brackets only once there's a full ao5 to drop from (a mean drops nothing; single-result events have no average).
-  const dropped = full && spec.kind === "average" ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
+  const dropped = full && recentAverage.kind === "average" ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
   const first = stats.count - recent.length;
   const newestFirst = recent.map((solve, i) => ({ solve, index: first + i, end: dropped[i] })).toReversed();
 
@@ -51,7 +51,7 @@ export default function ScreenStats({ eventId, format, stats, specs, solves, pre
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats">
       <section className="rounded-box bg-base-200 px-2.5 py-1.5">
         <div className="flex justify-between gap-2 text-xs text-muted">
-          <h2>{full ? <button type="button" className="link-hover" onClick={() => onOpenAverage(spec, stats.count - 1)}>Last {spec.size}</button> : `Last ${spec.size}`}</h2>
+          <h2>{full ? <button type="button" className="link-hover" onClick={() => onOpenAverage(recentAverage, stats.count - 1)}>Last {recentAverage.size}</button> : `Last ${recentAverage.size}`}</h2>
           <span className="truncate">{stats.count.toLocaleString()} {stats.count === 1 ? "solve" : "solves"}</span>
         </div>
         <ol className="timer-digits text-sm">

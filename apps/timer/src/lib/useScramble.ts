@@ -9,9 +9,11 @@ interface State {
   /** Earlier scrambles for this event, newest last. */
   history: string[];
   error: string | null;
+  /** Whether the current scramble was typed in rather than made here. */
+  custom: boolean;
 }
 
-const empty = (eventId: string): State => ({ eventId, scramble: null, history: [], error: null });
+const empty = (eventId: string): State => ({ eventId, scramble: null, history: [], error: null, custom: false });
 
 /**
  * The current scramble for an event, with the next one made ahead of time
@@ -27,7 +29,7 @@ export function useScramble(eventId: string) {
     void (async () => {
       try {
         const scramble = await source;
-        setState((s) => (s.eventId === id ? { ...s, scramble, error: null } : { ...empty(id), scramble }));
+        setState((s) => (s.eventId === id ? { ...s, scramble, error: null, custom: false } : { ...empty(id), scramble }));
       } catch (error) {
         console.error("Scramble failed", error);
         setState((s) => ({ ...(s.eventId === id ? s : empty(id)), error: "Couldn't make a scramble. Try again." }));
@@ -51,13 +53,21 @@ export function useScramble(eventId: string) {
     const id = current.eventId;
     const source = upcoming.current?.eventId === id ? upcoming.current.scramble : generateScramble(id);
     upcoming.current = null;
-    setState({ eventId: id, scramble: null, history: current.scramble ? [...current.history, current.scramble] : current.history, error: null });
+    setState({ eventId: id, scramble: null, history: current.scramble ? [...current.history, current.scramble] : current.history, error: null, custom: false });
     load(id, source);
   }, [current, load]);
 
   const previous = useCallback(() => {
-    setState((s) => (s.history.length === 0 ? s : { ...s, scramble: s.history.at(-1)!, history: s.history.slice(0, -1) }));
+    setState((s) => (s.history.length === 0 ? s : { ...s, scramble: s.history.at(-1)!, history: s.history.slice(0, -1), custom: false }));
   }, []);
 
-  return { scramble: current.scramble, error: current.error, next, previous, canGoBack: current.history.length > 0 };
+  /** Uses a scramble typed in (already checked); the one it replaces is kept for Previous. */
+  const applyCustom = useCallback((scramble: string) => {
+    setState((s) => {
+      const base = s.eventId === eventId ? s : empty(eventId);
+      return { ...base, scramble, error: null, custom: true, history: base.scramble ? [...base.history, base.scramble] : base.history };
+    });
+  }, [eventId]);
+
+  return { scramble: current.scramble, error: current.error, custom: current.custom, next, previous, setCustom: applyCustom, canGoBack: current.history.length > 0 };
 }

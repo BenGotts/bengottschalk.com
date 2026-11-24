@@ -263,6 +263,8 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       // A mouse click only stops a running solve; starting is for the space bar, or a touch or pen.
       if (e.pointerType === "mouse" && !running) return;
       // Buttons and fields on the timer screen work as usual, except that any touch stops a running solve.
+      // The Cancel button shown during a solve does its own thing; touching it must not stop (and save) the solve.
+      if (e.target instanceof Element && e.target.closest("[data-timer-cancel]")) return;
       const onControl = e.target instanceof Element && e.target.closest("button, a, input, textarea, select, label, summary, details");
       if (onControl && !running) return;
       pointerRef.current = e.pointerId;
