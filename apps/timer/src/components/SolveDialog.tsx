@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FaRegCopy, FaRegStar, FaStar, FaTrash, FaTrophy } from "react-icons/fa6";
 import { formatRoundAverage, ordinal, roundName } from "@bengottschalk/timer-core/competition";
 import { timerEvent } from "@bengottschalk/timer-core/events";
+import { FMC_TIME_LIMIT_MS } from "@bengottschalk/timer-core/fmc";
 import { rawTimeKnown, timingOf, TIMING_LABELS, type CompetitionAttempt, type Penalty, type Solve } from "@bengottschalk/timer-core/solve";
 import { loadCompetitionScrambles } from "@/lib/wca/results";
 import { localDate, sotdClipboardText, sotdKey, sotdReplaceQuestion, type SotdDetails } from "@bengottschalk/timer-core/sotd";
@@ -132,7 +133,17 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
             </dd>
           </>
         )}
-        {solve.memoMs !== null && <><dt className="text-muted">Memo</dt><dd className="timer-digits">{formatTime(solve.memoMs, precision)}</dd></>}
+        {/* FMC: how long the attempt took (0 for competition results and older solves, which didn't record it). */}
+        {event.kind === "fewest-moves" && solve.timeMs > 0 && (
+          <>
+            <dt className="text-muted">Time taken</dt>
+            <dd>
+              <span className="timer-digits">{formatTime(solve.timeMs)}</span>
+              {solve.timeMs > FMC_TIME_LIMIT_MS && <span className="text-warning"> (over the hour)</span>}
+            </dd>
+          </>
+        )}
+        {solve.memoMs !== null &&<><dt className="text-muted">Memo</dt><dd className="timer-digits">{formatTime(solve.memoMs, precision)}</dd></>}
         {solve.multi && <><dt className="text-muted">Cubes</dt><dd>{solve.multi.solved}/{solve.multi.attempted}</dd></>}
         <dt className="text-muted">Timed with</dt><dd>{TIMING_LABELS[timingOf(solve)]}</dd>
       </dl>
@@ -153,6 +164,12 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
         <div>
           <div className="mb-1 text-xs text-muted">Solution ({solve.fmc.moves} moves)</div>
           <p className="timer-digits whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">{solve.fmc.solution}</p>
+          {solve.fmc.notes && (
+            <>
+              <div className="mt-2 mb-1 text-xs text-muted">Scratch pad</div>
+              <p className="timer-digits max-h-48 overflow-y-auto whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">{solve.fmc.notes}</p>
+            </>
+          )}
         </div>
       )}
 

@@ -27,7 +27,18 @@ export async function generateMultiBlindScrambles(cubes: number): Promise<string
   return Promise.all(Array.from({ length: cubes }, () => generateScramble("333bf")));
 }
 
-/** Whether an FMC solution solves the scramble (any final orientation of the whole cube). */
+/** The scramble undone (FMC solvers often look at the inverse), from cubing.js's `Alg.invert()`. */
+export async function invertScramble(scramble: string): Promise<string> {
+  const { Alg } = await loadAlg();
+  // cubing.js writes the inverse of F2 as F2'; it's the same turn, and WCA scrambles write it F2.
+  return new Alg(scramble).invert().toString().replaceAll("2'", "2");
+}
+
+/**
+ * Whether an FMC solution solves the scramble (any final orientation of the
+ * whole cube, since rotations are allowed). Pass the solution as a judge reads
+ * it (`parseFmcSolution`), since cubing.js reads `r` as a wide move.
+ */
 export async function solvesScramble(scramble: string, solution: string): Promise<boolean> {
   const [{ cube3x3x3 }, { Alg }] = await Promise.all([loadPuzzles(), loadAlg()]);
   const kpuzzle = await cube3x3x3.kpuzzle();

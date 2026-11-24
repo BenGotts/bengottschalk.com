@@ -1,4 +1,5 @@
 import { timerEvent } from "./events";
+import { parseFmcSolution } from "./fmc";
 
 export type Penalty = "none" | "+2" | "dnf";
 
@@ -94,6 +95,15 @@ export interface MultiBlindResult {
   attempted: number;
 }
 
+/** A Fewest Moves attempt's solution. */
+export interface FmcRecord {
+  solution: string;
+  /** The result in OBTM; for a DNF, the count of what was written (0 if it isn't notation). */
+  moves: number;
+  /** The scratch pad from the attempt. Missing on older solves and on competition results. */
+  notes?: string;
+}
+
 export interface Solve {
   /** A UUIDv7, made on the device, so solves sync without clashing. */
   id: string;
@@ -115,7 +125,7 @@ export interface Solve {
   /** Blindfolded: how long memorisation took, when split. */
   memoMs: number | null;
   /** FMC: the solution and its move count. */
-  fmc: { solution: string; moves: number } | null;
+  fmc: FmcRecord | null;
   /** Multi-Blind: cubes solved out of attempted. */
   multi: MultiBlindResult | null;
   /** How the time was entered (kept for older devices; `timing` says more). */
@@ -165,16 +175,12 @@ export function multiBlindTimeLimitMs(cubes: number): number {
   return Math.min(cubes, 6) * 600_000;
 }
 
-/** FMC solutions count outer block turns: rotations are free, slice moves count 2. */
+/**
+ * An FMC solution's move count in Outer Block Turn Metric (rotations are
+ * free), or null if it has a move that isn't WCA notation, like a slice
+ * move. See `fmc.ts` for how solutions are read.
+ */
 export function countFmcMoves(solution: string): number | null {
-  const withoutComments = solution.replaceAll(/\/\/.*$/gm, "");
-  const tokens = withoutComments.trim().split(/\s+/).filter(Boolean);
-  let moves = 0;
-  for (const token of tokens) {
-    if (!/^(?:[URFDLB]w?|[urfdlb]|[MES]|[xyz])(?:2|')?$/.test(token)) return null;
-    const face = token[0];
-    if ("xyz".includes(face)) continue;
-    moves += "MES".includes(face) ? 2 : 1;
-  }
-  return moves;
+  const read = parseFmcSolution(solution);
+  return read.invalid.length > 0 ? null : read.count;
 }

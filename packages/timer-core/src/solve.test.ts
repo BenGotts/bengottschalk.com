@@ -51,10 +51,10 @@ describe("Multi-Blind", () => {
 });
 
 describe("countFmcMoves", () => {
-  it("counts outer block turns, not rotations", () => {
+  it("counts outer block turns, not rotations, and allows no slice moves", () => {
     expect(countFmcMoves("R U2 F' x Rw y2")).toBe(4);
     expect(countFmcMoves("R U // comment\nF")).toBe(3);
-    expect(countFmcMoves("M2 R")).toBe(3);
+    expect(countFmcMoves("M2 R")).toBeNull();
     expect(countFmcMoves("R Q")).toBeNull();
   });
 });

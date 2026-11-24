@@ -106,6 +106,17 @@ describe("POST /api/sync", () => {
     expect(again.data.cursor).toBe(first.data.cursor);
   });
 
+  it("keeps an FMC attempt's scratch pad, and solves from before it had one", async () => {
+    const withNotes = solve("fmc-notes", 100, { eventId: "333fm", sessionId: "main-333fm", fmc: { solution: "R U R'", moves: 3, notes: "EO: R U\nblock" } });
+    const without = solve("fmc-plain", 100, { eventId: "333fm", sessionId: "main-333fm", fmc: { solution: "R", moves: 1 } });
+    const grace = await signIn("grace@example.com");
+    const pushed = await sync(grace, { cursor: 0, changes: { ...empty, solves: [withNotes, without] } });
+    expect(pushed.status).toBe(200);
+    const byId = new Map(pushed.data.changes.solves.map((s) => [s.id, s]));
+    expect(byId.get("fmc-notes")?.fmc).toEqual(withNotes.fmc);
+    expect(byId.get("fmc-plain")?.fmc).toEqual({ solution: "R", moves: 1 });
+  });
+
   it("keeps the newest edit of each record", async () => {
     const start = (await sync(alice, { cursor: 0, changes: empty })).data.cursor;
     // An older copy (from a device that was offline) doesn't overwrite the newer one.
