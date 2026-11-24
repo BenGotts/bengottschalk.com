@@ -203,7 +203,7 @@ export async function importBackup(text: string): Promise<{ solves: number; sess
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const data = JSON.parse(text) as { app?: string; solves?: Solve[]; sessions?: TimerSession[]; sotd?: SotdMark[] };
   if (data.app !== "cube-timer" || !Array.isArray(data.solves) || !Array.isArray(data.sessions)) {
-    throw new Error("That file isn't a Cube Timer backup.");
+    throw new Error("That file isn't a backup from this timer.");
   }
   let solves = 0;
   let sessions = 0;

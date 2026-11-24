@@ -10,7 +10,7 @@ import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByDate as marksByDate, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
-import { WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
+import { TIMER_NAME, WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
@@ -323,7 +323,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       <header className="focus-fade flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 bg-base-200 px-3 py-2 lg:h-14 lg:flex-nowrap lg:py-0">
         <h1 className="order-1 text-base font-semibold">
           <Link href="/" className="flex items-center gap-2">
-            <FaStopwatch className="text-primary" aria-hidden /> Cube Timer
+            <FaStopwatch className="text-primary" aria-hidden /> {TIMER_NAME}
           </Link>
         </h1>
         {/* Phones have no sidebar, so the event and session stay in the header. */}

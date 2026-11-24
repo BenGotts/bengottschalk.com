@@ -3,15 +3,15 @@ import { DM_Mono, DM_Sans } from "next/font/google";
 import "@cubing/icons";
 import "./globals.css";
 import { THEMES, themeInitScript } from "@bengottschalk/theme";
-import { TIMER_URL } from "@bengottschalk/content/site";
+import { TIMER_NAME, TIMER_URL } from "@bengottschalk/content/site";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-dm-mono", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(TIMER_URL),
-  title: "Cube Timer",
-  description: "A speedcubing timer with every WCA event, official scrambles, sessions with branches and Solve of the Day.",
+  title: TIMER_NAME,
+  description: "A speedcubing timer with every WCA event, official scrambles, temporary sessions and your WCA competition results.",
   appleWebApp: { capable: true, title: "Timer", statusBarStyle: "black-translucent" },
 };
 
