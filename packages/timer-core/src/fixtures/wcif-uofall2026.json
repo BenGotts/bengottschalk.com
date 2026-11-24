@@ -1,0 +1,373 @@
+{
+ "id": "UOFall2026",
+ "name": "UO Fall 2026",
+ "events": [
+  {
+   "id": "333",
+   "rounds": [
+    {
+     "id": "333-r1"
+    },
+    {
+     "id": "333-r2"
+    },
+    {
+     "id": "333-r3"
+    }
+   ]
+  },
+  {
+   "id": "444",
+   "rounds": [
+    {
+     "id": "444-r1"
+    },
+    {
+     "id": "444-r2"
+    }
+   ]
+  },
+  {
+   "id": "333bf",
+   "rounds": [
+    {
+     "id": "333bf-r1"
+    },
+    {
+     "id": "333bf-r2"
+    }
+   ]
+  },
+  {
+   "id": "clock",
+   "rounds": [
+    {
+     "id": "clock-r1"
+    },
+    {
+     "id": "clock-r2"
+    }
+   ]
+  },
+  {
+   "id": "skewb",
+   "rounds": [
+    {
+     "id": "skewb-r1"
+    },
+    {
+     "id": "skewb-r2"
+    }
+   ]
+  }
+ ],
+ "persons": [
+  {
+   "wcaId": "2016GOTT01",
+   "assignments": [
+    {
+     "activityId": 169,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 166,
+     "assignmentCode": "staff-delegate"
+    },
+    {
+     "activityId": 173,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 171,
+     "assignmentCode": "staff-delegate"
+    },
+    {
+     "activityId": 178,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 176,
+     "assignmentCode": "staff-scrambler"
+    },
+    {
+     "activityId": 175,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 182,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 181,
+     "assignmentCode": "staff-delegate"
+    },
+    {
+     "activityId": 186,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 190,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 198,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 188,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 194,
+     "assignmentCode": "competitor"
+    },
+    {
+     "activityId": 192,
+     "assignmentCode": "competitor"
+    }
+   ]
+  }
+ ],
+ "schedule": {
+  "startDate": "2026-11-21",
+  "venues": [
+   {
+    "timezone": "America/Los_Angeles",
+    "rooms": [
+     {
+      "activities": [
+       {
+        "id": 170,
+        "activityCode": "333-r1",
+        "startTime": "2026-11-21T16:45:00Z",
+        "endTime": "2026-11-21T17:45:00Z",
+        "childActivities": [
+         {
+          "id": 166,
+          "activityCode": "333-r1-g1",
+          "startTime": "2026-11-21T16:45:00Z",
+          "endTime": "2026-11-21T17:00:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 167,
+          "activityCode": "333-r1-g2",
+          "startTime": "2026-11-21T17:00:00Z",
+          "endTime": "2026-11-21T17:15:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 168,
+          "activityCode": "333-r1-g3",
+          "startTime": "2026-11-21T17:15:00Z",
+          "endTime": "2026-11-21T17:30:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 169,
+          "activityCode": "333-r1-g4",
+          "startTime": "2026-11-21T17:30:00Z",
+          "endTime": "2026-11-21T17:45:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 174,
+        "activityCode": "444-r1",
+        "startTime": "2026-11-21T17:45:00Z",
+        "endTime": "2026-11-21T18:45:00Z",
+        "childActivities": [
+         {
+          "id": 171,
+          "activityCode": "444-r1-g1",
+          "startTime": "2026-11-21T17:45:00Z",
+          "endTime": "2026-11-21T18:05:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 172,
+          "activityCode": "444-r1-g2",
+          "startTime": "2026-11-21T18:05:00Z",
+          "endTime": "2026-11-21T18:25:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 173,
+          "activityCode": "444-r1-g3",
+          "startTime": "2026-11-21T18:25:00Z",
+          "endTime": "2026-11-21T18:45:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 177,
+        "activityCode": "clock-r1",
+        "startTime": "2026-11-21T18:45:00Z",
+        "endTime": "2026-11-21T19:35:00Z",
+        "childActivities": [
+         {
+          "id": 175,
+          "activityCode": "clock-r1-g1",
+          "startTime": "2026-11-21T18:45:00Z",
+          "endTime": "2026-11-21T19:10:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 176,
+          "activityCode": "clock-r1-g2",
+          "startTime": "2026-11-21T19:10:00Z",
+          "endTime": "2026-11-21T19:35:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 179,
+        "activityCode": "333bf-r1",
+        "startTime": "2026-11-21T19:35:00Z",
+        "endTime": "2026-11-21T20:00:00Z",
+        "childActivities": [
+         {
+          "id": 178,
+          "activityCode": "333bf-r1-g1",
+          "startTime": "2026-11-21T19:35:00Z",
+          "endTime": "2026-11-21T20:00:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 183,
+        "activityCode": "skewb-r1",
+        "startTime": "2026-11-21T21:00:00Z",
+        "endTime": "2026-11-21T21:30:00Z",
+        "childActivities": [
+         {
+          "id": 181,
+          "activityCode": "skewb-r1-g1",
+          "startTime": "2026-11-21T21:00:00Z",
+          "endTime": "2026-11-21T21:15:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 182,
+          "activityCode": "skewb-r1-g2",
+          "startTime": "2026-11-21T21:15:00Z",
+          "endTime": "2026-11-21T21:30:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 187,
+        "activityCode": "333-r2",
+        "startTime": "2026-11-21T21:30:00Z",
+        "endTime": "2026-11-21T22:15:00Z",
+        "childActivities": [
+         {
+          "id": 184,
+          "activityCode": "333-r2-g1",
+          "startTime": "2026-11-21T21:30:00Z",
+          "endTime": "2026-11-21T21:45:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 185,
+          "activityCode": "333-r2-g2",
+          "startTime": "2026-11-21T21:45:00Z",
+          "endTime": "2026-11-21T22:00:00Z",
+          "childActivities": []
+         },
+         {
+          "id": 186,
+          "activityCode": "333-r2-g3",
+          "startTime": "2026-11-21T22:00:00Z",
+          "endTime": "2026-11-21T22:15:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 189,
+        "activityCode": "clock-r2",
+        "startTime": "2026-11-21T22:15:00Z",
+        "endTime": "2026-11-21T22:40:00Z",
+        "childActivities": [
+         {
+          "id": 188,
+          "activityCode": "clock-r2-g1",
+          "startTime": "2026-11-21T22:15:00Z",
+          "endTime": "2026-11-21T22:40:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 191,
+        "activityCode": "444-r2",
+        "startTime": "2026-11-21T22:40:00Z",
+        "endTime": "2026-11-21T23:00:00Z",
+        "childActivities": [
+         {
+          "id": 190,
+          "activityCode": "444-r2-g1",
+          "startTime": "2026-11-21T22:40:00Z",
+          "endTime": "2026-11-21T23:00:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 193,
+        "activityCode": "skewb-r2",
+        "startTime": "2026-11-21T23:00:00Z",
+        "endTime": "2026-11-21T23:15:00Z",
+        "childActivities": [
+         {
+          "id": 192,
+          "activityCode": "skewb-r2-g1",
+          "startTime": "2026-11-21T23:00:00Z",
+          "endTime": "2026-11-21T23:15:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 195,
+        "activityCode": "333-r3",
+        "startTime": "2026-11-21T23:35:00Z",
+        "endTime": "2026-11-21T23:50:00Z",
+        "childActivities": [
+         {
+          "id": 194,
+          "activityCode": "333-r3-g1",
+          "startTime": "2026-11-21T23:35:00Z",
+          "endTime": "2026-11-21T23:50:00Z",
+          "childActivities": []
+         }
+        ]
+       },
+       {
+        "id": 197,
+        "activityCode": "333bf-r2",
+        "startTime": "2026-11-21T23:15:00Z",
+        "endTime": "2026-11-21T23:35:00Z",
+        "childActivities": [
+         {
+          "id": 198,
+          "activityCode": "333bf-r2-g1",
+          "startTime": "2026-11-21T23:15:00Z",
+          "endTime": "2026-11-21T23:35:00Z",
+          "childActivities": []
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

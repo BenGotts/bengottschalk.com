@@ -5,6 +5,7 @@
 import type { Solve } from "./solve";
 import { formatAverage, formatTime, type Precision } from "./time";
 import { timerEvent } from "./events";
+import { formatRoundAverage, ordinal, roundName } from "./competition";
 
 export interface SotdMark {
   /** The local calendar day, `YYYY-MM-DD`: the day the solve was done. */
@@ -36,8 +37,10 @@ export interface SotdDetails {
 }
 
 /** The text "Copy for Claude" puts on the clipboard, for the Solve of the Day skill. */
-export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionName }: SotdDetails, precision: Precision = "thousandths"): string {
+export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionName }: SotdDetails, homePrecision: Precision = "thousandths"): string {
   const event = timerEvent(solve.eventId);
+  // Competition results are only recorded to the hundredth.
+  const precision: Precision = solve.competition ? "hundredths" : homePrecision;
   const time = solve.penalty === "dnf"
     ? `DNF (${formatTime(solve.timeMs, precision)})`
     : formatTime(solve.timeMs + (solve.penalty === "+2" ? 2000 : 0), precision) + (solve.penalty === "+2" ? " (+2)" : "");
@@ -47,14 +50,28 @@ export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionNa
     `Event: ${event.name}`,
     event.kind === "fewest-moves" && solve.fmc ? `Result: ${solve.fmc.moves} moves` : `Time: ${time}`,
   ];
+  const comp = solve.competition;
+  if (comp) {
+    lines.push(
+      `Competition: ${comp.competitionName} (${comp.competitionId})`,
+      `Round: ${roundName(comp.roundTypeId)}, attempt ${comp.attempt}`,
+    );
+    if (comp.position !== null) lines.push(`Placed: ${ordinal(comp.position)}${comp.status === "live" ? " (live, not yet official)" : ""}`);
+    const average = formatRoundAverage(solve.eventId, comp.roundAverage, precision);
+    if (average) lines.push(`Round ${event.format === "mo3" ? "mean" : "average"}: ${average}`);
+    const records = [comp.singleRecord && `${comp.singleRecord} single`, comp.averageRecord && `${comp.averageRecord} average`].filter(Boolean);
+    if (records.length > 0) lines.push(`Records: ${records.join(", ")}`);
+  }
   if (solve.multi) lines.push(`Cubes: ${solve.multi.solved}/${solve.multi.attempted}`);
   if (solve.memoMs !== null) lines.push(`Memo: ${formatTime(solve.memoMs, precision)}`);
-  lines.push(`Scramble: ${solve.scramble}`);
+  lines.push(`Scramble: ${solve.scramble || (comp ? "not known (the WCA doesn't say which scramble set a competitor had)" : "")}`);
   if (solve.fmc) lines.push(`Solution: ${solve.fmc.solution}`);
-  if (ao5 !== null) lines.push(`ao5: ${formatAverage(ao5, precision)}`);
-  if (ao12 !== null) lines.push(`ao12: ${formatAverage(ao12, precision)}`);
-  if (wasPersonalBest) lines.push("Personal best single");
-  lines.push(`Session: ${sessionName}`);
+  if (!comp) {
+    if (ao5 !== null) lines.push(`ao5: ${formatAverage(ao5, precision)}`);
+    if (ao12 !== null) lines.push(`ao12: ${formatAverage(ao12, precision)}`);
+    if (wasPersonalBest) lines.push("Personal best single");
+    lines.push(`Session: ${sessionName}`);
+  }
   if (solve.endedAt !== null) {
     lines.push(`Started: ${new Date(solve.startedAt).toISOString()}`, `Stopped: ${new Date(solve.endedAt).toISOString()}`);
   }

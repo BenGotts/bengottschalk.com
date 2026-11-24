@@ -117,8 +117,19 @@ so it works offline; signing in with WCA to sync across devices comes next (bett
 - **Sessions:** each event has a Main session. A branch (e.g. an ao100 attempt with a goal) holds its own solves until
   it's merged into Main (its solves join in the order they were done, and it stays as a read-only record) or discarded.
   A solve never moves sessions; Main's view includes merged branches (`packages/timer-core/src/sessions.ts`).
-- **Solve of the Day:** one per day, kept apart from solves (so competition attempts can be marked later). "Copy for
-  Claude" copies the details for the Solve of the Day skill.
+- **Competition attempts:** with a WCA ID (typed in Settings for now; the signed-in person's once sign-in exists), every
+  official attempt joins its event's Main session as a read-only solve with a trophy, counted in stats and averages
+  (filter: All / Home / Competition). Results come straight from the WCA API in the browser (it allows any origin),
+  one request at a time to stay under its 60-a-minute limit: refreshed when over a day old or on request, and each
+  competition's public WCIF is fetched once to place attempts in time: spread through the competitor's group slot, else
+  the round's, else midday on the first day (`packages/timer-core/src/competition.ts`). While a competition is on,
+  WCA Live is polled every minute; its attempts get the same fixed ids, so official results replace them. Finding the
+  person on WCA Live needs a redirect a browser can't read, so `src/app/api/wca-live/person` does that one lookup.
+  Scrambles are filled in (when an attempt is opened) only for rounds with a single scramble set, since the WCA doesn't
+  record which set a competitor had.
+- **Solve of the Day:** one per day, kept apart from solves, so competition attempts can be marked too. "Copy for
+  Claude" copies the details for the Solve of the Day skill (for competition attempts: competition, round, attempt,
+  placing, round average and records).
 - **csTimer import** (Settings → Import from csTimer), and JSON backup and restore.
 - **Shortcuts** (timer idle): Alt+1 / Alt+2 / Alt+3 set the last solve to OK / +2 / DNF, Alt+S marks it Solve of the
   Day, Alt+Z deletes it, Alt+N skips to a new scramble, Escape cancels inspection.

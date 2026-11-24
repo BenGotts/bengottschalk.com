@@ -12,7 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bengottschalk/wca": "*"
+    "@bengottschalk/wca": "*",
+    "@wca/helpers": "2.0.0"
   },
   "devDependencies": {
     "typescript": "7.0.2",

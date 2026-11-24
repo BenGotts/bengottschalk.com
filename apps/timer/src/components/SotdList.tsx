@@ -1,7 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaStar } from "react-icons/fa6";
+import { FaStar, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import type { Precision } from "@bengottschalk/timer-core/time";
@@ -27,7 +27,10 @@ export default function SotdList({ precision, onOpen }: { precision: Precision; 
           <button type="button" className="flex w-full items-center gap-3 px-1 py-2 text-left hover:bg-base-300" onClick={() => onOpen(solve)}>
             <FaStar className="shrink-0 text-accent" aria-hidden />
             <span className="w-28 shrink-0 text-sm text-muted">{formatDay(mark.date)}</span>
-            <span className="grow text-sm">{timerEvent(solve.eventId).shortName}</span>
+            <span className="grow text-sm">
+              {timerEvent(solve.eventId).shortName}
+              {solve.competition && <span className="text-ink-gold"> · <FaTrophy className="inline align-[-2px]" aria-hidden /> {solve.competition.competitionName}</span>}
+            </span>
             <span className="timer-digits">{formatSolve(solve, precision)}</span>
           </button>
         </li>
