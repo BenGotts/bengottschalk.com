@@ -5,6 +5,28 @@ export type Penalty = "none" | "+2" | "dnf";
 /** Where a solve came from. Competition attempts arrive with WCA results (step 3). */
 export type SolveSource = "home" | "competition";
 
+/** Where a competition attempt came from, for solves with `source: "competition"`. */
+export interface CompetitionAttempt {
+  competitionId: string;
+  competitionName: string;
+  /** WCA round type, like "1", "2", "f" (final) or "c" (combined final). */
+  roundTypeId: string;
+  /** 1-based attempt number within the round. */
+  attempt: number;
+  /** "live" from WCA Live during the competition; "official" once results are posted (replacing the live one). */
+  status: "live" | "official";
+  /** How `startedAt` was worked out: the competitor's group slot, the round's slot, or just the day. */
+  timeEstimate: "group" | "round" | "day";
+}
+
+/**
+ * Competition attempts have fixed ids, so refreshing results (or the official
+ * results replacing WCA Live's) updates the same solve and keeps its Solve of
+ * the Day mark.
+ */
+export const competitionSolveId = (competitionId: string, eventId: string, roundTypeId: string, attempt: number): string =>
+  `wca-${competitionId}-${eventId}-${roundTypeId}-${attempt}`;
+
 export interface MultiBlindResult {
   solved: number;
   attempted: number;
@@ -26,6 +48,8 @@ export interface Solve {
   /** When it stopped (wall clock). Missing for typed and imported solves. */
   endedAt: number | null;
   source: SolveSource;
+  /** Competition attempts only (read-only, from WCA results); null for home solves. */
+  competition: CompetitionAttempt | null;
   /** Blindfolded: how long memorisation took, when split. */
   memoMs: number | null;
   /** FMC: the solution and its move count. */

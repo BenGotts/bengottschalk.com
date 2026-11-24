@@ -81,6 +81,7 @@ export default function ImportDialog({ open, onClose }: { open: boolean; onClose
             startedAt: solve.startedAt,
             endedAt: null,
             source: "home",
+            competition: null,
             memoMs,
             fmc: null,
             multi: null,

@@ -52,11 +52,11 @@ export async function ensureMainSession(eventId: string): Promise<TimerSession> 
   return session;
 }
 
-export type NewSolve = Omit<Solve, "id" | "createdAt" | "updatedAt" | "deletedAt" | "comment" | "source"> & { comment?: string };
+export type NewSolve = Omit<Solve, "id" | "createdAt" | "updatedAt" | "deletedAt" | "comment" | "source" | "competition"> & { comment?: string };
 
 export async function addSolve(input: NewSolve): Promise<Solve> {
   const now = Date.now();
-  const solve: Solve = { comment: "", source: "home", ...input, id: uuidv7(now), createdAt: now, updatedAt: now, deletedAt: null };
+  const solve: Solve = { comment: "", source: "home", competition: null, ...input, id: uuidv7(now), createdAt: now, updatedAt: now, deletedAt: null };
   await db.solves.add(solve);
   return solve;
 }

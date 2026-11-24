@@ -4,7 +4,7 @@ import type { Solve } from "./solve";
 
 const solve = (id: string, sessionId: string, startedAt: number): Solve => ({
   id, eventId: "333", sessionId, timeMs: 10000, penalty: "none", scramble: "", comment: "",
-  startedAt, endedAt: null, source: "home", memoMs: null, fmc: null, multi: null, entry: "timer",
+  startedAt, endedAt: null, source: "home", competition: null, memoMs: null, fmc: null, multi: null, entry: "timer",
   createdAt: startedAt, updatedAt: startedAt, deletedAt: null,
 });
 

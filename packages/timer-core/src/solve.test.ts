@@ -3,7 +3,7 @@ import { compareMultiBlind, countFmcMoves, multiBlindPoints, solveValue, type So
 
 const solve = (overrides: Partial<Solve>): Solve => ({
   id: "x", eventId: "333", sessionId: "main-333", timeMs: 10000, penalty: "none", scramble: "", comment: "",
-  startedAt: 0, endedAt: null, source: "home", memoMs: null, fmc: null, multi: null, entry: "timer",
+  startedAt: 0, endedAt: null, source: "home", competition: null, memoMs: null, fmc: null, multi: null, entry: "timer",
   createdAt: 0, updatedAt: 0, deletedAt: null, ...overrides,
 });
 
