@@ -117,7 +117,7 @@ so it works offline. Signing in with a WCA account syncs solves across devices (
 - **Sessions:** each event has a Main session. A branch (e.g. an ao100 attempt with a goal) holds its own solves until
   it's merged into Main (its solves join in the order they were done, and it stays as a read-only record) or discarded.
   A solve never moves sessions; Main's view includes merged branches (`packages/timer-core/src/sessions.ts`).
-- **Competition attempts:** with a WCA ID (typed in Settings for now; the signed-in person's once sign-in exists), every
+- **Competition attempts:** for people signed in with WCA (using their WCA ID), every
   official attempt joins its event's Main session as a read-only solve with a trophy, counted in stats and averages
   (filter: All / Home / Competition). Results come straight from the WCA API in the browser (it allows any origin),
   one request at a time to stay under its 60-a-minute limit: refreshed when over a day old or on request, and each

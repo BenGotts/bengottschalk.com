@@ -15,19 +15,6 @@ import { PersonResultSchema, ScramblesSchema, UserCompetitionsSchema, WcifSchema
 
 const DAY_MS = 86_400_000;
 
-/**
- * The WCA ID whose results are shown. Until sign-in exists it's typed into
- * Settings; then it will be the signed-in person's WCA ID.
- */
-export async function currentWcaId(): Promise<string | null> {
-  const id = await getMeta<string | null>("wcaId", null);
-  return id && /^\d{4}[A-Z]{4}\d{2}$/.test(id) ? id : null;
-}
-
-export async function setWcaId(wcaId: string | null): Promise<void> {
-  await setMeta("wcaId", wcaId);
-}
-
 /** A competition's schedule, reduced to this person, saved so it's fetched once. `null` when the WCA has none. */
 async function competitionSchedule(competitionId: string, wcaId: string, refresh = false): Promise<Wcif | null> {
   const key = `wca:wcif:${competitionId}`;

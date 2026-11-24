@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { competitionsToday, currentWcaId, refreshDue, refreshLiveResults, refreshOfficialResults, lastRefreshedAt, type RefreshProgress } from "./results";
+import { signedInWcaId, syncStore } from "@/lib/sync";
+import { competitionsToday, refreshDue, refreshLiveResults, refreshOfficialResults, lastRefreshedAt, type RefreshProgress } from "./results";
 
 const LIVE_POLL_MS = 60_000;
 
@@ -18,12 +19,13 @@ export interface CompetitionResultsState {
 }
 
 /**
- * Keeps competition attempts up to date for the current WCA ID: official
+ * Keeps competition attempts up to date for the signed-in WCA ID: official
  * results when they're over a day old (or on request), and WCA Live every
  * minute while one of the person's competitions is on and the page is open.
  */
 export function useCompetitionResults(): CompetitionResultsState {
-  const wcaId = useLiveQuery(() => currentWcaId(), []) ?? null;
+  // Only people signed in with WCA get their results, under their own WCA ID.
+  const wcaId = useSyncExternalStore(syncStore.subscribe, signedInWcaId, () => null);
   const refreshedAt = useLiveQuery(() => (wcaId ? lastRefreshedAt(wcaId) : 0), [wcaId]) ?? 0;
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<RefreshProgress | null>(null);
