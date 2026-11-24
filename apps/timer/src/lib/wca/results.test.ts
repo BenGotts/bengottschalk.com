@@ -1,5 +1,7 @@
 // How often the timer asks the WCA for things, with the WCA faked.
 
+// Gives Dexie an IndexedDB to use in Node.
+// oxlint-disable-next-line import/no-unassigned-import
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, setMeta } from "@/lib/db";
@@ -18,7 +20,7 @@ beforeEach(async () => {
   await Promise.all([db.meta.clear(), db.solves.clear()]);
   requests = [];
   vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
-    const url = String(input);
+    const url = input instanceof Request ? input.url : input.toString();
     requests.push(url);
     if (url.includes("/v0/users/")) {
       return Response.json({ ongoing_competitions: [{ id: "TodayOpen2026", start_date: iso(0), end_date: iso(0) }], upcoming_competitions: [] });
@@ -52,7 +54,10 @@ describe("WCA requests", () => {
     await setMeta(`wca:competitions:${WCA_ID}`, { fetchedAt: Date.now(), competitions: [{ id: "LastWeek2026", start_date: iso(-5), end_date: iso(-4) }] });
     expect(await refreshDue(WCA_ID)).toBe(true); // Results for last week's competition aren't here yet.
 
-    await db.solves.put({ id: "wca-LastWeek2026-333-f-1", competition: { status: "official" } } as never);
+    const official = { id: "wca-LastWeek2026-333-f-1", competition: { status: "official" } };
+    // Only the fields refreshDue reads.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    await db.solves.put(official as unknown as Parameters<typeof db.solves.put>[0]);
     expect(await refreshDue(WCA_ID)).toBe(false); // They are now: wait a week.
 
     await setMeta(`wca:refreshedAt:${WCA_ID}`, Date.now() - 8 * DAY);
