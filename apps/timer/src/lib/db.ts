@@ -1,7 +1,13 @@
 // Everything the timer saves lives in IndexedDB on this device, so it works
-// offline and never waits on the network. Signing in (step 2) syncs it.
+// offline and never waits on the network. When signed in, src/lib/sync.ts
+// sends local changes to the server and brings back changes from other devices.
+//
+// Change tracking: any local write to solves, sessions or Solve of the Day
+// marks sets `pendingSync: 1` on the record (through Dexie hooks, so every
+// writer is covered). Writes that come from the server run in a "remote"
+// transaction, which the hooks leave alone.
 
-import { Dexie, type EntityTable } from "dexie";
+import { Dexie, type EntityTable, type Transaction } from "dexie";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import { createMainSession, mainSessionId, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import type { SotdMark } from "@bengottschalk/timer-core/sotd";
@@ -12,10 +18,15 @@ interface MetaEntry {
   value: unknown;
 }
 
+/** 1 while a record has local changes the server hasn't had yet (a number, so it can be indexed). */
+export interface SyncFlag {
+  pendingSync?: 0 | 1;
+}
+
 class TimerDatabase extends Dexie {
-  solves!: EntityTable<Solve, "id">;
-  sessions!: EntityTable<TimerSession, "id">;
-  sotd!: EntityTable<SotdMark, "date">;
+  solves!: EntityTable<Solve & SyncFlag, "id">;
+  sessions!: EntityTable<TimerSession & SyncFlag, "id">;
+  sotd!: EntityTable<SotdMark & SyncFlag, "date">;
   meta!: EntityTable<MetaEntry, "key">;
 
   constructor() {
@@ -26,10 +37,70 @@ class TimerDatabase extends Dexie {
       sotd: "date, solveId, updatedAt",
       meta: "key",
     });
+    // Version 2: change tracking for sync. Everything saved before it is unsent.
+    this.version(2)
+      .stores({
+        solves: "id, sessionId, eventId, startedAt, updatedAt, pendingSync",
+        sessions: "id, eventId, parentId, updatedAt, pendingSync",
+        sotd: "date, solveId, updatedAt, pendingSync",
+      })
+      .upgrade(async (tx) => {
+        for (const table of ["solves", "sessions", "sotd"]) await tx.table(table).toCollection().modify({ pendingSync: 1 });
+      });
   }
 }
 
 export const db = new TimerDatabase();
+
+const remoteTransactions = new WeakSet<IDBTransaction>();
+const isRemote = (tx: Transaction) => remoteTransactions.has(tx.idbtrans);
+
+let localChangeListener: (() => void) | null = null;
+
+/** Called (after the write) whenever this device changes a synced record. */
+export function onLocalChange(listener: (() => void) | null): void {
+  localChangeListener = listener;
+}
+
+const notifyLocalChange = () => {
+  if (localChangeListener) setTimeout(localChangeListener, 0);
+};
+
+for (const table of [db.solves, db.sessions, db.sotd]) {
+  table.hook("creating", (_key, record, tx) => {
+    if (isRemote(tx)) return;
+    record.pendingSync = 1;
+    notifyLocalChange();
+  });
+  table.hook("updating", (modifications, _key, _record, tx) => {
+    if (isRemote(tx) || "pendingSync" in modifications) return undefined;
+    notifyLocalChange();
+    return { pendingSync: 1 };
+  });
+}
+
+/**
+ * Runs `fn` in a transaction whose writes count as coming from the server:
+ * they don't mark records as needing to sync.
+ */
+export function remoteWrite<T>(fn: () => Promise<T>): Promise<T> {
+  return db.transaction("rw", [db.solves, db.sessions, db.sotd, db.meta], (tx) => {
+    remoteTransactions.add(tx.idbtrans);
+    return fn();
+  });
+}
+
+/** Removes every solve, session and Solve of the Day mark from this device (after signing out, say). */
+export async function clearLocalData(): Promise<void> {
+  await remoteWrite(async () => {
+    await Promise.all([db.solves.clear(), db.sessions.clear(), db.sotd.clear()]);
+  });
+}
+
+/** Drops the sync flag before a record leaves the device. */
+export function withoutSyncFlag<T extends SyncFlag>({ pendingSync: _pending, ...record }: T): Omit<T, "pendingSync"> {
+  return record;
+}
 
 export async function getMeta<T>(key: string, fallback: T): Promise<T> {
   const entry = await db.meta.get(key);
@@ -95,7 +166,14 @@ export async function setSotd(date: string, solveId: string | null): Promise<voi
 /** Everything on this device as one JSON backup. */
 export async function exportBackup(): Promise<string> {
   const [solves, sessions, sotd] = await Promise.all([db.solves.toArray(), db.sessions.toArray(), db.sotd.toArray()]);
-  return JSON.stringify({ app: "cube-timer", version: 1, exportedAt: new Date().toISOString(), sessions, solves, sotd });
+  return JSON.stringify({
+    app: "cube-timer",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    sessions: sessions.map(withoutSyncFlag),
+    solves: solves.map(withoutSyncFlag),
+    sotd: sotd.map(withoutSyncFlag),
+  });
 }
 
 /** Whether a record from a backup is newer than the one already here. */

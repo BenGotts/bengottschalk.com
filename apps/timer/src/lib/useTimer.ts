@@ -215,7 +215,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
     onPointerDown: (e: React.PointerEvent) => {
       if (!enabled || e.button !== 0) return;
       // Buttons and fields on the timer screen work as usual, except that any touch stops a running solve.
-      const onControl = e.target instanceof Element && e.target.closest("button, a, input, textarea, select, label");
+      const onControl = e.target instanceof Element && e.target.closest("button, a, input, textarea, select, label, summary, details");
       if (onControl && phaseRef.current !== "running") return;
       pointerRef.current = e.pointerId;
       // Keep getting this pointer's release even if the thumb slides off the timer.

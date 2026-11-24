@@ -23,6 +23,7 @@ import MultiBlindSetup from "./MultiBlindSetup";
 import ScrambleImage from "./ScrambleImage";
 import SessionsDialog from "./SessionsDialog";
 import SettingsDialog from "./SettingsDialog";
+import { AccountButton, AccountSession, UnsyncedSolvesDialog } from "./Account";
 import SolveDialog from "./SolveDialog";
 import SolveList from "./SolveList";
 import SotdList from "./SotdList";
@@ -37,7 +38,8 @@ const NO_SESSIONS: TimerSession[] = [];
 const NO_SOLVES: Solve[] = [];
 const NO_MARKS: SotdMark[] = [];
 
-export default function TimerApp() {
+/** `authEnabled`: whether signing in with WCA is set up on this server (otherwise the timer is local-only). */
+export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
   const [eventId, setEventIdState] = useState<string | null>(null);
   const [sessionIds, setSessionIds] = useState<Record<string, string>>({});
@@ -241,6 +243,7 @@ export default function TimerApp() {
             {current && current.goal !== null && <span className="text-muted">{ownCount}/{current.goal}</span>}
           </button>
           <span className="grow" />
+          {authEnabled && <AccountButton />}
           <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
         </header>
 
@@ -326,8 +329,14 @@ export default function TimerApp() {
       {main && current && (
         <SessionsDialog open={dialog === "sessions"} onClose={() => setDialog(null)} main={main} sessions={sessions} solves={allSolves} currentId={current.id} onSelect={selectSession} precision={settings.precision} />
       )}
-      <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} settings={settings} onChange={setSettings} onImportCsTimer={() => setDialog("import")} />
+      <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} settings={settings} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
       <ImportDialog open={dialog === "import"} onClose={() => setDialog(null)} />
+      {authEnabled && (
+        <>
+          <AccountSession />
+          <UnsyncedSolvesDialog />
+        </>
+      )}
       <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
       <Modal open={pendingMulti !== null} onClose={() => setPendingMulti(null)} title="How many did you solve?">
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />

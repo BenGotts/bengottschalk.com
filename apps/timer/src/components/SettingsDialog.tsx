@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Settings } from "@/lib/settings";
 import { exportBackup, importBackup } from "@/lib/db";
+import { AccountSettings } from "./Account";
 import Modal from "./Modal";
 import ThemeToggle from "./ThemeToggle";
 
@@ -12,6 +13,8 @@ interface Props {
   settings: Settings;
   onChange: (settings: Settings) => void;
   onImportCsTimer: () => void;
+  /** Whether signing in with WCA is set up on this server. */
+  authEnabled: boolean;
 }
 
 /** Saves everything on this device as a JSON file. */
@@ -28,7 +31,7 @@ async function download() {
 const isEntry = (value: string): value is Settings["entry"] => value === "timer" || value === "typing";
 const isPrecision = (value: string): value is Settings["precision"] => value === "hundredths" || value === "thousandths";
 
-export default function SettingsDialog({ open, onClose, settings, onChange, onImportCsTimer }: Props) {
+export default function SettingsDialog({ open, onClose, settings, onChange, onImportCsTimer, authEnabled }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => onChange({ ...settings, [key]: value });
 
@@ -82,7 +85,8 @@ export default function SettingsDialog({ open, onClose, settings, onChange, onIm
 
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-muted">Your data</h3>
-          <p className="text-xs text-muted">Solves are saved in this browser. Signing in with WCA to sync them across devices is coming next.</p>
+          <p className="text-xs text-muted">Solves are saved in this browser, so the timer works offline.</p>
+          {authEnabled && <AccountSettings />}
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn btn-sm" onClick={() => { onClose(); onImportCsTimer(); }}>Import from csTimer</button>
             <button type="button" className="btn btn-sm" onClick={() => void download()}>Download a backup</button>

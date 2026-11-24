@@ -107,7 +107,7 @@ The WCA API allows 60 requests per minute per IP, so the client retries timeouts
 ## Timer
 
 `apps/timer` is a client-side timer. Everything is saved in the browser's IndexedDB (through [Dexie](https://dexie.org)),
-so it works offline; signing in with WCA to sync across devices comes next (better-auth with Supabase Postgres).
+so it works offline. Signing in with a WCA account syncs solves across devices (see [Sign-in and sync](#sign-in-and-sync)).
 
 - **Timing:** hold space (or the screen) until the time turns green, let go to start, any key or a tap to stop. Optional
   WCA inspection with "8 seconds"/"12 seconds" callouts and automatic +2/DNF. Times are saved to the millisecond;
@@ -126,6 +126,49 @@ so it works offline; signing in with WCA to sync across devices comes next (bett
 Scrambles come from [cubing.js](https://js.cubing.net/cubing/), which runs its search in a web worker. Next's bundler
 breaks that worker, so `scripts/bundle-cubing.mjs` bundles cubing.js with esbuild into `public/vendor/cubing` before
 `dev` and `build` (git-ignored), and `src/lib/cubing.ts` loads it from there at runtime.
+
+### Sign-in and sync
+
+Sign-in is [better-auth](https://www.better-auth.com) with the WCA's OAuth (through better-auth's Generic OAuth plugin),
+and solves sync through Postgres (Supabase) with [Drizzle](https://orm.drizzle.team). Without the variables below the
+timer runs local-only: no sign-in button and no network calls.
+
+| Variable | Used for |
+| --- | --- |
+| `DATABASE_URL` | Postgres. On Supabase, use the **transaction pooler** connection string (port 6543); the driver runs with `prepare: false` for it. |
+| `BETTER_AUTH_SECRET` | Signs sessions: `openssl rand -base64 32`. Production and previews must share it. |
+| `BETTER_AUTH_URL` | This deployment's URL, e.g. `http://localhost:3004` (on Vercel, `https://timer.bengottschalk.com`). |
+| `WCA_CLIENT_ID`, `WCA_CLIENT_SECRET` | The WCA OAuth application. |
+
+Setting up:
+
+1. **WCA OAuth application** at [worldcubeassociation.org/oauth/applications](https://www.worldcubeassociation.org/oauth/applications),
+   with scopes `public email` and redirect URIs `https://timer.bengottschalk.com/api/auth/callback/wca` and
+   `http://localhost:3004/api/auth/callback/wca`.
+2. **Database:** create the Supabase project, then apply the migrations in `apps/timer/drizzle/`:
+   `DATABASE_URL=… npm run db:migrate -w apps/timer`. After changing `src/server/schema.ts`, write a new migration with
+   `npm run db:generate -w apps/timer` and commit it.
+3. **Vercel:** set the variables in the timer project (they're listed in `turbo.json`'s `build.env`, since the page reads
+   whether sign-in is set up when it's built).
+
+Every table has row-level security on with no policies, so nothing is reachable through Supabase's public APIs; only the
+timer's server (connecting as the database owner) reads and writes them. better-auth's tables hold OAuth tokens, which is
+another reason to keep it that way.
+
+**Previews:** WCA only redirects to registered URLs, so on Vercel, sign-in always goes through production and better-auth's
+OAuth proxy plugin hands it back to the preview. That only works if previews use production's `DATABASE_URL` and
+`BETTER_AUTH_SECRET`. Locally, sign-in returns to `BETTER_AUTH_URL` directly.
+
+**How sync works** (`src/lib/sync.ts`, `src/server/sync.ts`): every local write to a solve, session or Solve of the Day mark
+sets `pendingSync` on it (Dexie hooks, so every writer is covered). A sync posts those records with the cursor from the last
+sync; the server keeps each one only if it's newer than its copy (last edit wins, ties go to the server's copy:
+`packages/timer-core/src/sync.ts`) and returns everything changed since the cursor, in pages. Deletions are records too, so
+they sync the same way. Syncs run on sign-in, two seconds after a change, on focus, when back online and every three
+minutes. On first sign-in, solves made as a guest are added to the account or removed from the device (the person
+chooses). Signing out clears the device.
+
+Tests (`src/server/sync.test.ts`) run the sync endpoint against PGlite (Postgres in-process) with the real migrations and
+real better-auth sessions.
 
 ## MCP server
 
