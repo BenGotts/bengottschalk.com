@@ -206,11 +206,11 @@ export default function FmcPanel({ scramble, error, puzzleId, scheme, showImage,
 
       <div className="grid min-w-0 gap-3 lg:grid-cols-2">
         <section className="min-w-0 space-y-2" aria-label="Scramble">
-          <p className="timer-digits rounded-field bg-base-200 p-2 text-lg text-balance">{attempt.scramble}</p>
+          <p className="scramble-text rounded-field bg-base-200 p-2 text-lg text-balance">{attempt.scramble}</p>
           {showInverse && inverse && (
             <div>
               <div className="text-xs text-muted">Inverse</div>
-              <p className="timer-digits rounded-field bg-base-200 p-2 text-lg text-balance" aria-label="Inverse scramble">{inverse}</p>
+              <p className="scramble-text rounded-field bg-base-200 p-2 text-lg text-balance" aria-label="Inverse scramble">{inverse}</p>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-1">
@@ -239,7 +239,7 @@ export default function FmcPanel({ scramble, error, puzzleId, scheme, showImage,
           <label className="block">
             <span className="mb-1 block text-sm text-muted">Scratch pad <span className="text-xs">(saved with the solve, not checked)</span></span>
             <textarea
-              className="textarea timer-digits h-36 w-full lg:h-56"
+              className="textarea scramble-text h-36 w-full lg:h-56"
               value={attempt.scratch}
               onChange={(e) => update({ scratch: e.target.value })}
               placeholder={"Notes and working: EO, blocks, insertions…"}
@@ -254,7 +254,7 @@ export default function FmcPanel({ scramble, error, puzzleId, scheme, showImage,
               {read.invalid.length > 0 && <span className="text-error"> · not notation: {read.invalid.join(", ")}</span>}
             </span>
             <textarea
-              className="textarea timer-digits w-full"
+              className="textarea scramble-text w-full"
               rows={3}
               value={attempt.solution}
               onChange={(e) => { update({ solution: e.target.value }); setProblem(null); }}

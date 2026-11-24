@@ -57,7 +57,7 @@ function CustomScrambleForm({ eventId, scheme, onUse }: { eventId: string; schem
       <label htmlFor="custom-scramble" className="block text-sm text-muted">Scramble</label>
       <textarea
         id="custom-scramble"
-        className={`textarea timer-digits w-full ${result && !result.ok ? "textarea-error" : ""}`}
+        className={`textarea scramble-text w-full ${result && !result.ok ? "textarea-error" : ""}`}
         rows={3}
         // oxlint-disable-next-line jsx-a11y/no-autofocus -- the dialog exists to type this
         autoFocus

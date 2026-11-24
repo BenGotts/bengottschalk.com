@@ -85,7 +85,7 @@ export default function MultiBlindSetup({ cubes, onCubesChange, scrambles, gener
                 // oxlint-disable-next-line react/no-array-index-key
                 <li key={i} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
                   <span className="timer-digits w-8 shrink-0 text-lg font-semibold text-muted">{i + 1}</span>
-                  <p className="timer-digits min-w-0 flex-1 text-sm leading-6">{s}</p>
+                  <p className="scramble-text min-w-0 flex-1 text-sm leading-6">{s}</p>
                   <div className="h-28 w-40 shrink-0 self-center">
                     <ScrambleImage puzzleId="3x3x3" scramble={s} scheme={scheme} />
                   </div>

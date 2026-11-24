@@ -399,7 +399,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.next} aria-label="Next scramble" title="Next scramble (N)"><FaArrowRight aria-hidden /></button>
                   {scramble.custom && <span className="badge badge-soft badge-sm">Entered</span>}
                 </div>
-                <p className={`timer-digits mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
+                <p className={`scramble-text mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
                   {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
                 </p>
               </>
@@ -585,7 +585,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             <div className="h-[min(60dvh,28rem)] w-full">
               <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
             </div>
-            <p className="timer-digits text-center text-sm">{scramble.scramble}</p>
+            <p className="scramble-text text-center text-sm">{scramble.scramble}</p>
           </div>
         )}
       </Modal>

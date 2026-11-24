@@ -85,7 +85,7 @@ export default function AverageDialog({ view, onClose, eventId, solves, precisio
                         </span>
                       )}
                     </span>
-                    <span className="timer-digits col-start-2 col-end-4 text-sm break-words whitespace-pre-wrap">
+                    <span className="scramble-text col-start-2 col-end-4 text-sm break-words whitespace-pre-wrap">
                       {solve.scramble || <span className="font-sans text-muted">Scramble not known</span>}
                     </span>
                     {solve.comment && <span className="col-start-2 col-end-4 text-sm text-muted">“{solve.comment}”</span>}

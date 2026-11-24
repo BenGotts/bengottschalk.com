@@ -137,7 +137,7 @@ export function SessionSummary({ name, eventId, solves, precision, onOpenSolve }
               <button type="button" className="grid w-full grid-cols-[2.5rem_5.5rem_1fr] gap-x-3 px-3 py-1.5 text-left hover:bg-base-200" onClick={() => onOpenSolve(solve)}>
                 <span className="timer-digits text-sm text-muted">{i + 1}.</span>
                 <span className="timer-digits text-sm">{formatSolveWithPoints(solve, precision)}</span>
-                <span className="timer-digits truncate text-xs text-muted">{solve.scramble || "–"}</span>
+                <span className="scramble-text truncate text-xs text-muted">{solve.scramble || "–"}</span>
               </button>
             </li>
             );

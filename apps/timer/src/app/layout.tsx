@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Mono, DM_Sans } from "next/font/google";
+import { DM_Mono, DM_Sans, Inter } from "next/font/google";
 import "@cubing/icons";
 import "./globals.css";
 import { THEMES, themeInitScript } from "@bengottschalk/theme";
 import { TIMER_NAME, TIMER_URL } from "@bengottschalk/content/site";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-dm-mono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       data-theme={THEMES.dark}
-      className={`${dmSans.variable} ${dmMono.variable}`}
+      className={`${dmSans.variable} ${dmMono.variable} ${inter.variable}`}
       // The theme script may change data-theme before React hydrates.
       suppressHydrationWarning
     >

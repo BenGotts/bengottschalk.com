@@ -156,7 +156,7 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
 
       <div>
         <div className="mb-1 text-xs text-muted">Scramble</div>
-        <p className="timer-digits whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">
+        <p className="scramble-text whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">
           {solve.scramble || (solve.competition ? <span className="font-sans text-muted">Not known: the WCA posts each round's scramble sets, but not which set a competitor had.</span> : "—")}
         </p>
         {/* Multi-Blind has several scrambles, so no single picture. */}
@@ -169,11 +169,11 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
       {solve.fmc && (
         <div>
           <div className="mb-1 text-xs text-muted">Solution ({solve.fmc.moves} moves)</div>
-          <p className="timer-digits whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">{solve.fmc.solution}</p>
+          <p className="scramble-text whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">{solve.fmc.solution}</p>
           {solve.fmc.notes && (
             <>
               <div className="mt-2 mb-1 text-xs text-muted">Scratch pad</div>
-              <p className="timer-digits max-h-48 overflow-y-auto whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">{solve.fmc.notes}</p>
+              <p className="scramble-text max-h-48 overflow-y-auto whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">{solve.fmc.notes}</p>
             </>
           )}
         </div>
