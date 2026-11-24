@@ -35,7 +35,7 @@ export default function AverageDialog({ view, onClose, eventId, solves, precisio
   const label = view ? averageLabel(view.spec) : "";
   const start = view ? view.end - view.spec.size + 1 : 0;
   const averaged = useMemo(() => (view && start >= 0 ? solves.slice(start, view.end + 1) : []), [view, start, solves]);
-  const { value, trimmed } = useMemo(() => averageBreakdown(averaged.map(solveValue), view?.spec.kind ?? "average"), [averaged, view]);
+  const { value, trimmed, dropped } = useMemo(() => averageBreakdown(averaged.map(solveValue), view?.spec.kind ?? "average"), [averaged, view]);
   const [copied, setCopied] = useState<string | null>(null);
 
   const copy = async () => {
@@ -56,7 +56,6 @@ export default function AverageDialog({ view, onClose, eventId, solves, precisio
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted">
               Solves {start + 1}–{view.end + 1}
-              {view.spec.kind === "average" && " · times in parentheses don't count"}
             </p>
             <div className="flex items-center gap-2">
               <output className="text-sm text-success">{copied}</output>
@@ -74,7 +73,8 @@ export default function AverageDialog({ view, onClose, eventId, solves, precisio
                     onClick={() => onOpenSolve(solve)}
                   >
                     <span className="timer-digits text-sm text-muted">{start + i + 1}.</span>
-                    <span className={`timer-digits ${trimmed[i] ? "text-muted" : "font-medium"} ${solve.competition ? "text-ink-gold" : ""}`}>
+                    {/* Dropped times stay in parentheses: the best in green, the worst in red. */}
+                    <span className={`timer-digits font-medium ${dropped[i] === "best" ? "text-success" : dropped[i] === "worst" ? "text-error" : solve.competition ? "text-ink-gold" : ""}`}>
                       {trimmed[i] ? `(${time})` : time}
                     </span>
                     <span className="text-xs text-muted">

@@ -43,6 +43,8 @@ export interface AverageBreakdown {
   value: number | null;
   /** For each value, whether it's dropped from the average: the best and worst ends of an "average of". */
   trimmed: boolean[];
+  /** For each value, which end it was dropped from ("best" or "worst"), or null if it counts. */
+  dropped: ("best" | "worst" | null)[];
 }
 
 /**
@@ -53,15 +55,16 @@ export interface AverageBreakdown {
  * A mean drops nothing.
  */
 export function averageBreakdown(values: readonly number[], kind: AverageKind): AverageBreakdown {
-  const trimmed = values.map(() => false);
+  const dropped: ("best" | "worst" | null)[] = values.map(() => null);
   const value = averageOf(values, kind);
-  if (kind === "mean" || value === null) return { value, trimmed };
+  if (kind === "mean" || value === null) return { value, trimmed: dropped.map(() => false), dropped };
   const trim = trimCount(values.length);
   const order = values
     .map((_, index) => index)
     .toSorted((a, b) => (values[a] === values[b] ? a - b : values[a] < values[b] ? -1 : 1));
-  for (const index of [...order.slice(0, trim), ...order.slice(order.length - trim)]) trimmed[index] = true;
-  return { value, trimmed };
+  for (const index of order.slice(0, trim)) dropped[index] = "best";
+  for (const index of order.slice(order.length - trim)) dropped[index] = "worst";
+  return { value, trimmed: dropped.map((end) => end !== null), dropped };
 }
 
 /** Where `value` goes in an ascending array (the first index not below it). */

@@ -65,6 +65,8 @@ describe("averageBreakdown", () => {
     const { value, trimmed } = averageBreakdown([5000, 1000, 3000, 9000, 7000], "average");
     expect(value).toBe(5000);
     expect(trimmed).toEqual([false, true, false, true, false]);
+    // Which end each dropped time came from (for showing the best green and the worst red).
+    expect(averageBreakdown([5000, 1000, 3000, 9000, 7000], "average").dropped).toEqual([null, "best", null, "worst", null]);
   });
 
   it("counts a DNF as the worst", () => {
@@ -94,7 +96,7 @@ describe("averageBreakdown", () => {
   });
 
   it("drops nothing from a mean", () => {
-    expect(averageBreakdown([3000, 4000, 5000], "mean")).toEqual({ value: 4000, trimmed: [false, false, false] });
+    expect(averageBreakdown([3000, 4000, 5000], "mean")).toEqual({ value: 4000, trimmed: [false, false, false], dropped: [null, null, null] });
   });
 
   it("matches the rolling averages", () => {
