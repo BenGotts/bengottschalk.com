@@ -1,101 +1,40 @@
-// Brings a person's WCA competition attempts into the timer as solves in each
-// event's main session: official results from the WCA API, and WCA Live's
-// while one of their competitions is on.
+// Competition attempts in the timer. Official results are imported by the
+// server (src/server/wca.ts) straight into the account, and reach this device
+// with the next sync; this device only asks the server to import when due.
+// While one of the person's competitions is on, the browser follows WCA Live
+// itself and saves those attempts as live solves until the official ones arrive.
 
 import { z } from "zod";
-import {
-  competitionInfo, competitionSolveChanged, groupByCompetition, liveSolves, officialSolves,
-  type CompetitionInfo,
-} from "@bengottschalk/timer-core/competition";
+import { competitionInfo, competitionSolveChanged, liveSolves } from "@bengottschalk/timer-core/competition";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import { db, ensureMainSession, getMeta, setMeta } from "@/lib/db";
-import { fetchWca, WcaRequestError } from "./client";
+import { syncNow } from "@/lib/sync";
 import { fetchLiveResults, findLivePerson } from "./live";
-import { PersonResultSchema, ScramblesSchema, UserCompetitionsSchema, WcifSchema, type Wcif } from "./schemas";
+import { ScramblesSchema, WcifSchema, type Wcif } from "./schemas";
 
-// How often each WCA request is made (all saved on this device, and shared by its tabs):
-//   your competitions (to know when one is on)   twice a day
-//   your official results                         daily while a recent competition's results
-//                                                 aren't posted yet, otherwise weekly
-//   a competition's schedule                      once; every 30 minutes while it's on
-// plus WCA Live (not the WCA API) once a minute while a competition is on.
+const MINUTE_MS = 60_000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+/** The server fetches a competition's schedule at most every 30 minutes while it's on, so there's no point asking more often. */
+const LIVE_SCHEDULE_MAX_AGE_MS = 30 * MINUTE_MS;
 
-const HOUR_MS = 3_600_000;
-const DAY_MS = 24 * HOUR_MS;
-const COMPETITIONS_MAX_AGE_MS = 12 * HOUR_MS;
-const RESULTS_MAX_AGE_MS = 7 * DAY_MS;
-/** How long after a competition its results are checked for daily (they're usually posted within a week or two). */
-const AWAITING_RESULTS_DAYS = 30;
-const LIVE_SCHEDULE_MAX_AGE_MS = 30 * 60_000;
-
-/**
- * A competition's schedule, reduced to this person, saved on this device.
- * Fetched again only when older than `maxAgeMs` (never, by default). `null`
- * when the WCA has none.
- */
-async function competitionSchedule(competitionId: string, wcaId: string, maxAgeMs = Infinity): Promise<Wcif | null> {
-  const key = `wca:wcif:${competitionId}`;
-  const fetchedAtKey = `wca:wcif-at:${competitionId}`;
-  const saved = await db.meta.get(key);
-  if (saved && Date.now() - (await getMeta<number>(fetchedAtKey, 0)) <= maxAgeMs) {
-    return WcifSchema.nullable().catch(null).parse(saved.value);
-  }
-  let wcif: Wcif | null;
-  try {
-    const full = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/wcif/public`, WcifSchema);
-    wcif = { ...full, persons: full.persons.filter((p) => p.wcaId === wcaId) };
-  } catch (error) {
-    if (error instanceof WcaRequestError && error.status === 404) wcif = null;
-    else throw error;
-  }
-  await setMeta(key, wcif);
-  await setMeta(fetchedAtKey, Date.now());
-  return wcif;
-}
-
-/**
- * Saves fresh competition solves, only where something changed. Keeps what
- * the person added (a scramble found later, Solve of the Day marks, which
- * live apart) and never overwrites an official attempt with a live one.
- */
-async function saveCompetitionSolves(fresh: Solve[]): Promise<number> {
-  if (fresh.length === 0) return 0;
-  const existing = await db.solves.bulkGet(fresh.map((s) => s.id));
-  const now = Date.now();
-  const changed: Solve[] = [];
-  fresh.forEach((solve, i) => {
-    const stored = existing[i];
-    if (stored && stored.competition?.status === "official" && solve.competition?.status === "live") return;
-    if (stored && !competitionSolveChanged(stored, solve)) return;
-    changed.push({ ...solve, scramble: stored?.scramble || solve.scramble, comment: stored?.comment ?? "", createdAt: stored?.createdAt ?? now, updatedAt: now });
+/** GETs or POSTs one of the timer's own /api/wca routes and checks the answer's shape. */
+async function api<S extends z.ZodType>(path: string, schema: S, body?: unknown): Promise<z.output<S>> {
+  const response = await fetch(path, body === undefined ? undefined : {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
-  for (const eventId of new Set(changed.map((s) => s.eventId))) await ensureMainSession(eventId);
-  await db.solves.bulkPut(changed);
-  return changed.length;
+  const json: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = z.object({ error: z.string() }).safeParse(json);
+    throw new Error(message.success ? message.data.error : `The timer's server returned ${response.status}.`);
+  }
+  const parsed = schema.safeParse(json);
+  if (!parsed.success) throw new Error("Unexpected answer from the timer's server.");
+  return parsed.data;
 }
 
-/**
- * Once a competition's official results are in, live attempts they don't
- * cover (a round WCA Live named differently, say) are removed. A Solve of the
- * Day mark on one moves to the official attempt of the same event, round and
- * attempt number.
- */
-async function retireLiveAttempts(competitionId: string, official: Solve[]): Promise<void> {
-  const officialIds = new Set(official.map((s) => s.id));
-  const leftovers = (await db.solves.where("id").startsWith(`wca-${competitionId}-`).toArray())
-    .filter((s) => s.competition?.competitionId === competitionId && s.competition.status === "live" && !officialIds.has(s.id) && s.deletedAt === null);
-  if (leftovers.length === 0) return;
-  const now = Date.now();
-  await db.transaction("rw", db.solves, db.sotd, async () => {
-    for (const live of leftovers) {
-      await db.solves.update(live.id, { deletedAt: now, updatedAt: now });
-      const match = official.find((s) => s.eventId === live.eventId && s.competition?.attempt === live.competition?.attempt && s.competition?.roundNumber === live.competition?.roundNumber);
-      for (const mark of await db.sotd.where("solveId").equals(live.id).toArray()) {
-        await db.sotd.put({ ...mark, solveId: match ? match.id : mark.solveId, deletedAt: match ? null : now, updatedAt: now });
-      }
-    }
-  });
-}
+const ImportSchema = z.object({ done: z.number(), total: z.number(), remaining: z.number(), refreshedAt: z.number(), saved: z.number() });
 
 export interface RefreshProgress {
   done: number;
@@ -103,84 +42,72 @@ export interface RefreshProgress {
 }
 
 /**
- * Fetches all official results and saves them as solves. Newest competitions
- * go first, so recent attempts show up while older schedules are still
- * loading (each competition's schedule is fetched once, then kept).
+ * Asks the server to import official results (it decides whether they're
+ * due, unless `force`), calling again while competitions are still waiting
+ * for their schedules, then syncs so the new attempts arrive here.
  */
-export async function refreshOfficialResults(wcaId: string, onProgress?: (progress: RefreshProgress) => void): Promise<{ saved: number }> {
-  const results = await fetchWca(`/v1/persons/${encodeURIComponent(wcaId)}/results`, z.array(PersonResultSchema));
-  const competitions = [...groupByCompetition(results)].toSorted(([, a], [, b]) => b[0].competition_start_date.localeCompare(a[0].competition_start_date));
-  let saved = 0;
-  let done = 0;
-  onProgress?.({ done, total: competitions.length });
-  for (const [competitionId, rows] of competitions) {
-    let info: CompetitionInfo;
-    try {
-      info = competitionInfo(await competitionSchedule(competitionId, wcaId), wcaId, { name: rows[0].competition_short_name, startDate: rows[0].competition_start_date });
-    } catch {
-      // The schedule can come next time; place the attempts by day for now.
-      info = competitionInfo(null, wcaId, { name: rows[0].competition_short_name, startDate: rows[0].competition_start_date });
-    }
-    const solves = officialSolves(rows, info, Date.now());
-    saved += await saveCompetitionSolves(solves);
-    await retireLiveAttempts(competitionId, solves);
-    onProgress?.({ done: ++done, total: competitions.length });
+export async function importOfficialResults(wcaId: string, force: boolean, onProgress?: (progress: RefreshProgress) => void): Promise<void> {
+  let result = await api("/api/wca/results", ImportSchema, { force });
+  let saved = result.saved;
+  while (result.remaining > 0) {
+    onProgress?.({ done: result.done, total: result.total });
+    const next = await api("/api/wca/results", ImportSchema, {});
+    saved += next.saved;
+    const stuck = next.remaining >= result.remaining;
+    result = next;
+    if (stuck) break; // The WCA isn't answering; the server carries on tomorrow.
   }
-  await setMeta(`wca:refreshedAt:${wcaId}`, Date.now());
-  return { saved };
+  await setMeta(`wca:refreshedAt:${wcaId}`, result.refreshedAt);
+  if (saved > 0) await syncNow();
 }
 
-/** When official results were last fetched for this WCA ID (ms), or 0. */
+/** When the server last fetched official results for this WCA ID (ms), or 0. */
 export const lastRefreshedAt = (wcaId: string) => getMeta<number>(`wca:refreshedAt:${wcaId}`, 0);
 
 const localIsoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const isoDaysFromNow = (days: number) => localIsoDate(new Date(Date.now() + days * DAY_MS));
 
-interface KnownCompetition {
-  id: string;
-  start_date: string;
-  end_date: string;
-}
-
-/**
- * The person's ongoing and upcoming competitions, fetched at most twice a
- * day. Ones that have finished are kept for a while after they drop off the
- * WCA's list, so results can be checked for until they're posted.
- */
-async function personCompetitions(wcaId: string): Promise<KnownCompetition[]> {
-  const key = `wca:competitions:${wcaId}`;
-  const saved = await getMeta<{ fetchedAt: number; competitions: KnownCompetition[] } | null>(key, null);
-  if (saved && Date.now() - saved.fetchedAt < COMPETITIONS_MAX_AGE_MS) return saved.competitions;
-  const data = await fetchWca(`/v0/users/${encodeURIComponent(wcaId)}?ongoing_competitions=true&upcoming_competitions=true`, UserCompetitionsSchema);
-  const fresh = [...data.ongoing_competitions, ...data.upcoming_competitions].map(({ id, start_date, end_date }) => ({ id, start_date, end_date }));
-  const recent = (saved?.competitions ?? []).filter((c) => !fresh.some((f) => f.id === c.id) && c.end_date >= isoDaysFromNow(-AWAITING_RESULTS_DAYS));
-  const competitions = [...fresh, ...recent];
-  await setMeta(key, { fetchedAt: Date.now(), competitions });
-  return competitions;
-}
-
-/**
- * Whether to fetch official results again: daily while a competition that
- * ended in the last month has no official results here yet, otherwise weekly.
- */
-export async function refreshDue(wcaId: string): Promise<boolean> {
-  const age = Date.now() - (await lastRefreshedAt(wcaId));
-  if (age > RESULTS_MAX_AGE_MS) return true;
-  if (age < DAY_MS) return false;
-  const today = localIsoDate(new Date());
-  for (const competition of await personCompetitions(wcaId)) {
-    if (competition.end_date >= today) continue;
-    const posted = await db.solves.where("id").startsWith(`wca-${competition.id}-`).filter((s) => s.competition?.status === "official").first();
-    if (!posted) return true;
-  }
-  return false;
-}
+const CompetitionsSchema = z.object({ competitions: z.array(z.object({ id: z.string(), start_date: z.string(), end_date: z.string() })) });
 
 /** The person's competitions that are on today (by local date, with a day's slack for time zones). */
-export async function competitionsToday(wcaId: string): Promise<string[]> {
-  const yesterday = isoDaysFromNow(-1);
-  const tomorrow = isoDaysFromNow(1);
-  return (await personCompetitions(wcaId)).filter((c) => c.start_date <= tomorrow && c.end_date >= yesterday).map((c) => c.id);
+export async function competitionsToday(): Promise<string[]> {
+  const { competitions } = await api("/api/wca/competitions", CompetitionsSchema);
+  const yesterday = localIsoDate(new Date(Date.now() - DAY_MS));
+  const tomorrow = localIsoDate(new Date(Date.now() + DAY_MS));
+  return competitions.filter((c) => c.start_date <= tomorrow && c.end_date >= yesterday).map((c) => c.id);
+}
+
+/** A competition's schedule with this person's assignments, kept here for half an hour. */
+async function competitionSchedule(competitionId: string): Promise<Wcif | null> {
+  const key = `wca:schedule:${competitionId}`;
+  const saved = await getMeta<{ fetchedAt: number; wcif: unknown } | null>(key, null);
+  if (saved && Date.now() - saved.fetchedAt < LIVE_SCHEDULE_MAX_AGE_MS) return WcifSchema.nullable().catch(null).parse(saved.wcif);
+  try {
+    const { wcif } = await api(`/api/wca/schedule?competitionId=${encodeURIComponent(competitionId)}`, z.object({ wcif: WcifSchema.nullable() }));
+    await setMeta(key, { fetchedAt: Date.now(), wcif });
+    return wcif;
+  } catch {
+    return saved ? WcifSchema.nullable().catch(null).parse(saved.wcif) : null;
+  }
+}
+
+/**
+ * Saves fresh live attempts, only where something changed. Keeps what the
+ * person added (a scramble, a comment) and never overwrites an official attempt.
+ */
+async function saveLiveSolves(fresh: Solve[]): Promise<number> {
+  if (fresh.length === 0) return 0;
+  const existing = await db.solves.bulkGet(fresh.map((s) => s.id));
+  const now = Date.now();
+  const changed: Solve[] = [];
+  fresh.forEach((solve, i) => {
+    const stored = existing[i];
+    if (stored && stored.competition?.status === "official") return;
+    if (stored && !competitionSolveChanged(stored, solve)) return;
+    changed.push({ ...solve, scramble: stored?.scramble || solve.scramble, comment: stored?.comment ?? "", createdAt: stored?.createdAt ?? now, updatedAt: now });
+  });
+  for (const eventId of new Set(changed.map((s) => s.eventId))) await ensureMainSession(eventId);
+  await db.solves.bulkPut(changed);
+  return changed.length;
 }
 
 /** Fetches WCA Live results for a competition that's on and saves them as live solves. */
@@ -193,24 +120,21 @@ export async function refreshLiveResults(competitionId: string, wcaId: string): 
     await setMeta(personKey, personId);
   }
   const live = await fetchLiveResults(personId);
-  // The schedule changes on the day (groups move), so it's fetched again every half hour.
-  const wcif = await competitionSchedule(competitionId, wcaId, LIVE_SCHEDULE_MAX_AGE_MS)
-    .catch(() => competitionSchedule(competitionId, wcaId))
-    .catch(() => null);
+  const wcif = await competitionSchedule(competitionId);
   const info = competitionInfo(wcif, wcaId, { name: wcif?.name ?? competitionId, startDate: wcif?.schedule.startDate ?? localIsoDate(new Date()) });
-  return { saved: await saveCompetitionSolves(liveSolves(competitionId, live, info, Date.now())) };
+  return { saved: await saveLiveSolves(liveSolves(competitionId, live, info, Date.now())) };
 }
 
 /**
  * Fills in scrambles for a competition's attempts, where the WCA says which
  * they were: a round with a single scramble set (attempt k used scramble k).
  * With several sets, the WCA doesn't say which set a competitor had, so those
- * stay blank. Fetched once per competition.
+ * stay blank. Asked for once per competition.
  */
 export async function loadCompetitionScrambles(competitionId: string): Promise<number> {
   const key = `wca:scrambles:${competitionId}`;
   if (await getMeta<boolean>(key, false)) return 0;
-  const scrambles = await fetchWca(`/v0/competitions/${encodeURIComponent(competitionId)}/scrambles`, ScramblesSchema);
+  const { scrambles } = await api(`/api/wca/scrambles?competitionId=${encodeURIComponent(competitionId)}`, z.object({ scrambles: ScramblesSchema }));
   const solves = (await db.solves.where("id").startsWith(`wca-${competitionId}-`).toArray())
     .filter((s) => s.competition?.competitionId === competitionId && !s.scramble && s.eventId !== "333mbf");
   let filled = 0;
@@ -224,6 +148,6 @@ export async function loadCompetitionScrambles(competitionId: string): Promise<n
     await db.solves.update(solve.id, { scramble, updatedAt: now });
     filled++;
   }
-  await setMeta(key, true);
+  if (scrambles.length > 0) await setMeta(key, true);
   return filled;
 }

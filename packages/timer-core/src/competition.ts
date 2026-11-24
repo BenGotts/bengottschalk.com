@@ -321,7 +321,13 @@ export function competitionSolveChanged(stored: Solve, fresh: Solve): boolean {
     || stored.penalty !== fresh.penalty
     || stored.startedAt !== fresh.startedAt
     || stored.deletedAt !== null
-    || JSON.stringify([stored.fmc, stored.multi, stored.competition]) !== JSON.stringify([fresh.fmc, fresh.multi, fresh.competition]);
+    || stableJson([stored.fmc, stored.multi, stored.competition]) !== stableJson([fresh.fmc, fresh.multi, fresh.competition]);
+}
+
+/** JSON with object keys sorted, so the same data compares equal whatever order its keys were stored in (Postgres jsonb reorders them). */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).toSorted(([a], [b]) => a.localeCompare(b))) : v);
 }
 
 /** A round's WCA average or mean for display: a time, FMC moves to two places, or null when there's none. */

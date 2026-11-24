@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { useLiveQuery } from "dexie-react-hooks";
 import { signedInWcaId, syncStore } from "@/lib/sync";
 import { getMeta, setMeta } from "@/lib/db";
-import { competitionsToday, refreshDue, refreshLiveResults, refreshOfficialResults, lastRefreshedAt, type RefreshProgress } from "./results";
+import { competitionsToday, importOfficialResults, lastRefreshedAt, refreshLiveResults, type RefreshProgress } from "./results";
 
 const LIVE_POLL_MS = 60_000;
 
@@ -32,8 +32,9 @@ export interface CompetitionResultsState {
 }
 
 /**
- * Keeps competition attempts up to date for the signed-in WCA ID: official
- * results when due (see results.ts) or on request, and WCA Live every minute
+ * Keeps competition attempts up to date for the signed-in WCA ID: asks the
+ * server to import official results (it decides whether they're due; the
+ * Refresh button asks it to fetch now), and follows WCA Live every minute
  * while one of the person's competitions is on and the page is open.
  */
 export function useCompetitionResults(): CompetitionResultsState {
@@ -51,12 +52,10 @@ export function useCompetitionResults(): CompetitionResultsState {
     running.current = true;
     try {
       await inOneTab("wca-official-results", async () => {
-        if (force || (await refreshDue(id))) {
-          setLoading(true);
-          await refreshOfficialResults(id, setProgress);
-        }
+        setLoading(true);
+        await importOfficialResults(id, force, setProgress);
       });
-      setLiveCompetitionIds(await competitionsToday(id));
+      setLiveCompetitionIds(await competitionsToday());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load WCA results.");

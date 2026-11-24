@@ -125,4 +125,32 @@ export const sotdMark = pgTable("sotd_mark", {
   seq: changeCursor(),
 }, (t) => [primaryKey({ columns: [t.userId, t.date] }), index("sotd_mark_user_seq_idx").on(t.userId, t.seq)]).enableRLS();
 
-export const schema = { user, session, account, verification, timerSession, solve, sotdMark, syncSeq };
+// ---------------------------------------------------------------------------
+// WCA data, fetched by the server and kept here so the WCA API is asked as
+// little as possible (see src/server/wca.ts). All of it is public WCA data.
+
+/** A competition's WCIF, reduced to the schedule and competitors' assignments; null when the WCA has none. */
+export const wcaCompetition = pgTable("wca_competition", {
+  id: text("id").primaryKey(),
+  wcif: jsonb("wcif").$type<unknown>(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+}).enableRLS();
+
+/** A WCA ID's official results and competitions. */
+export const wcaPerson = pgTable("wca_person", {
+  wcaId: text("wca_id").primaryKey(),
+  results: jsonb("results").$type<unknown>(),
+  resultsFetchedAt: timestamp("results_fetched_at", { withTimezone: true }),
+  /** Ongoing and upcoming competitions, plus ones that ended in the last 30 days. */
+  competitions: jsonb("competitions").$type<unknown>(),
+  competitionsFetchedAt: timestamp("competitions_fetched_at", { withTimezone: true }),
+}).enableRLS();
+
+/** A competition's published scrambles. */
+export const wcaScrambles = pgTable("wca_scrambles", {
+  competitionId: text("competition_id").primaryKey(),
+  scrambles: jsonb("scrambles").$type<unknown>().notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+}).enableRLS();
+
+export const schema = { user, session, account, verification, timerSession, solve, sotdMark, syncSeq, wcaCompetition, wcaPerson, wcaScrambles };

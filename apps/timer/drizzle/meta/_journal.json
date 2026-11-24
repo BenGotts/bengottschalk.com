@@ -8,6 +8,13 @@
       "when": 1795479344316,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795500812169,
+      "tag": "0001_wca_cache",
+      "breakpoints": true
     }
   ]
 }

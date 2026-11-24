@@ -93,7 +93,7 @@ export type SyncRequestBody = z.infer<typeof syncRequestSchema>;
 export type TimerSyncResponse = SyncResponse<TimerSession, Solve, SotdMark>;
 
 /** `SET col = excluded.col` for every column but the key, plus a new change cursor. */
-function updateFromExcluded(table: PgTable, keys: string[]): Record<string, SQL> {
+export function updateFromExcluded(table: PgTable, keys: string[]): Record<string, SQL> {
   const set: Record<string, SQL> = {};
   for (const [name, column] of Object.entries(getTableColumns(table))) {
     if (keys.includes(name) || name === "seq") continue;
