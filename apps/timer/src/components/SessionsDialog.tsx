@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { FaCodeBranch, FaCodeMerge, FaTrashCan } from "react-icons/fa6";
-import { branchesOf, createBranch, deletingKeepsSolves, discardBranch, mergeBranch, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
+import { FaChartSimple, FaCodeMerge, FaPlus, FaTrashCan } from "react-icons/fa6";
+import { branchesOf, deletingKeepsSolves, discardBranch, mergeBranch, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { sessionStats } from "@bengottschalk/timer-core/stats";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
-import { uuidv7 } from "@bengottschalk/timer-core/id";
 import { removeBranch, saveSession } from "@/lib/db";
 import { formatMean } from "@/lib/format";
 import Modal from "./Modal";
+import { SessionSummaryDialog } from "./SessionSummary";
 
 interface Props {
   open: boolean;
@@ -21,13 +21,16 @@ interface Props {
   currentId: string;
   onSelect: (sessionId: string) => void;
   precision: Precision;
+  /** Opens the dialog that starts a temporary session. */
+  onStartTemporary: () => void;
+  onOpenSolve: (solve: Solve) => void;
 }
 
 /** The time now, for timestamps set from event handlers. */
 const now = () => Date.now();
 
 async function rename(session: TimerSession) {
-  const next = prompt("Branch name", session.name);
+  const next = prompt("Session name", session.name);
   if (next && next.trim()) await saveSession({ ...session, name: next.trim() });
 }
 
@@ -35,9 +38,8 @@ const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n ==
 
 const STATUS_LABEL = { active: "Active", merged: "Merged", discarded: "Discarded" } as const;
 
-export default function SessionsDialog({ open, onClose, main, sessions, solves, currentId, onSelect, precision }: Props) {
-  const [name, setName] = useState("");
-  const [goal, setGoal] = useState("");
+export default function SessionsDialog({ open, onClose, main, sessions, solves, currentId, onSelect, precision, onStartTemporary, onOpenSolve }: Props) {
+  const [summaryOf, setSummaryOf] = useState<TimerSession | null>(null);
   const event = timerEvent(main.eventId);
   const averageLabel = event.format === "mo3" ? "mo3" : "ao5";
 
@@ -48,25 +50,14 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
     return { count: list.length, mean: stats.mean, best: average?.best ?? null, ownCount: solves.filter((s) => s.sessionId === session.id && s.deletedAt === null).length };
   };
 
-  const startBranch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const goalNumber = Number.parseInt(goal, 10);
-    const branch = createBranch(main, { id: uuidv7(), name: name || (goalNumber ? `ao${goalNumber}` : "Branch"), goal: Number.isFinite(goalNumber) ? goalNumber : null, now: now() });
-    await saveSession(branch);
-    setName("");
-    setGoal("");
-    onSelect(branch.id);
-    onClose();
-  };
-
   const merge = async (branch: TimerSession) => {
-    if (!confirm(`Merge “${branch.name}” into Main? Its solves join Main in the order you did them, and the branch is kept as a read-only record.`)) return;
+    if (!confirm(`Merge “${branch.name}” into Main? Its solves join Main in the order you did them, and the session is kept as a read-only record.`)) return;
     await saveSession(mergeBranch(branch, now()));
     if (currentId === branch.id) onSelect(main.id);
   };
 
   const discard = async (branch: TimerSession) => {
-    if (!confirm(`Discard “${branch.name}”? Its solves stay out of Main, but the branch is kept so you can still look at it. (To get rid of it and its solves, use Delete.)`)) return;
+    if (!confirm(`Discard “${branch.name}”? Its solves stay out of Main, but the session is kept so you can still look at it. (To get rid of it and its solves, use Delete.)`)) return;
     await saveSession(discardBranch(branch, now()));
     if (currentId === branch.id) onSelect(main.id);
   };
@@ -74,7 +65,7 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
   const remove = async (branch: TimerSession) => {
     const own = solves.filter((s) => s.sessionId === branch.id && s.deletedAt === null).length;
     const message = deletingKeepsSolves(branch)
-      ? `Delete “${branch.name}”? Its ${plural(own, "solve")} stay in Main; only the branch goes away.`
+      ? `Delete “${branch.name}”? Its ${plural(own, "solve")} stay in Main; only the session goes away.`
       : `Delete “${branch.name}” and its ${plural(own, "solve")}? This can't be undone.`;
     if (!confirm(message)) return;
     await removeBranch(branch);
@@ -93,7 +84,9 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
             detail={`${mainSummary.count} solves · mean ${formatMean(main.eventId, mainSummary.mean, precision)} · best ${averageLabel} ${formatMean(main.eventId, mainSummary.best, precision)}`}
             current={currentId === main.id}
             onSelect={() => { onSelect(main.id); onClose(); }}
-          />
+          >
+            <button type="button" className="btn btn-xs btn-ghost" onClick={() => setSummaryOf(main)}><FaChartSimple aria-hidden /> Summary</button>
+          </SessionRow>
         </li>
         {branches.map((branch) => {
           const s = summary(branch);
@@ -107,17 +100,18 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
                 current={currentId === branch.id}
                 onSelect={() => { onSelect(branch.id); onClose(); }}
               >
+                <button type="button" className="btn btn-xs btn-ghost" onClick={() => setSummaryOf(branch)}><FaChartSimple aria-hidden /> Summary</button>
                 {branch.status === "active" && (
                   <>
                     <button type="button" className="btn btn-xs btn-primary" onClick={() => void merge(branch)}><FaCodeMerge aria-hidden /> Merge</button>
                     <button type="button" className="btn btn-xs" onClick={() => void rename(branch)}>Rename</button>
-                    <button type="button" className="btn btn-xs btn-ghost" title="Keep the branch as a record, with its solves left out of Main" onClick={() => void discard(branch)}>Discard</button>
+                    <button type="button" className="btn btn-xs btn-ghost" title="Keep the session as a record, with its solves left out of Main" onClick={() => void discard(branch)}>Discard</button>
                   </>
                 )}
                 <button
                   type="button"
                   className="btn btn-xs btn-ghost text-error"
-                  title={deletingKeepsSolves(branch) ? "Remove the branch; its solves stay in Main" : "Remove the branch and its solves"}
+                  title={deletingKeepsSolves(branch) ? "Remove the session; its solves stay in Main" : "Remove the session and its solves"}
                   onClick={() => void remove(branch)}
                 >
                   <FaTrashCan aria-hidden /> Delete
@@ -128,21 +122,27 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
         })}
       </ul>
 
-      <form className="mt-6 rounded-box bg-base-200 p-3" onSubmit={(e) => void startBranch(e)}>
-        <h3 className="mb-2 flex items-center gap-2 font-medium"><FaCodeBranch aria-hidden /> New branch from Main</h3>
-        <p className="mb-3 text-sm text-muted">Time a set of solves on their own, like an ao100 attempt. Then merge them into Main, discard the branch (kept as a record, left out of Main), or delete it.</p>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="grow">
-            <span className="mb-1 block text-xs text-muted">Name</span>
-            <input className="input input-sm w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="ao100 attempt" />
-          </label>
-          <label className="w-28">
-            <span className="mb-1 block text-xs text-muted">Goal (solves)</span>
-            <input className="input input-sm w-full" inputMode="numeric" value={goal} onChange={(e) => setGoal(e.target.value.replaceAll(/\D/g, ""))} placeholder="100" />
-          </label>
-          <button type="submit" className="btn btn-sm btn-primary">Start branch</button>
-        </div>
-      </form>
+      {branches.length === 0 && (
+        <p className="mt-3 text-sm text-muted">No temporary sessions yet.</p>
+      )}
+      <div className="mt-6 rounded-box bg-base-200 p-3">
+        <p className="mb-3 text-sm text-muted">A temporary session times a set of solves on their own, like an ao100 attempt. At the end, merge them into Main or delete them, and look at a summary if you like.</p>
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => { onClose(); onStartTemporary(); }}>
+          <FaPlus aria-hidden /> New temporary session
+        </button>
+      </div>
+
+      {summaryOf && (
+        <SessionSummaryDialog
+          open
+          onClose={() => setSummaryOf(null)}
+          name={summaryOf.name}
+          eventId={main.eventId}
+          solves={sessionSolves(summaryOf, sessions, solves)}
+          precision={precision}
+          onOpenSolve={onOpenSolve}
+        />
+      )}
     </Modal>
   );
 }

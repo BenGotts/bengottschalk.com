@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptsSolves, branchesOf, createBranch, createMainSession, deleteBranch, deletingKeepsSolves, discardBranch, mergeBranch, sessionSolves } from "./sessions";
+import { acceptsSolves, branchesOf, createBranch, createMainSession, deleteBranch, deletingKeepsSolves, discardBranch, extendGoal, mergeBranch, reachesGoal, sessionSolves } from "./sessions";
 import { sessionStats } from "./stats";
 import type { Solve } from "./solve";
 
@@ -77,5 +77,32 @@ describe("deleting branches", () => {
     const deleted = deleteBranch(branch, 9);
     expect(sessionSolves(main, [main, deleted], afterDelete).map((s) => s.id)).toEqual(["m1", "m2"]);
     expect(sessionSolves(deleted, [main, deleted], afterDelete)).toEqual([]);
+  });
+});
+
+describe("temporary sessions", () => {
+  const main = createMainSession("333", 0);
+
+  it("are named for what they are when no name is given", () => {
+    expect(createBranch(main, { id: "t", name: "  ", goal: null, now: 1 }).name).toBe("Temporary session");
+  });
+
+  it("come up for ending exactly when the solve that reaches the goal is saved", () => {
+    const temp = createBranch(main, { id: "t", name: "", goal: 5, now: 1 });
+    expect([3, 4, 5, 6].map((n) => reachesGoal(temp, n))).toEqual([false, false, true, false]);
+    expect(reachesGoal(createBranch(main, { id: "u", name: "", goal: null, now: 1 }), 5)).toBe(false);
+    expect(reachesGoal(main, 5)).toBe(false);
+    expect(reachesGoal(mergeBranch(temp, 2), 5)).toBe(false);
+  });
+
+  it("can keep going with a higher goal, which syncs", () => {
+    const temp = createBranch(main, { id: "t", name: "", goal: 5, now: 1 });
+    const extended = extendGoal(temp, 5, 9);
+    expect(extended.goal).toBe(10);
+    expect(extended.updatedAt).toBe(9);
+    expect(reachesGoal(extended, 10)).toBe(true);
+    expect(() => extendGoal(temp, 0, 9)).toThrow();
+    expect(() => extendGoal(mergeBranch(temp, 2), 5, 9)).toThrow();
+    expect(() => extendGoal(main, 5, 9)).toThrow();
   });
 });

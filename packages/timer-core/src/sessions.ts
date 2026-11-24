@@ -1,4 +1,6 @@
 // Sessions: one main session per event, plus branches started from it.
+// People see branches as "temporary sessions": start one for N solves (an
+// ao100 attempt, say), then merge it into Main or delete it.
 //
 // A solve keeps the session it was done in forever. Merging a branch just
 // marks it merged, and a main session's view includes the solves of its
@@ -60,7 +62,7 @@ export function createBranch(parent: TimerSession, options: { id: string; name: 
     id: options.id,
     eventId: parent.eventId,
     parentId: parent.id,
-    name: options.name.trim() || "Branch",
+    name: options.name.trim() || "Temporary session",
     goal: options.goal !== null && options.goal > 0 ? Math.floor(options.goal) : null,
     status: "active",
     createdAt: options.now,
@@ -75,6 +77,21 @@ export function mergeBranch(branch: TimerSession, now: number): TimerSession {
   if (branch.status !== "active") throw new Error("Only an active branch can be merged.");
   return { ...branch, status: "merged", mergedAt: now, updatedAt: now };
 }
+
+/** Raises a branch's solve goal by `by` (for "keep going" once it's reached). */
+export function extendGoal(branch: TimerSession, by: number, now: number): TimerSession {
+  if (isMainSession(branch)) throw new Error("A main session has no goal.");
+  if (branch.status !== "active") throw new Error("Only an active branch can be extended.");
+  if (!(by > 0)) throw new Error("The goal can only go up.");
+  return { ...branch, goal: (branch.goal ?? 0) + Math.floor(by), updatedAt: now };
+}
+
+/**
+ * Whether the solve just saved (taking the branch to `count` solves) is the
+ * one that reaches its goal, so the end-of-session choice should come up.
+ */
+export const reachesGoal = (session: TimerSession, count: number): boolean =>
+  !isMainSession(session) && session.status === "active" && session.goal !== null && count === session.goal;
 
 export function discardBranch(branch: TimerSession, now: number): TimerSession {
   if (isMainSession(branch)) throw new Error("A main session can't be discarded.");

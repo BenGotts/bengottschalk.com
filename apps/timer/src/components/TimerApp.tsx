@@ -3,9 +3,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaGear, FaListUl, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
-import { acceptsSolves, isMainSession, mainSessionId, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
+import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByDate as marksByDate, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
@@ -28,6 +28,8 @@ import MultiBlindSetup from "./MultiBlindSetup";
 import ScrambleImage from "./ScrambleImage";
 import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
+import { SessionSummaryDialog } from "./SessionSummary";
+import { EndSessionDialog, StartSessionDialog } from "./TemporarySession";
 import SettingsDialog from "./SettingsDialog";
 import { AccountButton, AccountSession, UnsyncedSolvesDialog } from "./Account";
 import SolveDialog from "./SolveDialog";
@@ -37,7 +39,7 @@ import StatsPanel from "./StatsPanel";
 import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
-type Dialog = "sessions" | "settings" | "import" | null;
+type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | null;
 /** Which screen a phone shows (wide screens show the timer and the side panel together). */
 type MobileView = "timer" | "solves" | "stats" | "sotd";
 
@@ -63,6 +65,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [openSolveId, setOpenSolveId] = useState<string | null>(null);
   const [averageView, setAverageView] = useState<AverageView | null>(null);
+  // The temporary session whose end-of-session choice is due: shown once the timer is idle.
+  const [endFor, setEndFor] = useState<string | null>(null);
   const [tab, setTab] = useState<"solves" | "sotd">("solves");
   const [view, setView] = useState<MobileView>("timer");
   const [mbldCubes, setMbldCubes] = useState(2);
@@ -138,6 +142,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     return names;
   }, [current, sessions]);
 
+  const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const writable = current !== null && acceptsSolves(current);
   const scramble = useScramble(activeEventId);
   const lastSolve = viewSolves.at(-1) ?? null;
@@ -148,7 +153,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     await addSolve(input);
     if (event.kind === "multi-blind") setMbldScrambles(null);
     else scramble.next();
-  }, [event.kind, scramble]);
+    // The solve that completes a temporary session brings up its end (once the timer is idle).
+    if (current && reachesGoal(current, ownCount + 1)) setEndFor(current.id);
+  }, [event.kind, scramble, current, ownCount]);
 
   const onFinish = useCallback((finished: FinishedSolve) => {
     if (!current || !scrambleText) return;
@@ -264,8 +271,14 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   const lastResult = lastSolve ? formatSolve(lastSolve, settings.precision) : null;
   const newBest = timer.phase === "idle" && isNewBest(values);
-  const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const goalReached = current && !isMainSession(current) && current.status === "active" && current.goal !== null && ownCount >= current.goal;
+  const temporary = current && !isMainSession(current) ? current : null;
+  // Never in the middle of a solve: it waits until the timer is idle again.
+  const endOpen = temporary !== null && endFor === temporary.id && temporary.status === "active" && timer.phase === "idle";
+  const backToMain = () => {
+    setEndFor(null);
+    if (main) selectSession(main.id);
+  };
 
   if (eventId === null) return <div className="min-h-dvh" />;
 
@@ -285,9 +298,19 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         <div className="order-3 flex w-full min-w-0 items-center gap-2 lg:order-2 lg:ml-4 lg:w-auto">
           <EventPicker eventId={activeEventId} onChange={setEventId} />
           <button type="button" className="btn btn-sm min-w-0" onClick={() => setDialog("sessions")}>
-            <FaCodeBranch aria-hidden /> <span className="truncate">{current && !isMainSession(current) ? current.name : "Main"}</span>
-            {current && current.goal !== null && <span className="text-muted">{ownCount}/{current.goal}</span>}
+            <FaCodeBranch aria-hidden /> <span className="truncate">{temporary ? temporary.name : "Main"}</span>
+            {temporary && <span className="timer-digits text-muted">{temporary.goal === null ? ownCount : `${ownCount} / ${temporary.goal}`}</span>}
           </button>
+          {!temporary && main && (
+            <button type="button" className="btn btn-sm btn-ghost shrink-0" onClick={() => setDialog("start-temporary")} aria-label="New temporary session">
+              <FaPlus aria-hidden /> <span className="hidden sm:inline">Temporary session</span>
+            </button>
+          )}
+          {temporary?.status === "active" && (
+            <button type="button" className="btn btn-sm btn-ghost shrink-0" onClick={() => setEndFor(temporary.id)}>
+              <FaFlagCheckered aria-hidden /> End<span className="hidden sm:inline"> session</span>
+            </button>
+          )}
         </div>
         <div className="order-2 ml-auto flex items-center gap-1 lg:order-3">
           {authEnabled && <AccountButton />}
@@ -302,14 +325,17 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         >
           {!writable && current && (
             <div className="focus-fade mx-3 mt-3 alert alert-soft">
-              <span>“{current.name}” was {current.status} and is read-only.</span>
-              {main && <button type="button" className="btn btn-sm" onClick={() => selectSession(main.id)}>Back to Main</button>}
+              <span>“{current.name}” was {current.status === "merged" ? "merged into Main" : current.status} and is read-only.</span>
+              <div className="flex gap-2">
+                <button type="button" className="btn btn-sm" onClick={() => setDialog("summary")}>Summary</button>
+                {main && <button type="button" className="btn btn-sm" onClick={() => selectSession(main.id)}>Back to Main</button>}
+              </div>
             </div>
           )}
           {goalReached && (
             <div className="focus-fade mx-3 mt-3 alert alert-success alert-soft">
               <span>Goal reached: {ownCount}/{current.goal} solves.</span>
-              <button type="button" className="btn btn-sm" onClick={() => setDialog("sessions")}>Merge into Main</button>
+              <button type="button" className="btn btn-sm" onClick={() => setEndFor(current.id)}>End session</button>
             </div>
           )}
 
@@ -419,7 +445,52 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       </nav>
 
       {main && current && (
-        <SessionsDialog open={dialog === "sessions"} onClose={() => setDialog(null)} main={main} sessions={sessions} solves={allSolves} currentId={current.id} onSelect={selectSession} precision={settings.precision} />
+        <SessionsDialog
+          open={dialog === "sessions"}
+          onClose={() => setDialog(null)}
+          main={main}
+          sessions={sessions}
+          solves={allSolves}
+          currentId={current.id}
+          onSelect={selectSession}
+          precision={settings.precision}
+          onStartTemporary={() => setDialog("start-temporary")}
+          onOpenSolve={(s) => setOpenSolveId(s.id)}
+        />
+      )}
+      {main && (
+        <StartSessionDialog
+          open={dialog === "start-temporary"}
+          onClose={() => setDialog(null)}
+          main={main}
+          onStarted={(session) => {
+            setDialog(null);
+            selectSession(session.id);
+          }}
+        />
+      )}
+      {main && (
+        <EndSessionDialog
+          session={endOpen ? temporary : null}
+          onClose={() => setEndFor(null)}
+          main={main}
+          sessions={sessions}
+          solves={allSolves}
+          precision={settings.precision}
+          onEnded={backToMain}
+          onOpenSolve={(s) => setOpenSolveId(s.id)}
+        />
+      )}
+      {current && dialog === "summary" && (
+        <SessionSummaryDialog
+          open
+          onClose={() => setDialog(null)}
+          name={current.name}
+          eventId={activeEventId}
+          solves={sessionView}
+          precision={settings.precision}
+          onOpenSolve={(s) => setOpenSolveId(s.id)}
+        />
       )}
       <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} settings={settings} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
       <ImportDialog open={dialog === "import"} onClose={() => setDialog(null)} />

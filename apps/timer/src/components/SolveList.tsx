@@ -14,7 +14,7 @@ interface Props {
   rolling: (number | null)[];
   rollingLabel: string;
   sotdSolveIds: Set<string>;
-  /** Solves done in a branch, when showing a main session. */
+  /** Solves done in a temporary session (a branch), when showing a main session. */
   branchNames: Map<string, string>;
   precision: Precision;
   onOpen: (solve: Solve) => void;
@@ -92,7 +92,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                       aria-label={`Competition attempt: ${solve.competition.competitionName}`}
                     />
                   )}
-                  {branch && <span className="badge badge-ghost badge-xs font-sans" title={`Done in branch “${branch}”`}>{branch}</span>}
+                  {branch && <span className="badge badge-ghost badge-xs font-sans" title={`Done in temporary session “${branch}”`}>{branch}</span>}
                   {solve.comment && <span className="text-muted" title={solve.comment} aria-label="Has a comment">“</span>}
                   {sotdSolveIds.has(solve.id) && <FaStar className="text-accent" title="Solve of the Day" aria-label="Solve of the Day" />}
                   </div>
