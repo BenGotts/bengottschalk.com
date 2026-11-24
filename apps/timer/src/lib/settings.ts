@@ -3,7 +3,8 @@
 // picture colors…). Kept on this device.
 
 import type { Precision } from "@bengottschalk/timer-core/time";
-import { timerEvent } from "@bengottschalk/timer-core/events";
+import { timerEvent, type EventFormat } from "@bengottschalk/timer-core/events";
+import { averageLabel, parseAverageLabel, uniqueSpecs, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { colorFamilyFor, type ColorScheme } from "./colorSchemes";
 
 export interface Settings {
@@ -24,6 +25,40 @@ export interface Settings {
   showScrambleImage: boolean;
   /** Scramble picture colors for each puzzle family (see colorSchemes.ts); empty means the standard colors. */
   colors: Record<string, ColorScheme>;
+  /**
+   * The current averages shown on the timer screen (and phones' stats under
+   * it), as labels like "ao5" or "mo3". null: the defaults for the event's
+   * format (see `DEFAULT_SCREEN_AVERAGES`).
+   */
+  screenAverages: string[] | null;
+}
+
+/** The averages the timer screen shows by default, by event format. Single-result events (Multi-Blind) have none. */
+export const DEFAULT_SCREEN_AVERAGES: Record<EventFormat, readonly string[]> = {
+  ao5: ["ao5", "ao12"],
+  mo3: ["mo3", "ao5"],
+  best: [],
+};
+
+/** The averages offered as chips in Settings (any other aoN or moN can be typed in). */
+export const SCREEN_AVERAGE_CHOICES: readonly string[] = ["mo3", "ao5", "ao12", "ao25", "ao50", "ao100", "ao200", "ao500", "ao1000"];
+
+/** Labels in a steady order: by size, a mean before an average of the same size. Unreadable ones and repeats are dropped. */
+export function sortAverageLabels(labels: readonly string[]): string[] {
+  const specs = uniqueSpecs(labels.flatMap((label) => {
+    const spec = parseAverageLabel(label);
+    return spec ? [spec] : [];
+  }));
+  return specs.toSorted((a, b) => a.size - b.size || (a.kind === b.kind ? 0 : a.kind === "mean" ? -1 : 1)).map(averageLabel);
+}
+
+/** The averages to show on the timer screen for an event, from its settings. */
+export function screenAverageSpecs(settings: Pick<Settings, "screenAverages">, format: EventFormat): AverageSpec[] {
+  if (format === "best") return [];
+  return sortAverageLabels(settings.screenAverages ?? DEFAULT_SCREEN_AVERAGES[format]).flatMap((label) => {
+    const spec = parseAverageLabel(label);
+    return spec ? [spec] : [];
+  });
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,10 +71,11 @@ export const DEFAULT_SETTINGS: Settings = {
   bldMemoSplit: false,
   showScrambleImage: true,
   colors: {},
+  screenAverages: null,
 };
 
 /** Settings an event can set for itself; the rest apply to every event. */
-export const EVENT_SETTINGS = ["inspection", "holdMs", "hideRunningTime", "entry", "bldMemoSplit", "showScrambleImage"] as const;
+export const EVENT_SETTINGS = ["inspection", "holdMs", "hideRunningTime", "entry", "bldMemoSplit", "showScrambleImage", "screenAverages"] as const;
 export type EventSettingKey = (typeof EVENT_SETTINGS)[number];
 
 /** What one event sets differently from all events. `colors` is for the event's own puzzle family. */
@@ -73,13 +109,29 @@ export function migrateSettings(saved: unknown): StoredSettings {
     // Saved by this version of the timer.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const global = { ...DEFAULT_SETTINGS, ...(saved.global as Partial<Settings>) };
+    global.screenAverages = readAverages(global.screenAverages) ?? null;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const events = isRecord(saved.events) ? (saved.events as Record<string, EventOverrides>) : {};
+    const events = isRecord(saved.events) ? { ...(saved.events as Record<string, EventOverrides>) } : {};
+    for (const [id, overrides] of Object.entries(events)) {
+      if (overrides.screenAverages === undefined) continue;
+      const averages = readAverages(overrides.screenAverages);
+      const next = { ...overrides };
+      if (averages === undefined) delete next.screenAverages;
+      else next.screenAverages = averages;
+      events[id] = next;
+    }
     return { version: 2, global, events };
   }
   // Version 1: a flat Partial<Settings>.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return { version: 2, global: { ...DEFAULT_SETTINGS, ...(saved as Partial<Settings>) }, events: {} };
+}
+
+/** A saved list of averages, or null (the defaults); undefined when it's neither. */
+function readAverages(value: unknown): string[] | null | undefined {
+  if (value === null) return null;
+  if (!Array.isArray(value)) return undefined;
+  return sortAverageLabels(value.filter((v): v is string => typeof v === "string"));
 }
 
 /** The settings in effect for an event. */

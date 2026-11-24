@@ -1,30 +1,26 @@
 "use client";
 
 import type { EventFormat } from "@bengottschalk/timer-core/events";
+import { multiBlindStats } from "@bengottschalk/timer-core/multi";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
-import { averageBreakdown, type AverageSpec, type SessionStats } from "@bengottschalk/timer-core/stats";
+import { averageBreakdown, averageLabel, type AverageSpec, type SessionStats } from "@bengottschalk/timer-core/stats";
 import type { Precision } from "@bengottschalk/timer-core/time";
-import { formatMean, formatSolve } from "@/lib/format";
+import { formatMean, formatMultiResult, formatSolve, multiPointsText } from "@/lib/format";
 
 interface Props {
   eventId: string;
   format: EventFormat;
   stats: SessionStats;
+  /** Which averages to show (from settings), in order. */
+  specs: AverageSpec[];
+  /** The solves the stats are worked out from, oldest first. */
+  solves: Solve[];
   precision: Precision;
-  /** Up to the last five solves, oldest first. */
-  recent: Solve[];
   /** Opens the solves in an average ending at `end`. */
   onOpenAverage: (spec: AverageSpec, end: number) => void;
   /** Opens one solve by its index. */
   onOpenSolve: (index: number) => void;
 }
-
-/** Which averages lead for each event format, in order. */
-const LEAD: Record<EventFormat, string[]> = {
-  ao5: ["ao5", "ao12", "ao100"],
-  mo3: ["mo3", "ao5", "ao12"],
-  best: ["mo3", "ao5", "ao12"],
-};
 
 const FIVE: AverageSpec = { kind: "average", size: 5 };
 
@@ -32,16 +28,18 @@ const FIVE: AverageSpec = { kind: "average", size: 5 };
  * Phones: the stats under the timer, as two lists side by side. The last five
  * solves, newest first (once there are five, the ao5's dropped best and worst
  * in brackets, green and red; a time opens its solve, the heading opens the
- * ao5), and the leading averages and mean with their bests. Wide screens
- * have all this in the sidebar instead.
+ * ao5), and the averages chosen in settings and the mean with their bests.
+ * Multi-Blind has no averages: its best result, points and successes
+ * instead, and no brackets. Wide screens have all this in the sidebar instead.
  */
-export default function ScreenStats({ eventId, format, stats, precision, recent, onOpenAverage, onOpenSolve }: Props) {
-  const averages = LEAD[format].flatMap((label) => {
-    const average = stats.averages.find((a) => a.label === label);
-    return average && (average.spec.size < 100 || stats.count >= average.spec.size) ? [average] : [];
+export default function ScreenStats({ eventId, format, stats, specs, solves, precision, onOpenAverage, onOpenSolve }: Props) {
+  const recent = solves.slice(-5);
+  const averages = specs.flatMap((spec) => {
+    const average = stats.averages.find((a) => a.label === averageLabel(spec));
+    return average ? [average] : [];
   });
-  // Brackets only once there's a full ao5 to drop from.
-  const dropped = recent.length === 5 ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
+  // Brackets only once there's a full ao5 to drop from (and never for single-result events).
+  const dropped = recent.length === 5 && format !== "best" ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
   const first = stats.count - recent.length;
   const newestFirst = recent.map((solve, i) => ({ solve, index: first + i, end: dropped[i] })).toReversed();
 
@@ -49,7 +47,7 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats">
       <section className="rounded-box bg-base-200 px-2.5 py-1.5">
         <div className="flex justify-between gap-2 text-xs text-muted">
-          <h2>{recent.length === 5 ? <button type="button" className="link-hover" onClick={() => onOpenAverage(FIVE, stats.count - 1)}>Last 5</button> : "Last 5"}</h2>
+          <h2>{recent.length === 5 && format !== "best" ? <button type="button" className="link-hover" onClick={() => onOpenAverage(FIVE, stats.count - 1)}>Last 5</button> : "Last 5"}</h2>
           <span className="truncate">{stats.count.toLocaleString()} {stats.count === 1 ? "solve" : "solves"}</span>
         </div>
         <ol className="timer-digits text-sm">
@@ -71,7 +69,7 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
           })}
         </ol>
       </section>
-      <section className="rounded-box bg-base-200 px-2.5 py-1.5">
+      {format === "best" ? <MultiBlindStats solves={solves} precision={precision} onOpenSolve={onOpenSolve} /> : <section className="rounded-box bg-base-200 px-2.5 py-1.5">
         <div className="flex justify-between text-xs text-muted"><h2>Averages</h2><span aria-hidden>best</span></div>
         <table className="timer-digits w-full text-sm">
           <thead className="sr-only">
@@ -100,7 +98,28 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
             </tr>
           </tbody>
         </table>
-      </section>
+      </section>}
     </div>
+  );
+}
+
+/** Multi-Blind's side: the best result (WCA ranking), its points, and how many attempts counted. */
+function MultiBlindStats({ solves, precision, onOpenSolve }: { solves: Solve[]; precision: Precision; onOpenSolve: (index: number) => void }) {
+  const { bestIndex, successes, attempts, meanPoints } = multiBlindStats(solves);
+  const best = bestIndex === null ? null : { solve: solves[bestIndex], index: bestIndex };
+  const row = "flex items-baseline justify-between gap-2 leading-6 [@media(max-height:700px)]:leading-5";
+  return (
+    <section className="rounded-box bg-base-200 px-2.5 py-1.5">
+      <h2 className="text-xs text-muted">Results</h2>
+      <dl className="timer-digits text-sm">
+        <div className={row}>
+          <dt className="text-xs text-muted">best</dt>
+          <dd className="min-w-0 truncate">{best ? <button type="button" className="link-hover" onClick={() => onOpenSolve(best.index)}>{formatMultiResult(best.solve, precision)}</button> : "–"}</dd>
+        </div>
+        <div className={row}><dt className="text-xs text-muted">points</dt><dd>{best ? multiPointsText(best.solve) : "–"}</dd></div>
+        <div className={row}><dt className="text-xs text-muted">mean pts</dt><dd>{meanPoints === null ? "–" : meanPoints.toFixed(2)}</dd></div>
+        <div className={row}><dt className="text-xs text-muted">successes</dt><dd>{successes}/{attempts}</dd></div>
+      </dl>
+    </section>
   );
 }

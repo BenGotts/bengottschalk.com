@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FaArrowRotateLeft } from "react-icons/fa6";
-import { timerEvent } from "@bengottschalk/timer-core/events";
+import { FaArrowRotateLeft, FaPlus, FaXmark } from "react-icons/fa6";
+import { timerEvent, type EventFormat } from "@bengottschalk/timer-core/events";
+import { parseAverageLabel } from "@bengottschalk/timer-core/stats";
 import { localDate } from "@bengottschalk/timer-core/zone";
 import { COLOR_FAMILIES, colorFamilyFor, type ColorFamily, type ColorScheme } from "@/lib/colorSchemes";
 import { exportBackup, importBackup } from "@/lib/db";
 import {
-  eventOverrides, resetEvent, setEventColors, setFamilyColors, setForEvent, setGlobal, settingsForEvent,
+  DEFAULT_SCREEN_AVERAGES, eventOverrides, resetEvent, SCREEN_AVERAGE_CHOICES, setEventColors, setFamilyColors, setForEvent, setGlobal, settingsForEvent, sortAverageLabels,
   type EventSettingKey, type Settings, type StoredSettings,
 } from "@/lib/settings";
 import { AccountSettings } from "./Account";
@@ -135,6 +136,14 @@ export default function SettingsDialog({ open, onClose, stored, eventId, onChang
               <p className="text-xs text-muted">Times are always saved to the thousandth. Singles are cut off and averages rounded, the way the WCA shows them.</p>
             </>
           )}
+          <ScreenAverages
+            value={shown.screenAverages}
+            format={event.format}
+            scope={scope}
+            eventName={event.name}
+            onChange={(v) => setPerEvent("screenAverages", v)}
+            own={own("screenAverages")}
+          />
           <Toggle label="Scramble picture" checked={shown.showScrambleImage} onChange={(v) => setPerEvent("showScrambleImage", v)} own={own("showScrambleImage")} />
           {scope === "all" && <div className="flex items-center justify-between gap-4"><span>Theme</span><ThemeToggle /></div>}
         </section>
@@ -237,6 +246,89 @@ function ColorSettings({ stored, eventId, scope, onChange }: { stored: StoredSet
         </button>
       )}
     </section>
+  );
+}
+
+/**
+ * Which current averages the timer screen shows, as chips to switch on and
+ * off, plus any other aoN or moN typed in. Unset (null) means the defaults
+ * for the event's format: ao5 and ao12, or mo3 and ao5 for mean-of-3 events.
+ */
+function ScreenAverages({ value, format, scope, eventName, onChange, own }: {
+  value: string[] | null; format: EventFormat; scope: Scope; eventName: string; onChange: (value: string[] | null) => void; own: Own;
+}) {
+  const [custom, setCustom] = useState("");
+  if (scope === "event" && format === "best") {
+    return (
+      <div className="space-y-1">
+        <span>Averages on the timer screen</span>
+        <p className="text-xs text-muted">{eventName} is judged on single results, so the timer screen shows its best result instead of averages.</p>
+      </div>
+    );
+  }
+  // With nothing chosen, the chips show the defaults: this event's, or (for all events) those of average-of-5 events.
+  const defaults = DEFAULT_SCREEN_AVERAGES[scope === "event" ? format : "ao5"];
+  const current = value ?? [...defaults];
+  const choices = sortAverageLabels([...SCREEN_AVERAGE_CHOICES, ...current]);
+  const toggle = (label: string) => onChange(sortAverageLabels(current.includes(label) ? current.filter((l) => l !== label) : [...current, label]));
+  const customSpec = parseAverageLabel(custom);
+  const add = () => {
+    if (!customSpec) return;
+    onChange(sortAverageLabels([...current, custom]));
+    setCustom("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+          Averages on the timer screen
+          {own && <OwnMarker own={own.own} reset={own.reset} />}
+        </span>
+        {scope === "all" && value !== null && (
+          <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={() => onChange(null)}>
+            <FaArrowRotateLeft aria-hidden /> Defaults
+          </button>
+        )}
+      </div>
+      <fieldset className="flex flex-wrap gap-1.5">
+        <legend className="sr-only">Averages on the timer screen</legend>
+        {choices.map((label) => {
+          const on = current.includes(label);
+          return (
+            <button
+              key={label}
+              type="button"
+              className={`btn btn-xs timer-digits ${on ? (value === null ? "btn-primary btn-soft" : "btn-primary") : "btn-ghost border-base-300"}`}
+              aria-pressed={on}
+              onClick={() => toggle(label)}
+            >
+              {label}{on && <FaXmark className="size-2.5 opacity-60" aria-hidden />}
+            </button>
+          );
+        })}
+        <form className="join" onSubmit={(e) => { e.preventDefault(); add(); }}>
+          <input
+            className="input input-xs join-item w-20 timer-digits"
+            placeholder="ao30"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value.trim().toLowerCase())}
+            aria-label="Another average, like ao30 or mo10"
+          />
+          <button type="submit" className="btn btn-xs join-item" disabled={!customSpec} aria-label="Add the average"><FaPlus aria-hidden /></button>
+        </form>
+      </fieldset>
+      <p className="text-xs text-muted">
+        {value === null
+          ? scope === "all"
+            ? "Defaults: ao5 and ao12, or mo3 and ao5 for mean-of-3 events (6×6, 7×7, 4BLD, 5BLD, FMC). Multi-Blind shows its best result."
+            : `Defaults for ${eventName}.`
+          : scope === "all"
+            ? "For every event, unless an event has its own. Multi-Blind always shows its best result."
+            : current.length === 0 ? "None: the timer screen shows just the time." : `For ${eventName}.`}
+        {" "}Averages trim the best and worst 5% (rounded up), as csTimer and the WCA do.
+      </p>
+    </div>
   );
 }
 

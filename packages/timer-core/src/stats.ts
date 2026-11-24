@@ -18,6 +18,29 @@ export const trimCount = (size: number): number => Math.ceil(size * 0.05);
 /** The label for an average, like "ao5" or "mo3". */
 export const averageLabel = ({ kind, size }: AverageSpec): string => `${kind === "mean" ? "mo" : "ao"}${size}`;
 
+/** Reads a label like "ao12" or "mo3" back into its spec; null for anything else (or an average too small to trim). */
+export function parseAverageLabel(label: string): AverageSpec | null {
+  const match = /^(ao|mo)([1-9]\d{0,4})$/.exec(label.trim().toLowerCase());
+  if (!match) return null;
+  const size = Number(match[2]);
+  const kind: AverageKind = match[1] === "mo" ? "mean" : "average";
+  if (kind === "average" ? size < 3 : size < 2) return null;
+  return { kind, size };
+}
+
+/** Specs in order with duplicates left out (the first of each kept). */
+export function uniqueSpecs(...lists: readonly (readonly AverageSpec[])[]): AverageSpec[] {
+  const seen = new Set<string>();
+  const result: AverageSpec[] = [];
+  for (const spec of lists.flat()) {
+    const label = averageLabel(spec);
+    if (seen.has(label)) continue;
+    seen.add(label);
+    result.push(spec);
+  }
+  return result;
+}
+
 /** One average of exactly `values.length` values, or null if there are none. */
 export function averageOf(values: readonly number[], kind: AverageKind): number | null {
   const size = values.length;

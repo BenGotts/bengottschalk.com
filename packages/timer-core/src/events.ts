@@ -2,7 +2,11 @@ import { CURRENT_EVENT_IDS, eventName } from "@bengottschalk/wca/events";
 
 export type EventKind = "time" | "fewest-moves" | "multi-blind";
 
-/** The average an event is judged on: average of 5 or mean of 3 (Multi-Blind has none). */
+/**
+ * How an event's results are averaged: an average of 5 (best and worst
+ * dropped), a mean of 3, or "best" for an event judged on single results
+ * only (Multi-Blind), which has no rolling average at all.
+ */
 export type EventFormat = "ao5" | "mo3" | "best";
 
 export interface TimerEvent {
@@ -35,7 +39,13 @@ const PUZZLES: Record<string, string> = {
   "333mbf": "3x3x3", fto: "fto",
 };
 
-const MEAN_OF_3 = new Set(["666", "777", "333bf", "333fm", "444bf", "555bf"]);
+/**
+ * Mean-of-3 events: the long ones (6×6, 7×7, 4BLD, 5BLD) and FMC. 3BLD is
+ * averaged over five like the other speed events (as cubers and the WCA
+ * now rank it); Multi-Blind is single results only.
+ */
+const MEAN_OF_3 = new Set(["666", "777", "333fm", "444bf", "555bf"]);
+const SINGLE_ONLY = new Set(["333mbf"]);
 
 function describe(id: string): TimerEvent {
   const blindfolded = id.endsWith("bf");
@@ -44,7 +54,7 @@ function describe(id: string): TimerEvent {
     name: eventName(id),
     shortName: SHORT_NAMES[id] ?? id,
     kind: id === "333fm" ? "fewest-moves" : id === "333mbf" ? "multi-blind" : "time",
-    format: id === "333mbf" ? "best" : MEAN_OF_3.has(id) ? "mo3" : "ao5",
+    format: SINGLE_ONLY.has(id) ? "best" : MEAN_OF_3.has(id) ? "mo3" : "ao5",
     inspection: !blindfolded && id !== "333fm",
     blindfolded,
     scrambleId: id,
@@ -63,4 +73,11 @@ export function timerEvent(id: string): TimerEvent {
 
 export function isTimerEvent(id: string): boolean {
   return BY_ID.has(id);
+}
+
+/** The average an event format leads with (the solve list's running column): mo3, ao5, or none for single-result events. */
+export function formatAverageSpec(format: EventFormat): { kind: "mean" | "average"; size: number } | null {
+  if (format === "mo3") return { kind: "mean", size: 3 };
+  if (format === "ao5") return { kind: "average", size: 5 };
+  return null;
 }

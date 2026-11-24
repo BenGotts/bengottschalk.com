@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAverage, formatTime, parseTime } from "./time";
+import { formatAverage, formatClockTime, formatTime, parseTime } from "./time";
 
 describe("formatTime", () => {
   it("cuts singles off instead of rounding", () => {
@@ -52,5 +52,18 @@ describe("parseTime", () => {
     expect(parseTime("abc")).toBeNull();
     expect(parseTime("1:75.00")).toBeNull();
     expect(parseTime("17500")).toBeNull();
+  });
+});
+
+describe("formatClockTime", () => {
+  it("keeps the fraction past ten minutes and an hour, cut off to the precision", () => {
+    expect(formatClockTime(3_252_349)).toBe("54:12.34");
+    expect(formatClockTime(3_252_349, "thousandths")).toBe("54:12.349");
+    expect(formatClockTime(3_723_456)).toBe("1:02:03.45");
+    expect(formatClockTime(65_000)).toBe("1:05.00");
+  });
+  it("shows whole seconds when that's all that's known", () => {
+    expect(formatClockTime(3_456_000, "hundredths", { wholeSeconds: true })).toBe("57:36");
+    expect(formatClockTime(3_723_000, "thousandths", { wholeSeconds: true })).toBe("1:02:03");
   });
 });
