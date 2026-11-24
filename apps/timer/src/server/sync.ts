@@ -7,7 +7,7 @@
 // change cursor safe: no write with a lower cursor can commit after a device
 // has read past it.
 
-import { and, asc, eq, getTableColumns, gt, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, getTableName, gt, sql, type SQL } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { TimerSession } from "@bengottschalk/timer-core/sessions";
@@ -63,6 +63,9 @@ const solveRecord = z.object({
   fmc: z.object({ solution: z.string().max(2_000), moves: z.number().int().nonnegative() }).nullable(),
   multi: z.object({ solved: z.number().int().nonnegative(), attempted: z.number().int().nonnegative() }).nullable(),
   entry: z.enum(["timer", "typed", "stackmat", "import"]),
+  // Any short lowercase name, so a method a newer timer adds (new hardware) still syncs.
+  // Older versions don't send it: it stays as stored (see KEPT_WHEN_NOT_SENT).
+  timing: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/).nullable().optional(),
   createdAt: ms,
   updatedAt: ms,
   deletedAt: nullableMs,
@@ -97,12 +100,22 @@ export const syncRequestSchema = z.object({
 export type SyncRequestBody = z.infer<typeof syncRequestSchema>;
 export type TimerSyncResponse = SyncResponse<TimerSession, Solve, SotdMark>;
 
+/**
+ * Columns added after devices were already syncing. An older version of the
+ * timer doesn't send them, so an edit from it keeps the stored value instead
+ * of clearing it.
+ */
+const KEPT_WHEN_NOT_SENT = new Set(["timing"]);
+
 /** `SET col = excluded.col` for every column but the key, plus a new change cursor. */
 export function updateFromExcluded(table: PgTable, keys: string[]): Record<string, SQL> {
   const set: Record<string, SQL> = {};
+  const tableName = getTableName(table);
   for (const [name, column] of Object.entries(getTableColumns(table))) {
     if (keys.includes(name) || name === "seq") continue;
-    set[name] = sql.raw(`excluded."${column.name}"`);
+    set[name] = KEPT_WHEN_NOT_SENT.has(name)
+      ? sql.raw(`coalesce(excluded."${column.name}", "${tableName}"."${column.name}")`)
+      : sql.raw(`excluded."${column.name}"`);
   }
   set.seq = sql`nextval('sync_seq')`;
   return set;

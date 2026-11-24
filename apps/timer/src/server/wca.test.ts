@@ -77,6 +77,8 @@ describe("importing WCA results on the server", () => {
     const first = await importCompetitionResults(db, userId, "2016GOTT01");
     expect(first).toMatchObject({ done: 2, total: 2, remaining: 0, saved: 10 });
     expect(await solvesOf(userId)).toHaveLength(10);
+    // Timed by the judges, and recorded as such.
+    expect((await solvesOf(userId)).every((s) => s.timing === "competition")).toBe(true);
     const sessions = await db.select().from(timerSession).where(eq(timerSession.userId, userId));
     expect(sessions.map((s) => s.id)).toEqual(["main-333"]);
     const pulled = await syncForUser(db, userId, { cursor: 0, changes: { sessions: [], solves: [], sotd: [] } });

@@ -174,7 +174,7 @@ describe("Solve of the Day text for a competition attempt", () => {
   it("names the competition, round, attempt, placing, average and records", () => {
     const [solve] = officialSolves(byComp.get("UOFall2026")!, competitionInfo(WCIF, WCA_ID, { name: "UO Fall 2026", startDate: "2026-11-21" }), NOW)
       .filter((s) => s.eventId === "333" && s.competition?.roundTypeId === "f");
-    const text = sotdClipboardText({ solve: { ...solve, competition: { ...solve.competition!, singleRecord: "NR" } }, ao5: null, ao12: null, wasPersonalBest: false, sessionName: "3x3x3 Cube · Main" }, "thousandths");
+    const text = sotdClipboardText({ solve: { ...solve, competition: { ...solve.competition!, singleRecord: "NR" } }, ao5: null, ao12: null, wasPersonalBest: false, sessionName: "3x3x3 Cube · Main" }, "hundredths");
     expect(text).toContain("Competition: UO Fall 2026 (UOFall2026)");
     expect(text).toContain("Round: Final, attempt 1");
     expect(text).toContain("Placed: 3rd");
@@ -182,6 +182,28 @@ describe("Solve of the Day text for a competition attempt", () => {
     expect(text).toContain("Records: NR single");
     expect(text).toContain("Time: 8.07");
     expect(text).not.toContain("Session:");
+  });
+
+  it("follows the precision setting, like every other time", () => {
+    const [solve] = officialSolves(byComp.get("UOFall2026")!, competitionInfo(WCIF, WCA_ID, { name: "UO Fall 2026", startDate: "2026-11-21" }), NOW)
+      .filter((s) => s.eventId === "333" && s.competition?.roundTypeId === "f");
+    const text = sotdClipboardText({ solve, ao5: null, ao12: null, wasPersonalBest: false, sessionName: "" }, "thousandths");
+    expect(text).toContain("Time: 8.070");
+    expect(text).toContain("Round average: 9.040");
+  });
+
+  it("gives no made-up time for a WCA DNF, which has none", () => {
+    const dnf = officialSolves(byComp.get("UOFall2026")!, competitionInfo(WCIF, WCA_ID, { name: "UO Fall 2026", startDate: "2026-11-21" }), NOW)
+      .find((s) => s.penalty === "dnf")!;
+    expect(dnf).toBeDefined();
+    const text = sotdClipboardText({ solve: dnf, ao5: null, ao12: null, wasPersonalBest: false, sessionName: "" }, "hundredths");
+    expect(text).toContain("Time: DNF");
+    expect(text).not.toContain("DNF (");
+  });
+
+  it("records competition attempts as timed by the judges", () => {
+    const solves = officialSolves(byComp.get("UOFall2026")!, competitionInfo(WCIF, WCA_ID, { name: "UO Fall 2026", startDate: "2026-11-21" }), NOW);
+    expect(solves.every((s) => s.timing === "competition")).toBe(true);
   });
 });
 

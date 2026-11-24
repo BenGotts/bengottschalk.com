@@ -14,7 +14,7 @@
 // menu has focus, unless the person is typing in a text field.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Penalty } from "@bengottschalk/timer-core/solve";
+import type { Penalty, TimingMethod } from "@bengottschalk/timer-core/solve";
 
 export type TimerPhase = "idle" | "inspecting" | "holding" | "ready" | "running" | "stopped";
 
@@ -24,7 +24,12 @@ export interface FinishedSolve {
   memoMs: number | null;
   startedAt: number;
   endedAt: number;
+  /** What started the solve: the space bar or a touch on the screen. */
+  timing: StartMethod;
 }
+
+/** The ways this hook can start a solve (hardware timers will add their own). */
+export type StartMethod = Extract<TimingMethod, "keyboard" | "touch">;
 
 interface Options {
   enabled: boolean;
@@ -80,6 +85,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
   const [phase, setPhase] = useState<TimerPhase>("idle");
   const phaseRef = useRef<TimerPhase>("idle");
   const startRef = useRef(0);
+  const startMethodRef = useRef<StartMethod>("keyboard");
   const inspectionStartRef = useRef<number | null>(null);
   const memoRef = useRef<number | null>(null);
   const pointerRef = useRef<number | null>(null);
@@ -142,6 +148,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
         memoMs: memoRef.current === null ? null : Math.round(memoRef.current),
         startedAt: wallClock(startRef.current),
         endedAt: wallClock(time),
+        timing: startMethodRef.current,
       });
       return;
     }
@@ -157,7 +164,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
     }, optionsRef.current.holdMs);
   }, [go, clearHold, clearCallouts]);
 
-  const release = useCallback((time: number) => {
+  const release = useCallback((time: number, method: StartMethod) => {
     const current = phaseRef.current;
     clearHold();
     if (current === "idle" && optionsRef.current.inspection) {
@@ -168,6 +175,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       // Inspection is over: no callouts once the solve has started.
       clearCallouts();
       startRef.current = time;
+      startMethodRef.current = method;
       memoRef.current = null;
       setMemoMs(null);
       setStartedAt(time);
@@ -223,7 +231,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       if (isSpace(e) || current === "stopped") {
         // Keeps a focused button, menu or checkbox from reacting to the space bar.
         if (isSpace(e)) e.preventDefault();
-        release(e.timeStamp);
+        release(e.timeStamp, "keyboard");
       }
     };
     // Switching away mid-press loses the key release: don't leave the timer armed.
@@ -266,7 +274,8 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       // Only the release of a press the timer took counts (not a click on a button).
       if (pointerRef.current !== e.pointerId) return;
       pointerRef.current = null;
-      if (enabled) release(e.timeStamp);
+      // Only touch and pen start solves (a mouse click only stops one).
+      if (enabled) release(e.timeStamp, "touch");
     },
     onPointerCancel: () => {
       pointerRef.current = null;

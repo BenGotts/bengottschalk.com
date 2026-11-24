@@ -47,8 +47,14 @@ async function signIn(email: string): Promise<Headers> {
 const solve = (id: string, updatedAt: number, overrides: Partial<Solve> = {}): Solve => ({
   id, eventId: "333", sessionId: "main-333", timeMs: 10_000, penalty: "none", scramble: "R U", comment: "",
   startedAt: updatedAt, endedAt: null, source: "home", competition: null, memoMs: null, fmc: null, multi: null,
-  entry: "timer", createdAt: updatedAt, updatedAt, deletedAt: null, ...overrides,
+  entry: "timer", timing: "keyboard", createdAt: updatedAt, updatedAt, deletedAt: null, ...overrides,
 });
+
+/** A solve as an older version of the timer sends it: no `timing`. */
+const olderSolve = (id: string, updatedAt: number, overrides: Partial<Solve> = {}): Solve => {
+  const { timing: _timing, ...rest } = solve(id, updatedAt, overrides);
+  return rest;
+};
 
 const main: TimerSession = {
   id: "main-333", eventId: "333", parentId: null, name: "Main", goal: null, status: "active",
@@ -123,6 +129,26 @@ describe("POST /api/sync", () => {
     const start = (await sync(alice, { cursor: 0, changes: empty })).data.cursor;
     const result = await sync(alice, { cursor: start, changes: { ...empty, solves: [attempt] } });
     expect(result.data.changes.solves).toEqual([attempt]);
+  });
+
+  it("keeps how a solve was timed, even when an older version of the timer edits it", async () => {
+    const start = (await sync(alice, { cursor: 0, changes: empty })).data.cursor;
+    const touched = await sync(alice, { cursor: start, changes: { ...empty, solves: [solve("t1", 500, { timing: "touch" })] } });
+    expect(touched.data.changes.solves[0].timing).toBe("touch");
+    // An older device adds a +2 without knowing about `timing`: it isn't lost.
+    const edited = await sync(alice, { cursor: touched.data.cursor, changes: { ...empty, solves: [olderSolve("t1", 600, { penalty: "+2" })] } });
+    expect(edited.data.changes.solves[0]).toMatchObject({ penalty: "+2", timing: "touch" });
+    // A solve from an older device has none.
+    const older = await sync(alice, { cursor: edited.data.cursor, changes: { ...empty, solves: [olderSolve("t2", 700)] } });
+    expect(older.data.changes.solves[0].timing).toBeNull();
+  });
+
+  it("accepts timing methods a newer timer adds, but not nonsense", async () => {
+    const start = (await sync(alice, { cursor: 0, changes: empty })).data.cursor;
+    // Sent as raw JSON: these aren't TimingMethods this version knows.
+    const withTiming = (id: string, timing: string) => JSON.stringify({ cursor: start, changes: { ...empty, solves: [{ ...solve(id, 800), timing }] } });
+    expect((await sync(alice, withTiming("t3", "smart-cube-v2"))).status).toBe(200);
+    expect((await sync(alice, withTiming("t4", "<script>"))).status).toBe(400);
   });
 
   it("keeps each person's records apart", async () => {

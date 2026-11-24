@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { FaRegCopy, FaRegStar, FaStar, FaTrash, FaTrophy } from "react-icons/fa6";
 import { formatRoundAverage, ordinal, roundName } from "@bengottschalk/timer-core/competition";
 import { timerEvent } from "@bengottschalk/timer-core/events";
-import type { CompetitionAttempt, Penalty, Solve } from "@bengottschalk/timer-core/solve";
+import { rawTimeKnown, timingOf, TIMING_LABELS, type CompetitionAttempt, type Penalty, type Solve } from "@bengottschalk/timer-core/solve";
 import { loadCompetitionScrambles } from "@/lib/wca/results";
 import { localDate, sotdClipboardText, type SotdDetails } from "@bengottschalk/timer-core/sotd";
 import { formatTime, type Precision } from "@bengottschalk/timer-core/time";
@@ -121,11 +121,17 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotd
           {solve.competition && <span className="text-muted"> ({TIME_ESTIMATE[solve.competition.timeEstimate]})</span>}
         </dd>
         {solve.penalty !== "none" && event.kind === "time" && (
-          <><dt className="text-muted">Raw time</dt><dd className="timer-digits">{formatTime(solve.timeMs, "thousandths")}</dd></>
+          <>
+            <dt className="text-muted">Raw time</dt>
+            <dd className={rawTimeKnown(solve) ? "timer-digits" : "text-muted"}>
+              {/* The WCA records no time for a DNF. */}
+              {rawTimeKnown(solve) ? formatTime(solve.timeMs, precision) : "Not recorded"}
+            </dd>
+          </>
         )}
         {solve.memoMs !== null && <><dt className="text-muted">Memo</dt><dd className="timer-digits">{formatTime(solve.memoMs, precision)}</dd></>}
         {solve.multi && <><dt className="text-muted">Cubes</dt><dd>{solve.multi.solved}/{solve.multi.attempted}</dd></>}
-        {solve.entry !== "timer" && !solve.competition && <><dt className="text-muted">Entered</dt><dd>{{ typed: "Typed", stackmat: "Stackmat", import: "Imported", timer: "Timer" }[solve.entry]}</dd></>}
+        <dt className="text-muted">Timed with</dt><dd>{TIMING_LABELS[timingOf(solve)]}</dd>
       </dl>
 
       <div>
@@ -188,7 +194,7 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotd
           <FaRegCopy aria-hidden /> Copy
         </button>
         {sotdEnabled && isSotd && (
-          <button type="button" className="btn btn-sm" onClick={() => void copy("Copied for Claude", sotdClipboardText(sotdDetails(solve)))}>
+          <button type="button" className="btn btn-sm" onClick={() => void copy("Copied for Claude", sotdClipboardText(sotdDetails(solve), precision))}>
             <FaRegCopy aria-hidden /> Copy for Claude
           </button>
         )}
