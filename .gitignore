@@ -43,3 +43,6 @@ AGENTS.md
 
 # turborepo
 .turbo
+
+# Bundled at build time by apps/timer/scripts/bundle-cubing.mjs
+apps/timer/public/vendor/

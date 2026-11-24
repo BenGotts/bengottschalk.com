@@ -1,0 +1,21 @@
+{
+  "name": "@bengottschalk/timer-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The timer's logic with no UI: times, penalties, averages, events, sessions and branches, Solve of the Day, and the csTimer import.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bengottschalk/wca": "*"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

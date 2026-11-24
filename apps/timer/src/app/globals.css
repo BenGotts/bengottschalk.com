@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+@import '@bengottschalk/theme/theme.css';
+
+/* The timer's digits don't shift as they change. */
+.timer-digits {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* While a solve runs, everything but the time fades out. */
+.focus-fade {
+  transition: opacity 150ms ease-out;
+}
+[data-solving="true"] .focus-fade {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The timer area is held with a thumb: no text selection, callouts or double-tap zoom. */
+.touch-surface {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+twisty-player {
+  width: 100%;
+  height: 100%;
+}

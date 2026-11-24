@@ -1,0 +1,92 @@
+import { timerEvent } from "./events";
+
+export type Penalty = "none" | "+2" | "dnf";
+
+/** Where a solve came from. Competition attempts arrive with WCA results (step 3). */
+export type SolveSource = "home" | "competition";
+
+export interface MultiBlindResult {
+  solved: number;
+  attempted: number;
+}
+
+export interface Solve {
+  /** A UUIDv7, made on the device, so solves sync without clashing. */
+  id: string;
+  eventId: string;
+  /** The session the solve was done in: a main session or a branch. It never changes, even after a merge. */
+  sessionId: string;
+  /** The time in whole milliseconds, without the penalty. For FMC, the time spent (if timed). */
+  timeMs: number;
+  penalty: Penalty;
+  scramble: string;
+  comment: string;
+  /** When the solve started (wall clock, ms since 1970). Sorts solves and lines them up with recordings. */
+  startedAt: number;
+  /** When it stopped (wall clock). Missing for typed and imported solves. */
+  endedAt: number | null;
+  source: SolveSource;
+  /** Blindfolded: how long memorisation took, when split. */
+  memoMs: number | null;
+  /** FMC: the solution and its move count. */
+  fmc: { solution: string; moves: number } | null;
+  /** Multi-Blind: cubes solved out of attempted. */
+  multi: MultiBlindResult | null;
+  /** How the time was entered. */
+  entry: "timer" | "typed" | "stackmat" | "import";
+  createdAt: number;
+  updatedAt: number;
+  /** Deleted solves are kept (marked) so the deletion reaches other devices. */
+  deletedAt: number | null;
+}
+
+/** Whether a Multi-Blind result counts: at least 2 solved, and no more unsolved than solved. */
+export function multiBlindPoints({ solved, attempted }: MultiBlindResult): number | null {
+  const unsolved = attempted - solved;
+  if (solved < 2 || solved < unsolved) return null;
+  return solved - unsolved;
+}
+
+/**
+ * The value stats are worked out from: milliseconds with any +2, the move
+ * count for FMC, or `Infinity` for a DNF. Multi-Blind is ranked separately
+ * (see `compareMultiBlind`); its value is its time, or `Infinity` for a DNF.
+ */
+export function solveValue(solve: Pick<Solve, "eventId" | "timeMs" | "penalty" | "fmc" | "multi">): number {
+  if (solve.penalty === "dnf") return Infinity;
+  const { kind } = timerEvent(solve.eventId);
+  if (kind === "fewest-moves") return solve.fmc ? solve.fmc.moves : Infinity;
+  if (kind === "multi-blind" && (!solve.multi || multiBlindPoints(solve.multi) === null)) return Infinity;
+  return solve.timeMs + (solve.penalty === "+2" ? 2000 : 0);
+}
+
+/** Multi-Blind ranking: more points, then less time, then fewer unsolved. Negative when `a` is better. */
+export function compareMultiBlind(a: Solve, b: Solve): number {
+  const points = (s: Solve) => (s.penalty === "dnf" || !s.multi ? null : multiBlindPoints(s.multi));
+  const pa = points(a);
+  const pb = points(b);
+  if (pa === null || pb === null) return pa === pb ? 0 : pa === null ? 1 : -1;
+  if (pa !== pb) return pb - pa;
+  const time = solveValue(a) - solveValue(b);
+  if (time !== 0) return time;
+  return (a.multi!.attempted - a.multi!.solved) - (b.multi!.attempted - b.multi!.solved);
+}
+
+/** Multi-Blind's time limit: ten minutes a cube, an hour at most. */
+export function multiBlindTimeLimitMs(cubes: number): number {
+  return Math.min(cubes, 6) * 600_000;
+}
+
+/** FMC solutions count outer block turns: rotations are free, slice moves count 2. */
+export function countFmcMoves(solution: string): number | null {
+  const withoutComments = solution.replaceAll(/\/\/.*$/gm, "");
+  const tokens = withoutComments.trim().split(/\s+/).filter(Boolean);
+  let moves = 0;
+  for (const token of tokens) {
+    if (!/^(?:[URFDLB]w?|[urfdlb]|[MES]|[xyz])(?:2|')?$/.test(token)) return null;
+    const face = token[0];
+    if ("xyz".includes(face)) continue;
+    moves += "MES".includes(face) ? 2 : 1;
+  }
+  return moves;
+}
