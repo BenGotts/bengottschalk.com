@@ -139,7 +139,7 @@ describe("importing WCA results on the server", () => {
       startedAt: t, endedAt: null, source: "competition", memoMs: null, fmc: null, multi: null, entry: "import", createdAt: t, updatedAt: t, deletedAt: null,
       competition: { competitionId: "LiveOpen2026", competitionName: "LiveOpen2026", roundTypeId: "1", roundNumber: 1, attempt: 2, status: "live", timeEstimate: "day", position: null, roundAverage: null, singleRecord: null, averageRecord: null },
     });
-    await db.insert(sotdMark).values({ userId, date: "2026-10-01", solveId: "wca-LiveOpen2026-333-1-2", updatedAt: t, deletedAt: null });
+    await db.insert(sotdMark).values({ userId, eventId: "333", date: "2026-10-01", solveId: "wca-LiveOpen2026-333-1-2", updatedAt: t, deletedAt: null });
 
     await importCompetitionResults(db, userId, "2017DDDD01");
     const [live] = await db.select().from(solve).where(and(eq(solve.userId, userId), eq(solve.id, "wca-LiveOpen2026-333-1-2")));

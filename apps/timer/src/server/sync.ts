@@ -7,7 +7,7 @@
 // change cursor safe: no write with a lower cursor can commit after a device
 // has read past it.
 
-import { and, asc, eq, getTableColumns, getTableName, gt, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, getTableName, gt, inArray, sql, type SQL } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { TimerSession } from "@bengottschalk/timer-core/sessions";
@@ -72,6 +72,10 @@ const solveRecord = z.object({
 });
 
 const sotdRecord = z.object({
+  // Each event has its own Solve of the Day. Versions of the timer from
+  // before that don't send it: the server takes the marked solve's event
+  // (see withServerEvents).
+  eventId: z.string().min(1).max(20).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   solveId: z.string().min(1).max(200),
   updatedAt: ms,
@@ -138,6 +142,25 @@ async function upsertNewer(tx: TimerDb, table: typeof timerSession | typeof solv
   }
 }
 
+type IncomingMark = SyncRequestBody["changes"]["sotd"][number];
+
+/**
+ * Marks from an older version of the timer carry no event: they take their
+ * solve's, as stored (after this request's own solves are saved). A mark
+ * whose solve the server doesn't have is left out: it couldn't be shown, and
+ * its event (part of its key) can't be known.
+ */
+async function withServerEvents(tx: TimerDb, userId: string, marks: IncomingMark[]): Promise<SotdMark[]> {
+  const missing = [...new Set(marks.filter((m) => m.eventId === undefined).map((m) => m.solveId))];
+  const events = new Map<string, string>();
+  for (let i = 0; i < missing.length; i += 500) {
+    const rows = await tx.select({ id: solve.id, eventId: solve.eventId }).from(solve)
+      .where(and(eq(solve.userId, userId), inArray(solve.id, missing.slice(i, i + 500))));
+    for (const row of rows) events.set(row.id, row.eventId);
+  }
+  return marks.flatMap(({ solveId, eventId = events.get(solveId), ...mark }) => (eventId === undefined ? [] : [{ ...mark, solveId, eventId }]));
+}
+
 /** Drops the server-only columns from a stored row. */
 function stripServerColumns<T extends { userId: string; seq: number }>({ userId: _userId, seq: _seq, ...record }: T) {
   return record;
@@ -167,7 +190,8 @@ export async function syncForUser(
     const { sessions, solves, sotd } = request.changes;
     await upsertNewer(tx, timerSession, [timerSession.userId, timerSession.id], ["userId", "id"], sessions.map((r) => ({ ...r, userId })));
     await upsertNewer(tx, solve, [solve.userId, solve.id], ["userId", "id"], solves.map((r) => ({ ...r, userId })));
-    await upsertNewer(tx, sotdMark, [sotdMark.userId, sotdMark.date], ["userId", "date"], sotd.map((r) => ({ ...r, userId })));
+    const marks = await withServerEvents(tx, userId, sotd);
+    await upsertNewer(tx, sotdMark, [sotdMark.userId, sotdMark.eventId, sotdMark.date], ["userId", "eventId", "date"], marks.map((r) => ({ ...r, userId })));
 
     const since = request.cursor;
     const [sessionRows, solveRows, markRows] = await Promise.all([

@@ -6,7 +6,7 @@ import { formatRoundAverage, ordinal, roundName } from "@bengottschalk/timer-cor
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { rawTimeKnown, timingOf, TIMING_LABELS, type CompetitionAttempt, type Penalty, type Solve } from "@bengottschalk/timer-core/solve";
 import { loadCompetitionScrambles } from "@/lib/wca/results";
-import { localDate, sotdClipboardText, type SotdDetails } from "@bengottschalk/timer-core/sotd";
+import { localDate, sotdClipboardText, sotdKey, sotdReplaceQuestion, type SotdDetails } from "@bengottschalk/timer-core/sotd";
 import { formatTime, type Precision } from "@bengottschalk/timer-core/time";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, setSotd, updateSolve } from "@/lib/db";
@@ -19,8 +19,8 @@ interface Props {
   solve: Solve | null;
   onClose: () => void;
   precision: Precision;
-  /** Which solve is Solve of the Day on each day. */
-  sotdByDate: Map<string, string>;
+  /** Which solve is Solve of the Day for each event and day (keyed by `sotdKey`). */
+  sotdByEventDay: Map<string, string>;
   /** Solve of the Day is only for the site owner's account. */
   sotdEnabled: boolean;
   /** The details "Copy for Claude" needs, worked out from the session. */
@@ -37,10 +37,10 @@ const PENALTIES: { value: Penalty; label: string }[] = [
   { value: "dnf", label: "DNF" },
 ];
 
-export default function SolveDialog({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props) {
+export default function SolveDialog({ solve, onClose, precision, sotdByEventDay, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props) {
   return (
     <Modal open={solve !== null} onClose={onClose} title={solve ? formatSolve(solve, precision) : "Solve"}>
-      {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByDate={sotdByDate} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={readOnly} colorsFor={colorsFor} />}
+      {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByEventDay={sotdByEventDay} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={readOnly} colorsFor={colorsFor} />}
     </Modal>
   );
 }
@@ -84,12 +84,12 @@ function CompetitionDetails({ solve, competition, precision }: { solve: Solve; c
   );
 }
 
-function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props & { solve: Solve }) {
+function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props & { solve: Solve }) {
   const [comment, setComment] = useState(solve.comment);
   const [copied, setCopied] = useState<string | null>(null);
   const event = timerEvent(solve.eventId);
   const day = localDate(solve.startedAt);
-  const sotdId = sotdByDate.get(day);
+  const sotdId = sotdByEventDay.get(sotdKey(solve.eventId, day));
   const isSotd = sotdId === solve.id;
   const editable = !readOnly && solve.source === "home";
 
@@ -104,9 +104,9 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotd
   };
 
   const toggleSotd = async () => {
-    if (isSotd) return setSotd(day, null);
-    if (sotdId && !confirm("Another solve is already Solve of the Day for this day. Replace it with this one?")) return;
-    await setSotd(day, solve.id);
+    if (isSotd) return setSotd(solve.eventId, day, null);
+    if (sotdId && !confirm(sotdReplaceQuestion(solve.eventId, "this day"))) return;
+    await setSotd(solve.eventId, day, solve.id);
   };
 
   const saveComment = () => {

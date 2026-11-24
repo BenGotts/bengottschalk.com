@@ -8,7 +8,7 @@ import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
-import { localDate, sotdByDate as marksByDate, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
+import { localDate, sotdByEventDay, sotdKey, sotdReplaceQuestion, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
 import { TIMER_NAME, WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
 import { confirmSolveDeletion } from "@/lib/confirm";
@@ -125,7 +125,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   const sessions = useLiveQuery(() => db.sessions.where("eventId").equals(activeEventId).toArray(), [activeEventId]) ?? NO_SESSIONS;
   const allSolves = useLiveQuery(() => db.solves.where("eventId").equals(activeEventId).toArray(), [activeEventId]) ?? NO_SOLVES;
-  const marks = useLiveQuery(() => db.sotd.toArray(), []) ?? NO_MARKS;
+  const marks = useLiveQuery(() => db.sotdMarks.toArray(), []) ?? NO_MARKS;
 
   const main = sessions.find((s) => s.id === mainSessionId(activeEventId)) ?? null;
   const current: TimerSession | null = sessions.find((s) => s.id === sessionIds[activeEventId] && s.deletedAt === null) ?? main;
@@ -145,7 +145,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const rolling = useMemo(() => rollingAverages(values, rollingSpec), [values, rollingSpec]);
   // Solve of the Day is only for the site owner's account (it feeds their Solve of the Day videos).
   const sotdEnabled = useSignedInWcaId() === OWNER_WCA_ID;
-  const sotdMap = useMemo(() => marksByDate(marks), [marks]);
+  const sotdMap = useMemo(() => sotdByEventDay(marks), [marks]);
   const sotdSolveIds = useMemo(() => (sotdEnabled ? new Set(sotdMap.values()) : NO_IDS), [sotdEnabled, sotdMap]);
   const mobileTabs = sotdEnabled ? MOBILE_TABS : MOBILE_TABS.filter((item) => item.view !== "sotd");
   // Signing out (or into another account) while on the SOTD screen goes back to the solves.
@@ -231,9 +231,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         KeyS: () => {
           if (!last || !sotdEnabled) return;
           const day = localDate(last.startedAt);
-          const marked = sotdMap.get(day);
-          if (marked === last.id) void setSotd(day, null);
-          else if (!marked || confirm("Another solve is already Solve of the Day for today. Replace it?")) void setSotd(day, last.id);
+          const marked = sotdMap.get(sotdKey(last.eventId, day));
+          if (marked === last.id) void setSotd(last.eventId, day, null);
+          else if (!marked || confirm(sotdReplaceQuestion(last.eventId, "today"))) void setSotd(last.eventId, day, last.id);
         },
         KeyZ: () => {
           if (!last) return;
@@ -399,7 +399,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             ) : settings.entry === "typing" ? (
               <>
                 <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
-                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} /></div>
+                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} /></div>
               </>
             ) : (
               <>
@@ -419,7 +419,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                     : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
                 </p>
                 <div className={`focus-fade ${timer.phase === "idle" ? "" : "invisible"}`}>
-                  <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} />
+                  <LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} />
                 </div>
               </>
             )}
@@ -465,7 +465,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             />
           </div>
           <div className={`min-h-0 flex-1 overflow-y-auto ${shownView === "sotd" ? "block" : "hidden"} ${shownTab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
-            <SotdList precision={settings.precision} onOpen={openFromSotd} />
+            <SotdList eventId={activeEventId} precision={settings.precision} onOpen={openFromSotd} />
           </div>
         </aside>
       </div>
@@ -554,7 +554,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       </Modal>
       {/* Opens above whichever dialog asked (native dialogs stack in the order they open). */}
       <ConfirmDialog />
-      <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} colorsFor={colorsFor} />
+      <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} colorsFor={colorsFor} />
       <Modal open={pendingMulti !== null} onClose={() => setPendingMulti(null)} title="How many did you solve?">
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />
       </Modal>

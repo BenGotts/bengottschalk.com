@@ -29,6 +29,13 @@
       "when": 1795542832693,
       "tag": "0003_timing",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795544278661,
+      "tag": "0004_sotd_per_event",
+      "breakpoints": true
     }
   ]
 }

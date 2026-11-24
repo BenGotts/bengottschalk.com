@@ -13,7 +13,7 @@ import { recordsToApply } from "@bengottschalk/timer-core/sync";
 import type { SyncChanges } from "@bengottschalk/timer-core/sync";
 import type { TimerSession } from "@bengottschalk/timer-core/sessions";
 import type { Solve } from "@bengottschalk/timer-core/solve";
-import type { SotdMark } from "@bengottschalk/timer-core/sotd";
+import { sotdKey, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { TimerSyncResponse } from "@/server/sync";
 import { clearLocalData, db, getMeta, onLocalChange, remoteWrite, setMeta, withoutSyncFlag, type SyncFlag } from "./db";
 
@@ -132,7 +132,7 @@ async function syncRounds(): Promise<void> {
       const [sessions, solves, sotd] = await Promise.all([
         db.sessions.where("pendingSync").equals(1).limit(BATCH).toArray(),
         db.solves.where("pendingSync").equals(1).limit(BATCH).toArray(),
-        db.sotd.where("pendingSync").equals(1).limit(BATCH).toArray(),
+        db.sotdMarks.where("pendingSync").equals(1).limit(BATCH).toArray(),
       ]);
       const sending = sessions.length + solves.length + sotd.length > 0;
       // A prefetched page is only good if nothing needs sending and the cursor is the one it asked from.
@@ -151,15 +151,15 @@ async function syncRounds(): Promise<void> {
         const remote = data.changes;
         const localSessions = await db.sessions.bulkGet(remote.sessions.map((r) => r.id));
         const localSolves = await db.solves.bulkGet(remote.solves.map((r) => r.id));
-        const localMarks = await db.sotd.bulkGet(remote.sotd.map((r) => r.date));
+        const localMarks = await db.sotdMarks.bulkGet(remote.sotd.map((r): [string, string] => [r.eventId, r.date]));
         await db.sessions.bulkPut(recordsToApply(remote.sessions, present(localSessions), (r) => r.id).map((r) => ({ ...r, pendingSync: 0 as const })));
         await db.solves.bulkPut(recordsToApply(remote.solves, present(localSolves), (r) => r.id).map((r) => ({ ...r, pendingSync: 0 as const })));
-        await db.sotd.bulkPut(recordsToApply(remote.sotd, present(localMarks), (r) => r.date).map((r) => ({ ...r, pendingSync: 0 as const })));
+        await db.sotdMarks.bulkPut(recordsToApply(remote.sotd, present(localMarks), (r) => sotdKey(r.eventId, r.date)).map((r) => ({ ...r, pendingSync: 0 as const })));
 
         // What was sent is on the server now, unless it was edited again meanwhile.
         await db.sessions.bulkPut(stillAsSent(await db.sessions.bulkGet(sessions.map((r) => r.id)), sessions));
         await db.solves.bulkPut(stillAsSent(await db.solves.bulkGet(solves.map((r) => r.id)), solves));
-        await db.sotd.bulkPut(stillAsSent(await db.sotd.bulkGet(sotd.map((r) => r.date)), sotd));
+        await db.sotdMarks.bulkPut(stillAsSent(await db.sotdMarks.bulkGet(sotd.map((r): [string, string] => [r.eventId, r.date])), sotd));
         await setMeta(CURSOR_KEY, data.cursor);
       });
 
@@ -270,10 +270,10 @@ export async function resolveUnsyncedSolves(choice: "add" | "remove"): Promise<v
     await clearLocalData();
   } else {
     // Send everything, including records last synced to another account.
-    await db.transaction("rw", [db.solves, db.sessions, db.sotd], async () => {
+    await db.transaction("rw", [db.solves, db.sessions, db.sotdMarks], async () => {
       await db.solves.toCollection().modify({ pendingSync: 1 });
       await db.sessions.toCollection().modify({ pendingSync: 1 });
-      await db.sotd.toCollection().modify({ pendingSync: 1 });
+      await db.sotdMarks.toCollection().modify({ pendingSync: 1 });
     });
   }
   await setMeta(OWNER_KEY, state.user.id);
@@ -291,7 +291,7 @@ export function stopSync(): void {
 
 /** How many local changes haven't reached the server. */
 export async function countPendingChanges(): Promise<number> {
-  const counts = await Promise.all([db.solves, db.sessions, db.sotd].map((table) => table.where("pendingSync").equals(1).count()));
+  const counts = await Promise.all([db.solves, db.sessions, db.sotdMarks].map((table) => table.where("pendingSync").equals(1).count()));
   return counts.reduce((a, b) => a + b, 0);
 }
 
