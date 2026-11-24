@@ -255,6 +255,26 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
     clearCallouts();
   }, [clearHold, clearCallouts]);
 
+  // A touch that stops a solve brings the buttons back (OK/+2/DNF, delete, …) right under the finger, and the
+  // phone then sends its tap to whatever is there. Swallow clicks until just after the finger lifts, so stopping
+  // never does anything else.
+  const swallowClickRef = useRef<{ until: number } | null>(null);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const swallow = swallowClickRef.current;
+      if (!swallow) return;
+      if (performance.now() > swallow.until) {
+        swallowClickRef.current = null;
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    // Capture phase, so it runs before any button's own handler.
+    window.addEventListener("click", onClick, true);
+    return () => window.removeEventListener("click", onClick, true);
+  }, []);
+
   /** Pointer handlers for the timer area (touch screens, or clicking with a mouse). */
   const surfaceHandlers = {
     onPointerDown: (e: React.PointerEvent) => {
@@ -270,6 +290,8 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       // Nor do touches on the stats cards and other areas marked off from the timer (they only stop a running solve).
       if (!running && e.target instanceof Element && e.target.closest("[data-timer-ignore]")) return;
       pointerRef.current = e.pointerId;
+      // This touch stops the solve: its click (sent after the finger lifts) mustn't reach a button.
+      if (running) swallowClickRef.current = { until: Number.POSITIVE_INFINITY };
       // Keep getting this pointer's release even if the thumb slides off the timer.
       e.currentTarget.setPointerCapture?.(e.pointerId);
       press(e.timeStamp);
@@ -278,6 +300,8 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       // Only the release of a press the timer took counts (not a click on a button).
       if (pointerRef.current !== e.pointerId) return;
       pointerRef.current = null;
+      // The click follows the lift almost at once; swallow clicks for a moment after it.
+      if (swallowClickRef.current) swallowClickRef.current = { until: performance.now() + 500 };
       // Only touch and pen start solves (a mouse click only stops one).
       if (enabled) release(e.timeStamp, "touch");
     },
