@@ -29,6 +29,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import LastSolveActions from "./LastSolveActions";
 import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
+import NumberField from "./NumberField";
 import ScrambleImage from "./ScrambleImage";
 import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
@@ -377,7 +378,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
           <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-3 text-center lg:max-h-none" aria-label="Scramble">
             {event.kind === "multi-blind" ? (
-              <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} />
+              <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} scheme={colorsFor(activeEventId)} />
             ) : (
               <>
                 <p className={`timer-digits mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
@@ -575,13 +576,14 @@ function ScrambleText({ scramble }: { scramble: string }) {
 
 function MultiResultForm({ attempted, onSave }: { attempted: number; onSave: (solved: number) => void }) {
   const [solved, setSolved] = useState(attempted);
+  const [valid, setValid] = useState(true);
   return (
-    <form className="flex items-end gap-3" onSubmit={(e) => { e.preventDefault(); onSave(solved); }}>
-      <label>
+    <form className="flex items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(solved); }}>
+      <label htmlFor="mbld-solved">
         <span className="mb-1 block text-sm text-muted">Solved out of {attempted}</span>
-        <input type="number" min={0} max={attempted} className="input w-28" value={solved} onChange={(e) => setSolved(Math.max(0, Math.min(attempted, Number(e.target.value) || 0)))} />
+        <NumberField id="mbld-solved" className="w-28" value={solved} min={0} max={attempted} onChange={setSolved} onValidity={setValid} />
       </label>
-      <button type="submit" className="btn btn-primary">Save</button>
+      <button type="submit" className="btn btn-primary" disabled={!valid}>Save</button>
     </form>
   );
 }
