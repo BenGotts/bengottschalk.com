@@ -353,7 +353,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                   {timer.phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
                     : newBest ? <span className="font-medium text-accent">New best single</span>
                     : event.kind === "multi-blind" && !mbldScrambles ? <span className="text-muted">Make scrambles to start</span>
-                    : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space or tap to inspect" : "Hold space or the timer, then let go"}</span>}
+                    : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
                 </p>
                 <div className={`focus-fade ${timer.phase === "idle" ? "" : "invisible"}`}>
                   <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} />
