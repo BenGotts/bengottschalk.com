@@ -50,12 +50,15 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
   const rows = [];
   for (let r = first; r < last; r++) rows.push(solves.length - 1 - r);
 
-  // On desktop the latest five stand out: their ao5's dropped best and worst in brackets (green and red), and a
-  // thick line under them. Phones already show the last five on the timer screen, so the list stays plain there.
-  // Multi-Blind has no averages: no brackets, and its points where the running average would be.
-  const multi = timerEvent(eventId).kind === "multi-blind";
-  const recentFrom = solves.length - 5;
-  const recentDropped = solves.length >= 5 && !multi ? averageBreakdown(solves.slice(recentFrom).map(solveValue), "average").dropped : [];
+  // On desktop the solves in the current average stand out with a thick line under them: the last five for ao5
+  // events, with the ao5's dropped best and worst in brackets (green and red), or the last three for mo3 events (a
+  // mean drops nothing, so no brackets). Phones already show these on the timer screen, so the list stays plain
+  // there. Multi-Blind has no averages: no line, no brackets, and its points where the running average would be.
+  const { format } = timerEvent(eventId);
+  const multi = format === "best";
+  const recentSize = format === "mo3" ? 3 : 5;
+  const recentFrom = multi || solves.length < recentSize ? -1 : solves.length - recentSize;
+  const recentDropped = recentFrom >= 0 && format === "ao5" ? averageBreakdown(solves.slice(recentFrom).map(solveValue), "average").dropped : [];
 
   return (
     <div ref={scroller} className="h-full overflow-y-auto">
@@ -78,7 +81,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                 <td className="text-muted">{i + 1}</td>
                 <td>
                   {(() => {
-                    const dropped = i >= recentFrom ? recentDropped[i - recentFrom] : null;
+                    const dropped = recentFrom >= 0 && i >= recentFrom ? recentDropped[i - recentFrom] ?? null : null;
                     const time = formatSolve(solve, precision);
                     return (
                       <button

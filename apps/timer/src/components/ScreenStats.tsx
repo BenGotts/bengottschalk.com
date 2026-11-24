@@ -22,24 +22,28 @@ interface Props {
   onOpenSolve: (index: number) => void;
 }
 
-const FIVE: AverageSpec = { kind: "average", size: 5 };
+/** The average the recent solves make up: an ao5, or a mo3 for mean-of-3 events. */
+const recentSpec = (format: EventFormat): AverageSpec => (format === "mo3" ? { kind: "mean", size: 3 } : { kind: "average", size: 5 });
 
 /**
- * Phones: the stats under the timer, as two lists side by side. The last five
- * solves, newest first (once there are five, the ao5's dropped best and worst
- * in brackets, green and red; a time opens its solve, the heading opens the
- * ao5), and the averages chosen in settings and the mean with their bests.
- * Multi-Blind has no averages: its best result, points and successes
- * instead, and no brackets. Wide screens have all this in the sidebar instead.
+ * Phones: the stats under the timer, as two lists side by side. The recent
+ * solves, newest first: the last five for ao5 events (once there are five, the
+ * ao5's dropped best and worst in brackets, green and red), the last three for
+ * mo3 events (a mean drops nothing, so no brackets). A time opens its solve,
+ * the heading opens the ao5 or mo3. Beside them, the averages chosen in
+ * settings and the mean with their bests. Multi-Blind has no averages: its
+ * last five, then its best result, points and successes, and no brackets. Wide screens have all this in the sidebar instead.
  */
 export default function ScreenStats({ eventId, format, stats, specs, solves, precision, onOpenAverage, onOpenSolve }: Props) {
-  const recent = solves.slice(-5);
+  const spec = recentSpec(format);
+  const recent = solves.slice(-spec.size);
+  const full = recent.length === spec.size && format !== "best";
   const averages = specs.flatMap((spec) => {
     const average = stats.averages.find((a) => a.label === averageLabel(spec));
     return average ? [average] : [];
   });
-  // Brackets only once there's a full ao5 to drop from (and never for single-result events).
-  const dropped = recent.length === 5 && format !== "best" ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
+  // Brackets only once there's a full ao5 to drop from (a mean drops nothing; single-result events have no average).
+  const dropped = full && spec.kind === "average" ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
   const first = stats.count - recent.length;
   const newestFirst = recent.map((solve, i) => ({ solve, index: first + i, end: dropped[i] })).toReversed();
 
@@ -47,7 +51,7 @@ export default function ScreenStats({ eventId, format, stats, specs, solves, pre
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats">
       <section className="rounded-box bg-base-200 px-2.5 py-1.5">
         <div className="flex justify-between gap-2 text-xs text-muted">
-          <h2>{recent.length === 5 && format !== "best" ? <button type="button" className="link-hover" onClick={() => onOpenAverage(FIVE, stats.count - 1)}>Last 5</button> : "Last 5"}</h2>
+          <h2>{full ? <button type="button" className="link-hover" onClick={() => onOpenAverage(spec, stats.count - 1)}>Last {spec.size}</button> : `Last ${spec.size}`}</h2>
           <span className="truncate">{stats.count.toLocaleString()} {stats.count === 1 ? "solve" : "solves"}</span>
         </div>
         <ol className="timer-digits text-sm">
