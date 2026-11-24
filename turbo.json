@@ -5,7 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**"],
-      "env": ["YOUTUBE_API_KEY", "RESEND_API_KEY", "SEND_TO_EMAIL", "WCA_API_URL", "NEXT_PUBLIC_WCA_LIVE_URL"]
+      "env": ["YOUTUBE_API_KEY", "RESEND_API_KEY", "SEND_TO_EMAIL", "WCA_API_URL", "NEXT_PUBLIC_WCA_LIVE_URL", "TIMER_PLACEHOLDER"]
     },
     "dev": {
       "cache": false,
