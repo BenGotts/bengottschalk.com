@@ -295,6 +295,19 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const scrambleImage = settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" ? (
     <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
   ) : null;
+  /** The scramble picture as a button that opens it large. */
+  const enlargeButton = (size: string) => (
+    <button
+      type="button"
+      className={`${size} block cursor-zoom-in rounded-field`}
+      onClick={(e) => { e.currentTarget.blur(); setDialog("scramble"); }}
+      aria-label="Enlarge the scramble picture"
+      title="Enlarge"
+    >
+      {/* The picture itself ignores taps, so the whole button takes them. */}
+      <div className="pointer-events-none h-full w-full">{scrambleImage}</div>
+    </button>
+  );
 
   // The event picker and session controls: in the sidebar on wide screens, in the header on phones.
   const eventControls = (
@@ -372,7 +385,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             )}
           </section>
 
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-4 py-4">
+          {/* On phones with a scramble picture, the time sits under the scramble and the picture fills the space below; otherwise the time is centred. */}
+          <div className={`flex min-h-0 flex-col items-center justify-center gap-1 px-4 py-4 lg:flex-1 [@media(max-height:700px)]:py-1 ${scrambleImage ? "flex-none" : "flex-1"}`}>
             {event.kind === "fewest-moves" ? (
               <FmcPanel scramble={scramble.scramble} onSave={saveFmc} disabled={!writable} />
             ) : settings.entry === "typing" ? (
@@ -404,20 +418,15 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             )}
           </div>
 
-          {/* The scramble picture at the bottom right; on phones, the stats under it across the full width (wide screens have them in the sidebar). */}
+          {/* Phones: the scramble picture centred in the space between the time and the stats. */}
+          {scrambleImage && (
+            <div className="focus-fade flex min-h-16 flex-1 items-center justify-center px-3 pb-2 lg:hidden">
+              {enlargeButton("h-full max-h-40 w-full max-w-56")}
+            </div>
+          )}
+          {/* Wide screens: the scramble picture at the bottom right. Phones: the stats across the full width (wide screens have them in the sidebar). */}
           <div className="focus-fade flex shrink-0 flex-col gap-2 px-3 pb-3">
-            {scrambleImage && (
-              <button
-                type="button"
-                className="h-24 w-32 cursor-zoom-in self-end rounded-field [@media(max-height:700px)]:h-20 [@media(max-height:700px)]:w-28 lg:h-40 lg:w-56"
-                onClick={(e) => { e.currentTarget.blur(); setDialog("scramble"); }}
-                aria-label="Enlarge the scramble picture"
-                title="Enlarge"
-              >
-                {/* The picture itself ignores taps, so the whole button takes them. */}
-                <div className="pointer-events-none h-full w-full">{scrambleImage}</div>
-              </button>
-            )}
+            {scrambleImage && <div className="hidden self-end lg:block">{enlargeButton("h-40 w-56")}</div>}
             <ScreenStats eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} recent={recentSolves} />
           </div>
         </main>

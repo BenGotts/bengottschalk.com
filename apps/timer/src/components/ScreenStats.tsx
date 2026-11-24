@@ -57,7 +57,7 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
           {newestFirst.map(({ solve, index, end }) => {
             const time = formatSolve(solve, precision);
             return (
-              <li key={solve.id} className="flex items-baseline gap-2 leading-6">
+              <li key={solve.id} className="flex items-baseline gap-2 leading-6 [@media(max-height:700px)]:leading-5">
                 <span className="w-8 shrink-0 text-right text-xs text-muted">{index + 1}.</span>
                 <button
                   type="button"
@@ -79,7 +79,7 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
           </thead>
           <tbody>
             {averages.map(({ label, spec, current, best, bestEnd }) => (
-              <tr key={label} className="leading-6">
+              <tr key={label} className="leading-6 [@media(max-height:700px)]:leading-5">
                 <th scope="row" className="pr-2 text-left text-xs font-normal text-muted">{label}</th>
                 <td>
                   {current === null ? formatMean(eventId, null, precision) : (
@@ -93,7 +93,7 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
                 </td>
               </tr>
             ))}
-            <tr className="leading-6">
+            <tr className="leading-6 [@media(max-height:700px)]:leading-5">
               <th scope="row" className="pr-2 text-left text-xs font-normal text-muted">mean</th>
               <td>{formatMean(eventId, stats.mean, precision)}</td>
               <td aria-hidden />
