@@ -7,6 +7,7 @@ import { sessionStats } from "@bengottschalk/timer-core/stats";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
+import { confirmAction } from "@/lib/confirm";
 import { removeBranch, saveSession } from "@/lib/db";
 import { formatMean } from "@/lib/format";
 import Modal from "./Modal";
@@ -50,24 +51,40 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
     return { count: list.length, mean: stats.mean, best: average?.best ?? null, ownCount: solves.filter((s) => s.sessionId === session.id && s.deletedAt === null).length };
   };
 
+  const ownSolves = (branch: TimerSession) => solves.filter((s) => s.sessionId === branch.id && s.deletedAt === null).length;
+
   const merge = async (branch: TimerSession) => {
-    if (!confirm(`Merge “${branch.name}” into Main? Its solves join Main in the order you did them, and the session is kept as a read-only record.`)) return;
+    const confirmed = await confirmAction({
+      title: `Merge “${branch.name}” into Main?`,
+      message: `Its ${plural(ownSolves(branch), "solve")} join Main in the order you did them, and the session is kept as a read-only record.`,
+      confirmLabel: "Merge",
+    });
+    if (!confirmed) return;
     await saveSession(mergeBranch(branch, now()));
     if (currentId === branch.id) onSelect(main.id);
   };
 
   const discard = async (branch: TimerSession) => {
-    if (!confirm(`Discard “${branch.name}”? Its solves stay out of Main, but the session is kept so you can still look at it. (To get rid of it and its solves, use Delete.)`)) return;
+    const confirmed = await confirmAction({
+      title: `Discard “${branch.name}”?`,
+      message: `Its ${plural(ownSolves(branch), "solve")} stay out of Main, but the session is kept so you can still look at it. To get rid of it and its solves, use Delete.`,
+      confirmLabel: "Discard",
+    });
+    if (!confirmed) return;
     await saveSession(discardBranch(branch, now()));
     if (currentId === branch.id) onSelect(main.id);
   };
 
   const remove = async (branch: TimerSession) => {
-    const own = solves.filter((s) => s.sessionId === branch.id && s.deletedAt === null).length;
-    const message = deletingKeepsSolves(branch)
-      ? `Delete “${branch.name}”? Its ${plural(own, "solve")} stay in Main; only the session goes away.`
-      : `Delete “${branch.name}” and its ${plural(own, "solve")}? This can't be undone.`;
-    if (!confirm(message)) return;
+    const own = ownSolves(branch);
+    const keeps = deletingKeepsSolves(branch);
+    const confirmed = await confirmAction({
+      title: keeps ? `Delete “${branch.name}”?` : `Delete “${branch.name}” and its ${plural(own, "solve")}?`,
+      message: keeps ? `Its ${plural(own, "solve")} stay in Main; only the session goes away.` : "This can't be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     await removeBranch(branch);
     if (currentId === branch.id) onSelect(main.id);
   };

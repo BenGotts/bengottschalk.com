@@ -11,6 +11,7 @@ import { sessionSummary } from "@bengottschalk/timer-core/summary";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { uuidv7 } from "@bengottschalk/timer-core/id";
+import { confirmAction } from "@/lib/confirm";
 import { removeBranch, saveSession } from "@/lib/db";
 import { formatMean } from "@/lib/format";
 import Modal from "./Modal";
@@ -103,7 +104,13 @@ export function EndSessionDialog({ session, onClose, main, sessions, solves, pre
   };
   const remove = async () => {
     if (!session) return;
-    if (!confirm(`Delete “${session.name}” and its ${plural(list.length, "solve")}? This can't be undone.`)) return;
+    const confirmed = await confirmAction({
+      title: `Delete “${session.name}” and its ${plural(list.length, "solve")}?`,
+      message: "This can't be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     await removeBranch(session);
     setShowSummary(false);
     onEnded();
