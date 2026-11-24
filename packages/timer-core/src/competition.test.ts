@@ -174,7 +174,7 @@ describe("Solve of the Day text for a competition attempt", () => {
   it("names the competition, round, attempt, placing, average and records", () => {
     const [solve] = officialSolves(byComp.get("UOFall2026")!, competitionInfo(WCIF, WCA_ID, { name: "UO Fall 2026", startDate: "2026-11-21" }), NOW)
       .filter((s) => s.eventId === "333" && s.competition?.roundTypeId === "f");
-    const text = sotdClipboardText({ solve: { ...solve, competition: { ...solve.competition!, singleRecord: "NR" } }, ao5: null, ao12: null, wasPersonalBest: false, sessionName: "3x3x3 Cube · Main" }, "hundredths");
+    const text = sotdClipboardText({ solve: { ...solve, competition: { ...solve.competition!, singleRecord: "NR" } }, ao5: null, ao12: null, wasPersonalBest: false, sessionName: "3x3x3 Cube · Main" }, "thousandths");
     expect(text).toContain("Competition: UO Fall 2026 (UOFall2026)");
     expect(text).toContain("Round: Final, attempt 1");
     expect(text).toContain("Placed: 3rd");

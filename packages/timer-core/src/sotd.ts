@@ -37,8 +37,10 @@ export interface SotdDetails {
 }
 
 /** The text "Copy for Claude" puts on the clipboard, for the Solve of the Day skill. */
-export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionName }: SotdDetails, precision: Precision = "thousandths"): string {
+export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionName }: SotdDetails, homePrecision: Precision = "thousandths"): string {
   const event = timerEvent(solve.eventId);
+  // Competition results are only recorded to the hundredth.
+  const precision: Precision = solve.competition ? "hundredths" : homePrecision;
   const time = solve.penalty === "dnf"
     ? `DNF (${formatTime(solve.timeMs, precision)})`
     : formatTime(solve.timeMs + (solve.penalty === "+2" ? 2000 : 0), precision) + (solve.penalty === "+2" ? " (+2)" : "");
