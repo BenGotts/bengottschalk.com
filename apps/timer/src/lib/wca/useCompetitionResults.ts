@@ -3,9 +3,22 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { signedInWcaId, syncStore } from "@/lib/sync";
+import { getMeta, setMeta } from "@/lib/db";
 import { competitionsToday, refreshDue, refreshLiveResults, refreshOfficialResults, lastRefreshedAt, type RefreshProgress } from "./results";
 
 const LIVE_POLL_MS = 60_000;
+
+/**
+ * Runs `task` in only one tab at a time: if another tab of the timer is
+ * already doing it, this one skips it (that tab's results reach this one
+ * through the shared IndexedDB).
+ */
+async function inOneTab(name: string, task: () => Promise<void>): Promise<void> {
+  if (!("locks" in navigator)) return task();
+  await navigator.locks.request(name, { ifAvailable: true }, async (lock) => {
+    if (lock) await task();
+  });
+}
 
 export interface CompetitionResultsState {
   wcaId: string | null;
@@ -20,8 +33,8 @@ export interface CompetitionResultsState {
 
 /**
  * Keeps competition attempts up to date for the signed-in WCA ID: official
- * results when they're over a day old (or on request), and WCA Live every
- * minute while one of the person's competitions is on and the page is open.
+ * results when due (see results.ts) or on request, and WCA Live every minute
+ * while one of the person's competitions is on and the page is open.
  */
 export function useCompetitionResults(): CompetitionResultsState {
   // Only people signed in with WCA get their results, under their own WCA ID.
@@ -37,10 +50,12 @@ export function useCompetitionResults(): CompetitionResultsState {
     if (running.current) return;
     running.current = true;
     try {
-      if (force || (await refreshDue(id))) {
-        setLoading(true);
-        await refreshOfficialResults(id, setProgress);
-      }
+      await inOneTab("wca-official-results", async () => {
+        if (force || (await refreshDue(id))) {
+          setLoading(true);
+          await refreshOfficialResults(id, setProgress);
+        }
+      });
       setLiveCompetitionIds(await competitionsToday(id));
       setError(null);
     } catch (e) {
@@ -64,11 +79,17 @@ export function useCompetitionResults(): CompetitionResultsState {
     if (!wcaId || liveCompetitionIds.length === 0) return undefined;
     const poll = () => {
       if (document.visibilityState !== "visible") return;
-      for (const competitionId of liveCompetitionIds) {
-        refreshLiveResults(competitionId, wcaId).catch(() => {
-          // WCA Live may be briefly unreachable; the next poll tries again.
-        });
-      }
+      // However many tabs are open, WCA Live is asked at most once a minute.
+      void inOneTab("wca-live", async () => {
+        const polledAt = await getMeta<number>("wca:live-polled-at", 0);
+        if (Date.now() - polledAt < LIVE_POLL_MS - 5_000) return;
+        await setMeta("wca:live-polled-at", Date.now());
+        for (const competitionId of liveCompetitionIds) {
+          await refreshLiveResults(competitionId, wcaId).catch(() => {
+            // WCA Live may be briefly unreachable; the next poll tries again.
+          });
+        }
+      });
     };
     poll();
     const timer = setInterval(poll, LIVE_POLL_MS);

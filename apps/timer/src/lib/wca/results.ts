@@ -13,14 +13,32 @@ import { fetchWca, WcaRequestError } from "./client";
 import { fetchLiveResults, findLivePerson } from "./live";
 import { PersonResultSchema, ScramblesSchema, UserCompetitionsSchema, WcifSchema, type Wcif } from "./schemas";
 
-const DAY_MS = 86_400_000;
+// How often each WCA request is made (all saved on this device, and shared by its tabs):
+//   your competitions (to know when one is on)   twice a day
+//   your official results                         daily while a recent competition's results
+//                                                 aren't posted yet, otherwise weekly
+//   a competition's schedule                      once; every 30 minutes while it's on
+// plus WCA Live (not the WCA API) once a minute while a competition is on.
 
-/** A competition's schedule, reduced to this person, saved so it's fetched once. `null` when the WCA has none. */
-async function competitionSchedule(competitionId: string, wcaId: string, refresh = false): Promise<Wcif | null> {
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+const COMPETITIONS_MAX_AGE_MS = 12 * HOUR_MS;
+const RESULTS_MAX_AGE_MS = 7 * DAY_MS;
+/** How long after a competition its results are checked for daily (they're usually posted within a week or two). */
+const AWAITING_RESULTS_DAYS = 30;
+const LIVE_SCHEDULE_MAX_AGE_MS = 30 * 60_000;
+
+/**
+ * A competition's schedule, reduced to this person, saved on this device.
+ * Fetched again only when older than `maxAgeMs` (never, by default). `null`
+ * when the WCA has none.
+ */
+async function competitionSchedule(competitionId: string, wcaId: string, maxAgeMs = Infinity): Promise<Wcif | null> {
   const key = `wca:wcif:${competitionId}`;
-  if (!refresh) {
-    const saved = await db.meta.get(key);
-    if (saved) return WcifSchema.nullable().catch(null).parse(saved.value);
+  const fetchedAtKey = `wca:wcif-at:${competitionId}`;
+  const saved = await db.meta.get(key);
+  if (saved && Date.now() - (await getMeta<number>(fetchedAtKey, 0)) <= maxAgeMs) {
+    return WcifSchema.nullable().catch(null).parse(saved.value);
   }
   let wcif: Wcif | null;
   try {
@@ -31,6 +49,7 @@ async function competitionSchedule(competitionId: string, wcaId: string, refresh
     else throw error;
   }
   await setMeta(key, wcif);
+  await setMeta(fetchedAtKey, Date.now());
   return wcif;
 }
 
@@ -114,22 +133,54 @@ export async function refreshOfficialResults(wcaId: string, onProgress?: (progre
 /** When official results were last fetched for this WCA ID (ms), or 0. */
 export const lastRefreshedAt = (wcaId: string) => getMeta<number>(`wca:refreshedAt:${wcaId}`, 0);
 
-/** Whether official results are more than a day old. */
-export async function refreshDue(wcaId: string): Promise<boolean> {
-  return Date.now() - (await lastRefreshedAt(wcaId)) > DAY_MS;
+const localIsoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const isoDaysFromNow = (days: number) => localIsoDate(new Date(Date.now() + days * DAY_MS));
+
+interface KnownCompetition {
+  id: string;
+  start_date: string;
+  end_date: string;
 }
 
-const localIsoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/**
+ * The person's ongoing and upcoming competitions, fetched at most twice a
+ * day. Ones that have finished are kept for a while after they drop off the
+ * WCA's list, so results can be checked for until they're posted.
+ */
+async function personCompetitions(wcaId: string): Promise<KnownCompetition[]> {
+  const key = `wca:competitions:${wcaId}`;
+  const saved = await getMeta<{ fetchedAt: number; competitions: KnownCompetition[] } | null>(key, null);
+  if (saved && Date.now() - saved.fetchedAt < COMPETITIONS_MAX_AGE_MS) return saved.competitions;
+  const data = await fetchWca(`/v0/users/${encodeURIComponent(wcaId)}?ongoing_competitions=true&upcoming_competitions=true`, UserCompetitionsSchema);
+  const fresh = [...data.ongoing_competitions, ...data.upcoming_competitions].map(({ id, start_date, end_date }) => ({ id, start_date, end_date }));
+  const recent = (saved?.competitions ?? []).filter((c) => !fresh.some((f) => f.id === c.id) && c.end_date >= isoDaysFromNow(-AWAITING_RESULTS_DAYS));
+  const competitions = [...fresh, ...recent];
+  await setMeta(key, { fetchedAt: Date.now(), competitions });
+  return competitions;
+}
+
+/**
+ * Whether to fetch official results again: daily while a competition that
+ * ended in the last month has no official results here yet, otherwise weekly.
+ */
+export async function refreshDue(wcaId: string): Promise<boolean> {
+  const age = Date.now() - (await lastRefreshedAt(wcaId));
+  if (age > RESULTS_MAX_AGE_MS) return true;
+  if (age < DAY_MS) return false;
+  const today = localIsoDate(new Date());
+  for (const competition of await personCompetitions(wcaId)) {
+    if (competition.end_date >= today) continue;
+    const posted = await db.solves.where("id").startsWith(`wca-${competition.id}-`).filter((s) => s.competition?.status === "official").first();
+    if (!posted) return true;
+  }
+  return false;
+}
 
 /** The person's competitions that are on today (by local date, with a day's slack for time zones). */
 export async function competitionsToday(wcaId: string): Promise<string[]> {
-  const data = await fetchWca(`/v0/users/${encodeURIComponent(wcaId)}?ongoing_competitions=true&upcoming_competitions=true`, UserCompetitionsSchema);
-  const now = new Date();
-  const yesterday = localIsoDate(new Date(now.getTime() - DAY_MS));
-  const tomorrow = localIsoDate(new Date(now.getTime() + DAY_MS));
-  return [...data.ongoing_competitions, ...data.upcoming_competitions]
-    .filter((c) => c.start_date <= tomorrow && c.end_date >= yesterday)
-    .map((c) => c.id);
+  const yesterday = isoDaysFromNow(-1);
+  const tomorrow = isoDaysFromNow(1);
+  return (await personCompetitions(wcaId)).filter((c) => c.start_date <= tomorrow && c.end_date >= yesterday).map((c) => c.id);
 }
 
 /** Fetches WCA Live results for a competition that's on and saves them as live solves. */
@@ -142,8 +193,10 @@ export async function refreshLiveResults(competitionId: string, wcaId: string): 
     await setMeta(personKey, personId);
   }
   const live = await fetchLiveResults(personId);
-  // The schedule changes on the day (groups move), so fetch it fresh each time.
-  const wcif = await competitionSchedule(competitionId, wcaId, true).catch(() => null);
+  // The schedule changes on the day (groups move), so it's fetched again every half hour.
+  const wcif = await competitionSchedule(competitionId, wcaId, LIVE_SCHEDULE_MAX_AGE_MS)
+    .catch(() => competitionSchedule(competitionId, wcaId))
+    .catch(() => null);
   const info = competitionInfo(wcif, wcaId, { name: wcif?.name ?? competitionId, startDate: wcif?.schedule.startDate ?? localIsoDate(new Date()) });
   return { saved: await saveCompetitionSolves(liveSolves(competitionId, live, info, Date.now())) };
 }
