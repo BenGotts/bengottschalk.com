@@ -48,9 +48,10 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
   return (
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats">
       <section className="rounded-box bg-base-200 px-2.5 py-1.5">
-        <h2 className="text-xs text-muted">
-          {recent.length === 5 ? <button type="button" className="link-hover" onClick={() => onOpenAverage(FIVE, stats.count - 1)}>Last 5</button> : "Last 5"}
-        </h2>
+        <div className="flex justify-between gap-2 text-xs text-muted">
+          <h2>{recent.length === 5 ? <button type="button" className="link-hover" onClick={() => onOpenAverage(FIVE, stats.count - 1)}>Last 5</button> : "Last 5"}</h2>
+          <span className="truncate">{stats.count.toLocaleString()} {stats.count === 1 ? "solve" : "solves"}</span>
+        </div>
         <ol className="timer-digits text-sm">
           {newestFirst.length === 0 && <li className="text-muted">–</li>}
           {newestFirst.map(({ solve, index, end }) => {
@@ -95,7 +96,7 @@ export default function ScreenStats({ eventId, format, stats, precision, recent,
             <tr className="leading-6">
               <th scope="row" className="pr-2 text-left text-xs font-normal text-muted">mean</th>
               <td>{formatMean(eventId, stats.mean, precision)}</td>
-              <td className="text-right text-xs text-muted">{stats.count.toLocaleString()} {stats.count === 1 ? "solve" : "solves"}</td>
+              <td aria-hidden />
             </tr>
           </tbody>
         </table>

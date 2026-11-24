@@ -42,7 +42,7 @@ import StatsPanel from "./StatsPanel";
 import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
-type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | null;
+type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | null;
 /** Which screen a phone shows (wide screens show the timer and the side panel together). */
 type MobileView = "timer" | "solves" | "stats" | "sotd";
 
@@ -406,7 +406,18 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
           {/* The scramble picture at the bottom right; on phones, the stats under it across the full width (wide screens have them in the sidebar). */}
           <div className="focus-fade flex shrink-0 flex-col gap-2 px-3 pb-3">
-            {scrambleImage && <div className="pointer-events-none h-20 w-28 self-end lg:h-40 lg:w-56">{scrambleImage}</div>}
+            {scrambleImage && (
+              <button
+                type="button"
+                className="h-24 w-32 cursor-zoom-in self-end rounded-field [@media(max-height:700px)]:h-20 [@media(max-height:700px)]:w-28 lg:h-40 lg:w-56"
+                onClick={(e) => { e.currentTarget.blur(); setDialog("scramble"); }}
+                aria-label="Enlarge the scramble picture"
+                title="Enlarge"
+              >
+                {/* The picture itself ignores taps, so the whole button takes them. */}
+                <div className="pointer-events-none h-full w-full">{scrambleImage}</div>
+              </button>
+            )}
             <ScreenStats eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} recent={recentSolves} />
           </div>
         </main>
@@ -515,6 +526,16 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         </>
       )}
       <AverageDialog view={averageView} onClose={() => setAverageView(null)} eventId={activeEventId} solves={viewSolves} precision={settings.precision} onOpenSolve={(s) => setOpenSolveId(s.id)} />
+      <Modal open={dialog === "scramble"} onClose={() => setDialog(null)} title="Scramble" wide>
+        {event.puzzleId && scramble.scramble && (
+          <div className="space-y-3">
+            <div className="h-[min(60dvh,28rem)] w-full">
+              <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
+            </div>
+            <p className="timer-digits text-center text-sm">{scramble.scramble}</p>
+          </div>
+        )}
+      </Modal>
       {/* Opens above whichever dialog asked (native dialogs stack in the order they open). */}
       <ConfirmDialog />
       <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
