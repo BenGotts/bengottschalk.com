@@ -2,11 +2,19 @@
 
 import { useEffect, useRef } from "react";
 import { loadTwisty } from "@/lib/cubing";
+import Square1Image from "./Square1Image";
 
 type Player = HTMLElement & { experimentalSetupAlg: unknown };
 
-/** A flat picture of the scrambled puzzle, drawn by cubing.js. */
+/** A flat picture of the scrambled puzzle. */
 export default function ScrambleImage({ puzzleId, scramble }: { puzzleId: string; scramble: string }) {
+  // cubing.js's Square-1 picture is small and hard to read, so it gets its own.
+  if (puzzleId === "square1") return <Square1Image scramble={scramble} />;
+  return <TwistyImage puzzleId={puzzleId} scramble={scramble} />;
+}
+
+/** cubing.js's 2D picture of the puzzle. */
+function TwistyImage({ puzzleId, scramble }: { puzzleId: string; scramble: string }) {
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<Player | null>(null);
   const latest = useRef(scramble);

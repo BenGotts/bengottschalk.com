@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FaStar, FaTrophy } from "react-icons/fa6";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import type { Precision } from "@bengottschalk/timer-core/time";
@@ -20,19 +20,39 @@ interface Props {
   onOpen: (solve: Solve) => void;
 }
 
-const PAGE = 100;
+/** Every row is this tall, so only the rows on screen need drawing. */
+const ROW_HEIGHT = 28;
+/** Extra rows drawn above and below the visible ones, so fast scrolling doesn't show gaps. */
+const OVERSCAN = 20;
 
 export default function SolveList({ eventId, solves, rolling, rollingLabel, sotdSolveIds, branchNames, precision, onOpen }: Props) {
-  const [shown, setShown] = useState(PAGE);
-  if (solves.length === 0) {
-    return <p className="px-1 py-6 text-center text-sm text-muted">No solves yet. Hold space (or the timer) and let go to start.</p>;
-  }
+  const scroller = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState({ top: 0, height: 800 });
+
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) return undefined;
+    const measure = () => setView({ top: element.scrollTop, height: element.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    element.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("scroll", measure);
+    };
+  }, []);
+
+  // Newest first: row r shows solve solves.length - 1 - r.
+  const first = Math.max(0, Math.floor(view.top / ROW_HEIGHT) - OVERSCAN);
+  const last = Math.min(solves.length, Math.ceil((view.top + view.height) / ROW_HEIGHT) + OVERSCAN);
   const rows = [];
-  for (let i = solves.length - 1; i >= 0 && rows.length < shown; i--) rows.push(i);
+  for (let r = first; r < last; r++) rows.push(solves.length - 1 - r);
 
   return (
-    <div>
-      <table className="table table-xs w-full">
+    <div ref={scroller} className="h-full overflow-y-auto">
+      {solves.length === 0 && <p className="px-1 py-6 text-center text-sm text-muted">No solves yet. Hold space (or the timer) and let go to start.</p>}
+      <table hidden={solves.length === 0} className="table table-xs table-pin-rows w-full">
         <thead>
           <tr>
             <th scope="col">#</th>
@@ -42,11 +62,12 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
           </tr>
         </thead>
         <tbody className="timer-digits">
+          {first > 0 && <tr aria-hidden style={{ height: first * ROW_HEIGHT }} />}
           {rows.map((i) => {
             const solve = solves[i];
             const branch = branchNames.get(solve.sessionId);
             return (
-              <tr key={solve.id} className={solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"}>
+              <tr key={solve.id} style={{ height: ROW_HEIGHT }} className={solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"}>
                 <td className="text-muted">{i + 1}</td>
                 <td>
                   <button type="button" className={`link-hover text-left ${solve.competition ? "text-ink-gold" : ""}`} onClick={() => onOpen(solve)}>
@@ -71,13 +92,9 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
               </tr>
             );
           })}
+          {last < solves.length && <tr aria-hidden style={{ height: (solves.length - last) * ROW_HEIGHT }} />}
         </tbody>
       </table>
-      {solves.length > shown && (
-        <button type="button" className="btn btn-ghost btn-xs mt-1 w-full" onClick={() => setShown(shown + PAGE)}>
-          Show {Math.min(PAGE, solves.length - shown)} more
-        </button>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaGear, FaListUl, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
@@ -298,7 +298,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           ) : (
             <>
               <p className={`timer-digits mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
-                {scramble.error ?? scramble.scramble ?? <span className="text-muted">Making a scramble…</span>}
+                {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
               </p>
               <div className="mt-1 flex justify-center gap-1">
                 <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble"><FaArrowLeft aria-hidden /></button>
@@ -352,7 +352,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             ))}
           </button>
           {settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && (
-            <div className="pointer-events-none h-20 w-28 shrink-0">
+            <div className="pointer-events-none h-20 w-32 shrink-0">
               <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
             </div>
           )}
@@ -375,7 +375,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>
         </div>
         {/* On phones the bottom tabs pick the list; on wide screens the tabs above do. */}
-        <div className={`min-h-0 flex-1 overflow-y-auto ${view === "solves" ? "block" : "hidden"} ${tab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+        <div className={`min-h-0 flex-1 overflow-hidden ${view === "solves" ? "block" : "hidden"} ${tab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
           <SolveList eventId={activeEventId} solves={viewSolves} rolling={rolling} rollingLabel={event.format === "mo3" ? "mo3" : "ao5"} sotdSolveIds={sotdSolveIds} branchNames={branchNames} precision={settings.precision} onOpen={(s) => setOpenSolveId(s.id)} />
         </div>
         <div className={`min-h-0 flex-1 overflow-y-auto ${view === "sotd" ? "block" : "hidden"} ${tab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
@@ -415,6 +415,16 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       </Modal>
     </div>
   );
+}
+
+/** The scramble, never breaking a line inside a Square-1 move like "(1, -3) /". */
+function ScrambleText({ scramble }: { scramble: string }) {
+  if (!scramble.includes("(")) return scramble;
+  return (scramble.match(/[^/]+\/?|\//g) ?? [scramble]).map((part, i) => (
+    // Index keys are fine: the parts of one scramble never reorder.
+    // oxlint-disable-next-line react/no-array-index-key
+    <Fragment key={i}><span className="whitespace-nowrap">{part.trim()}</span>{" "}</Fragment>
+  ));
 }
 
 function MultiResultForm({ attempted, onSave }: { attempted: number; onSave: (solved: number) => void }) {
