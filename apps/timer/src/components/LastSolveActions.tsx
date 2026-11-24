@@ -5,6 +5,8 @@ import { FaRegComment, FaRegStar, FaStar, FaTrash } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import type { Penalty, Solve } from "@bengottschalk/timer-core/solve";
 import { localDate } from "@bengottschalk/timer-core/sotd";
+import type { Precision } from "@bengottschalk/timer-core/time";
+import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, restoreSolve, setSotd, updateSolve } from "@/lib/db";
 import Modal from "./Modal";
 
@@ -13,6 +15,7 @@ interface Props {
   solve: Solve | null;
   /** Which solve is Solve of the Day on each day. */
   sotdByDate: Map<string, string>;
+  precision: Precision;
 }
 
 const PENALTIES: { value: Penalty; label: string }[] = [
@@ -28,10 +31,10 @@ const blur = (e: React.MouseEvent<HTMLButtonElement>) => e.currentTarget.blur();
 
 /**
  * Buttons under the time for the solve just done, like csTimer's: OK, +2 or
- * DNF, delete (with undo), a comment, and Solve of the Day. Alt+1/2/3, Alt+Z
+ * DNF, delete (asks first, then offers undo), a comment, and Solve of the Day. Alt+1/2/3, Alt+Z
  * and Alt+S still do the same from the keyboard.
  */
-export default function LastSolveActions({ solve, sotdByDate }: Props) {
+export default function LastSolveActions({ solve, sotdByDate, precision }: Props) {
   const [deleted, setDeleted] = useState<{ solve: Solve; wasSotd: boolean } | null>(null);
   const [commenting, setCommenting] = useState(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +75,7 @@ export default function LastSolveActions({ solve, sotdByDate }: Props) {
   };
 
   const remove = async () => {
+    if (!(await confirmSolveDeletion(solve, precision))) return;
     await deleteSolve(solve.id);
     setDeleted({ solve, wasSotd: isSotd });
     if (undoTimer.current) clearTimeout(undoTimer.current);

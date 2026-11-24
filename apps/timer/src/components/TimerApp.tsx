@@ -10,6 +10,7 @@ import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByDate as marksByDate, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
+import { confirmSolveDeletion } from "@/lib/confirm";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
@@ -22,6 +23,7 @@ import EventPicker from "./EventPicker";
 import SourceFilter, { type SourceFilterValue } from "./SourceFilter";
 import FmcPanel, { type FmcResult } from "./FmcPanel";
 import ImportDialog from "./ImportDialog";
+import ConfirmDialog from "./ConfirmDialog";
 import LastSolveActions from "./LastSolveActions";
 import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
@@ -217,7 +219,12 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           if (marked === last.id) void setSotd(day, null);
           else if (!marked || confirm("Another solve is already Solve of the Day for today. Replace it?")) void setSotd(day, last.id);
         },
-        KeyZ: () => last && confirm("Delete the last solve?") && void deleteSolve(last.id),
+        KeyZ: () => {
+          if (!last) return;
+          void (async () => {
+            if (await confirmSolveDeletion(last, settings.precision)) await deleteSolve(last.id);
+          })();
+        },
         KeyN: () => scramble.next(),
       };
       const action = actions[e.code];
@@ -228,7 +235,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [timer.phase, lastHomeSolve, sotdMap, scramble]);
+  }, [timer.phase, lastHomeSolve, sotdMap, scramble, settings.precision]);
 
   const openSolve = allSolves.find((s) => s.id === openSolveId) ?? null;
   const openSolveReadOnly = openSolve ? !sessions.some((s) => s.id === openSolve.sessionId && acceptsSolves(s)) : true;
@@ -336,7 +343,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             ) : settings.entry === "typing" ? (
               <>
                 <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
-                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByDate={sotdMap} /></div>
+                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByDate={sotdMap} precision={settings.precision} /></div>
               </>
             ) : (
               <>
@@ -356,7 +363,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                     : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
                 </p>
                 <div className={`focus-fade ${timer.phase === "idle" ? "" : "invisible"}`}>
-                  <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} />
+                  <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} precision={settings.precision} />
                 </div>
               </>
             )}
@@ -430,6 +437,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         </>
       )}
       <AverageDialog view={averageView} onClose={() => setAverageView(null)} eventId={activeEventId} solves={viewSolves} precision={settings.precision} onOpenSolve={(s) => setOpenSolveId(s.id)} />
+      {/* Opens above whichever dialog asked (native dialogs stack in the order they open). */}
+      <ConfirmDialog />
       <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
       <Modal open={pendingMulti !== null} onClose={() => setPendingMulti(null)} title="How many did you solve?">
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />
