@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FaCodeBranch, FaCodeMerge } from "react-icons/fa6";
-import { branchesOf, createBranch, discardBranch, mergeBranch, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
+import { FaCodeBranch, FaCodeMerge, FaTrashCan } from "react-icons/fa6";
+import { branchesOf, createBranch, deletingKeepsSolves, discardBranch, mergeBranch, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { sessionStats } from "@bengottschalk/timer-core/stats";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { uuidv7 } from "@bengottschalk/timer-core/id";
-import { saveSession } from "@/lib/db";
+import { removeBranch, saveSession } from "@/lib/db";
 import { formatMean } from "@/lib/format";
 import Modal from "./Modal";
 
@@ -30,6 +30,8 @@ async function rename(session: TimerSession) {
   const next = prompt("Branch name", session.name);
   if (next && next.trim()) await saveSession({ ...session, name: next.trim() });
 }
+
+const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
 
 const STATUS_LABEL = { active: "Active", merged: "Merged", discarded: "Discarded" } as const;
 
@@ -64,8 +66,18 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
   };
 
   const discard = async (branch: TimerSession) => {
-    if (!confirm(`Discard “${branch.name}”? Its solves stay out of Main. You can still look at it.`)) return;
+    if (!confirm(`Discard “${branch.name}”? Its solves stay out of Main, but the branch is kept so you can still look at it. (To get rid of it and its solves, use Delete.)`)) return;
     await saveSession(discardBranch(branch, now()));
+    if (currentId === branch.id) onSelect(main.id);
+  };
+
+  const remove = async (branch: TimerSession) => {
+    const own = solves.filter((s) => s.sessionId === branch.id && s.deletedAt === null).length;
+    const message = deletingKeepsSolves(branch)
+      ? `Delete “${branch.name}”? Its ${plural(own, "solve")} stay in Main; only the branch goes away.`
+      : `Delete “${branch.name}” and its ${plural(own, "solve")}? This can't be undone.`;
+    if (!confirm(message)) return;
+    await removeBranch(branch);
     if (currentId === branch.id) onSelect(main.id);
   };
 
@@ -99,9 +111,17 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
                   <>
                     <button type="button" className="btn btn-xs btn-primary" onClick={() => void merge(branch)}><FaCodeMerge aria-hidden /> Merge</button>
                     <button type="button" className="btn btn-xs" onClick={() => void rename(branch)}>Rename</button>
-                    <button type="button" className="btn btn-xs btn-ghost text-error" onClick={() => void discard(branch)}>Discard</button>
+                    <button type="button" className="btn btn-xs btn-ghost" title="Keep the branch as a record, with its solves left out of Main" onClick={() => void discard(branch)}>Discard</button>
                   </>
                 )}
+                <button
+                  type="button"
+                  className="btn btn-xs btn-ghost text-error"
+                  title={deletingKeepsSolves(branch) ? "Remove the branch; its solves stay in Main" : "Remove the branch and its solves"}
+                  onClick={() => void remove(branch)}
+                >
+                  <FaTrashCan aria-hidden /> Delete
+                </button>
               </SessionRow>
             </li>
           );
@@ -110,7 +130,7 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
 
       <form className="mt-6 rounded-box bg-base-200 p-3" onSubmit={(e) => void startBranch(e)}>
         <h3 className="mb-2 flex items-center gap-2 font-medium"><FaCodeBranch aria-hidden /> New branch from Main</h3>
-        <p className="mb-3 text-sm text-muted">Time a set of solves on their own, like an ao100 attempt, then merge them back into Main or discard them.</p>
+        <p className="mb-3 text-sm text-muted">Time a set of solves on their own, like an ao100 attempt. Then merge them into Main, discard the branch (kept as a record, left out of Main), or delete it.</p>
         <div className="flex flex-wrap items-end gap-2">
           <label className="grow">
             <span className="mb-1 block text-xs text-muted">Name</span>

@@ -4,6 +4,13 @@
 // marks it merged, and a main session's view includes the solves of its
 // merged branches, in the order they were done. So a merged branch stays a
 // record of its own (its solves and stats), and nothing is rewritten.
+//
+// Deleting a branch marks it deleted (so the deletion syncs). What happens to
+// its solves depends on whether they already count in Main:
+// - an active or discarded branch's solves are deleted with it;
+// - a merged branch's solves stay in Main. Main keeps including the solves
+//   of every merged branch, deleted or not, so deleting one hides only the
+//   branch itself: no solve has to move, and the one changed record syncs.
 
 import type { Solve } from "./solve";
 
@@ -75,6 +82,14 @@ export function discardBranch(branch: TimerSession, now: number): TimerSession {
   return { ...branch, status: "discarded", updatedAt: now };
 }
 
+export function deleteBranch(branch: TimerSession, now: number): TimerSession {
+  if (isMainSession(branch)) throw new Error("A main session can't be deleted.");
+  return { ...branch, deletedAt: now, updatedAt: now };
+}
+
+/** Whether deleting this branch keeps its solves (they're already part of Main) or deletes them too. */
+export const deletingKeepsSolves = (branch: TimerSession): boolean => branch.status === "merged";
+
 /** Whether new solves can be added to a session (merged and discarded branches are read-only). */
 export const acceptsSolves = (session: TimerSession): boolean => session.status === "active" && session.deletedAt === null;
 
@@ -85,13 +100,14 @@ export function bySolveOrder(a: Solve, b: Solve): number {
 
 /**
  * The solves a session shows, oldest first. A main session shows its own
- * solves and those of its merged branches; a branch shows only its own.
+ * solves and those of its merged branches (including deleted ones: see the
+ * top of this file); a branch shows only its own.
  */
 export function sessionSolves(session: TimerSession, sessions: readonly TimerSession[], solves: readonly Solve[]): Solve[] {
   const included = new Set([session.id]);
   if (isMainSession(session)) {
     for (const other of sessions) {
-      if (other.parentId === session.id && other.status === "merged" && other.deletedAt === null) included.add(other.id);
+      if (other.parentId === session.id && other.status === "merged") included.add(other.id);
     }
   }
   return solves.filter((solve) => solve.deletedAt === null && included.has(solve.sessionId)).toSorted(bySolveOrder);

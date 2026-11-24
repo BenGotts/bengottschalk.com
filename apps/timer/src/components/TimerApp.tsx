@@ -125,7 +125,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const sotdSolveIds = useMemo(() => new Set(sotdMap.values()), [sotdMap]);
   const branchNames = useMemo(() => {
     const names = new Map<string, string>();
-    if (current && isMainSession(current)) for (const s of sessions) if (s.parentId === current.id) names.set(s.id, s.name);
+    // A deleted merged branch's solves stay in Main, without a badge for the gone branch.
+    if (current && isMainSession(current)) for (const s of sessions) if (s.parentId === current.id && s.deletedAt === null) names.set(s.id, s.name);
     return names;
   }, [current, sessions]);
 

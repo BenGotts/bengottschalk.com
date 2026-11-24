@@ -9,7 +9,7 @@
 
 import { Dexie, type EntityTable, type Transaction } from "dexie";
 import type { Solve } from "@bengottschalk/timer-core/solve";
-import { createMainSession, mainSessionId, type TimerSession } from "@bengottschalk/timer-core/sessions";
+import { createMainSession, deleteBranch, deletingKeepsSolves, mainSessionId, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import type { SotdMark } from "@bengottschalk/timer-core/sotd";
 import { uuidv7 } from "@bengottschalk/timer-core/id";
 
@@ -152,6 +152,24 @@ export async function restoreSolve(id: string): Promise<void> {
 
 export async function saveSession(session: TimerSession): Promise<void> {
   await db.sessions.put({ ...session, updatedAt: Date.now() });
+}
+
+/**
+ * Deletes a branch. A merged branch's solves stay in Main; an active or
+ * discarded branch's solves are deleted with it, along with their Solve of
+ * the Day marks (see deleteBranch in timer-core's sessions).
+ */
+export async function removeBranch(branch: TimerSession): Promise<void> {
+  const now = Date.now();
+  await db.transaction("rw", db.sessions, db.solves, db.sotd, async () => {
+    await db.sessions.put(deleteBranch(branch, now));
+    if (deletingKeepsSolves(branch)) return;
+    const solves = await db.solves.where("sessionId").equals(branch.id).filter((s) => s.deletedAt === null).toArray();
+    const ids = solves.map((s) => s.id);
+    await db.solves.where("id").anyOf(ids).modify({ deletedAt: now, updatedAt: now });
+    const marks = await db.sotd.where("solveId").anyOf(ids).filter((m) => m.deletedAt === null).toArray();
+    for (const mark of marks) await db.sotd.update(mark.date, { deletedAt: now, updatedAt: now });
+  });
 }
 
 export async function setSotd(date: string, solveId: string | null): Promise<void> {

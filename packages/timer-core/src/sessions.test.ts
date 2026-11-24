@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createBranch, createMainSession, discardBranch, mergeBranch, sessionSolves } from "./sessions";
+import { acceptsSolves, branchesOf, createBranch, createMainSession, deleteBranch, deletingKeepsSolves, discardBranch, mergeBranch, sessionSolves } from "./sessions";
+import { sessionStats } from "./stats";
 import type { Solve } from "./solve";
 
 const solve = (id: string, sessionId: string, startedAt: number): Solve => ({
@@ -39,5 +40,42 @@ describe("branches", () => {
   it("hides deleted solves", () => {
     const withDeleted = [...solves, { ...solve("m3", main.id, 6), deletedAt: 7 }];
     expect(sessionSolves(main, [main, branch], withDeleted).map((s) => s.id)).toEqual(["m1", "m2"]);
+  });
+});
+
+describe("deleting branches", () => {
+  const main = createMainSession("333", 0);
+  const branch = createBranch(main, { id: "b1", name: "ao5", goal: 5, now: 1 });
+  const solves = [solve("m1", main.id, 1), solve("b1-1", "b1", 2), solve("b1-2", "b1", 3), solve("m2", main.id, 4)];
+  const values = (list: Solve[]) => list.map((s) => s.timeMs);
+
+  it("marks the branch deleted, so the deletion syncs, and hides it from the list", () => {
+    const deleted = deleteBranch(branch, 9);
+    expect(deleted).toMatchObject({ deletedAt: 9, updatedAt: 9, status: "active" });
+    expect(branchesOf(main, [main, deleted])).toEqual([]);
+    expect(acceptsSolves(deleted)).toBe(false);
+  });
+
+  it("never deletes Main", () => {
+    expect(() => deleteBranch(main, 9)).toThrow();
+  });
+
+  it("keeps a merged branch's solves in Main (and its stats) after the branch is deleted", () => {
+    const deleted = deleteBranch(mergeBranch(branch, 5), 9);
+    expect(deletingKeepsSolves(mergeBranch(branch, 5))).toBe(true);
+    const inMain = sessionSolves(main, [main, deleted], solves);
+    expect(inMain.map((s) => s.id)).toEqual(["m1", "b1-1", "b1-2", "m2"]);
+    expect(sessionStats(values(inMain)).count).toBe(4);
+    expect(branchesOf(main, [main, deleted])).toEqual([]);
+  });
+
+  it("deletes the solves of an active or discarded branch with it", () => {
+    expect(deletingKeepsSolves(branch)).toBe(false);
+    expect(deletingKeepsSolves(discardBranch(branch, 5))).toBe(false);
+    // The app soft-deletes those solves; Main never showed them and still doesn't.
+    const afterDelete = solves.map((s) => (s.sessionId === "b1" ? { ...s, deletedAt: 9 } : s));
+    const deleted = deleteBranch(branch, 9);
+    expect(sessionSolves(main, [main, deleted], afterDelete).map((s) => s.id)).toEqual(["m1", "m2"]);
+    expect(sessionSolves(deleted, [main, deleted], afterDelete)).toEqual([]);
   });
 });
