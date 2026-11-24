@@ -46,6 +46,8 @@ export default function ScreenStats({ eventId, format, stats, specs, solves, pre
   const dropped = full && recentAverage.kind === "average" ? averageBreakdown(recent.map(solveValue), "average").dropped : recent.map(() => null);
   const first = stats.count - recent.length;
   const newestFirst = recent.map((solve, i) => ({ solve, index: first + i, end: dropped[i] })).toReversed();
+  // Size the index column to the longest number ("110189.") so big sessions don't overlap the times.
+  const indexWidth = `${Math.max(4, String(stats.count).length + 1)}ch`;
 
   return (
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats" data-timer-ignore>
@@ -60,7 +62,7 @@ export default function ScreenStats({ eventId, format, stats, specs, solves, pre
             const time = formatSolve(solve, precision);
             return (
               <li key={solve.id} className="flex items-baseline gap-2 leading-6 [@media(max-height:700px)]:leading-5">
-                <span className="w-8 shrink-0 text-right text-xs text-muted">{index + 1}.</span>
+                <span className="shrink-0 text-right text-xs text-muted" style={{ width: indexWidth }}>{index + 1}.</span>
                 <button
                   type="button"
                   className={`link-hover min-w-0 truncate text-left ${end === "best" ? "text-success" : end === "worst" ? "text-error" : solve.competition ? "text-ink-gold" : ""}`}
