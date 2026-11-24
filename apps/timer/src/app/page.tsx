@@ -1,16 +1,8 @@
-import type { Metadata } from "next";
-import ComingSoon from "@/components/ComingSoon";
 import TimerApp from "@/components/TimerApp";
 import { isAuthConfigured } from "@/lib/auth";
 
-// Set TIMER_PLACEHOLDER=1 (Vercel: Production only) to show a "coming soon"
-// page instead of the timer while it's being built. Read at build time.
-const placeholder = process.env.TIMER_PLACEHOLDER === "1";
-
-export const metadata: Metadata = placeholder ? { robots: { index: false } } : {};
-
 export default function Page() {
-  // Whether sign-in is set up is also read when the page is built: set the
+  // Whether sign-in is set up is read when the page is built: set the
   // sign-in variables before building (turbo.json passes them through on Vercel).
-  return placeholder ? <ComingSoon /> : <TimerApp authEnabled={isAuthConfigured()} />;
+  return <TimerApp authEnabled={isAuthConfigured()} />;
 }

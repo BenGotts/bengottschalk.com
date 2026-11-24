@@ -134,9 +134,6 @@ so it works offline. Signing in with a WCA account syncs solves across devices (
 - **Shortcuts** (timer idle): Alt+1 / Alt+2 / Alt+3 set the last solve to OK / +2 / DNF, Alt+S marks it Solve of the
   Day, Alt+Z deletes it, Alt+N skips to a new scramble, Escape cancels inspection.
 
-While the timer is being built, `TIMER_PLACEHOLDER=1` (set on the Vercel project's Production environment only)
-shows a "coming soon" page at timer.bengottschalk.com; previews still show the timer. Remove it and redeploy to launch.
-
 Scrambles come from [cubing.js](https://js.cubing.net/cubing/), which runs its search in a web worker. Next's bundler
 breaks that worker, so `scripts/bundle-cubing.mjs` bundles cubing.js with esbuild into `public/vendor/cubing` before
 `dev` and `build` (git-ignored), and `src/lib/cubing.ts` loads it from there at runtime.
