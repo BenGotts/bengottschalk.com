@@ -13,7 +13,7 @@ import type { ParsedTime } from "@bengottschalk/timer-core/time";
 import { TIMER_NAME, WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
-import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
+import { colorsForEvent, DEFAULT_STORED, migrateSettings, settingsForEvent, type StoredSettings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
 import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
@@ -63,7 +63,8 @@ const AVERAGE_OF_5: AverageSpec = { kind: "average", size: 5 };
 
 /** `authEnabled`: whether signing in with WCA is set up on this server (otherwise the timer is local-only). */
 export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
-  const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  // All saved settings: for all events, and each event's own (see lib/settings.ts).
+  const [storedSettings, setStoredSettings] = useState<StoredSettings>(DEFAULT_STORED);
   const [eventId, setEventIdState] = useState<string | null>(null);
   const [sessionIds, setSessionIds] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -84,11 +85,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   useEffect(() => {
     void (async () => {
       const [saved, lastEvent, savedSessions] = await Promise.all([
-        getMeta<Partial<Settings>>("settings", {}),
+        getMeta<unknown>("settings", null),
         getMeta<string>("event", "333"),
         getMeta<Record<string, string>>("sessions", {}),
       ]);
-      setSettingsState({ ...DEFAULT_SETTINGS, ...saved });
+      setStoredSettings(migrateSettings(saved));
       setSessionIds(savedSessions);
       setEventIdState(lastEvent);
     })();
@@ -96,13 +97,17 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   const activeEventId = eventId ?? "333";
   const event = timerEvent(activeEventId);
+  // The settings in effect for this event (its own values over the ones for all events).
+  const settings = useMemo(() => settingsForEvent(storedSettings, activeEventId), [storedSettings, activeEventId]);
+  /** Scramble picture colors for any event (a solve's details can be from another event). */
+  const colorsFor = useCallback((id: string) => colorsForEvent(storedSettings, id), [storedSettings]);
 
   useEffect(() => {
     if (eventId) void ensureMainSession(eventId);
   }, [eventId]);
 
-  const setSettings = (next: Settings) => {
-    setSettingsState(next);
+  const setSettings = (next: StoredSettings) => {
+    setStoredSettings(next);
     void setMeta("settings", next);
   };
   const setEventId = (next: string) => {
@@ -293,7 +298,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   if (eventId === null) return <div className="min-h-dvh" />;
 
   const scrambleImage = settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" ? (
-    <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
+    <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
   ) : null;
   /** The scramble picture as a button that opens it large. */
   const enlargeButton = (size: string) => (
@@ -526,7 +531,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           onOpenSolve={(s) => setOpenSolveId(s.id)}
         />
       )}
-      <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} settings={settings} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
+      <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} stored={storedSettings} eventId={activeEventId} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
       <ImportDialog open={dialog === "import"} onClose={() => setDialog(null)} />
       {authEnabled && (
         <>
@@ -539,7 +544,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         {event.puzzleId && scramble.scramble && (
           <div className="space-y-3">
             <div className="h-[min(60dvh,28rem)] w-full">
-              <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
+              <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
             </div>
             <p className="timer-digits text-center text-sm">{scramble.scramble}</p>
           </div>
@@ -547,7 +552,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       </Modal>
       {/* Opens above whichever dialog asked (native dialogs stack in the order they open). */}
       <ConfirmDialog />
-      <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
+      <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} colorsFor={colorsFor} />
       <Modal open={pendingMulti !== null} onClose={() => setPendingMulti(null)} title="How many did you solve?">
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />
       </Modal>
