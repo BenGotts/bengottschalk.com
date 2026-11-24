@@ -10,6 +10,10 @@
 // online, and every few minutes. Signed out, nothing is sent anywhere.
 
 import { recordsToApply } from "@bengottschalk/timer-core/sync";
+import type { SyncChanges } from "@bengottschalk/timer-core/sync";
+import type { TimerSession } from "@bengottschalk/timer-core/sessions";
+import type { Solve } from "@bengottschalk/timer-core/solve";
+import type { SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { TimerSyncResponse } from "@/server/sync";
 import { clearLocalData, db, getMeta, onLocalChange, remoteWrite, setMeta, withoutSyncFlag, type SyncFlag } from "./db";
 
@@ -39,6 +43,8 @@ export interface SyncState {
   /** Whether the question about those solves is showing (it can be put off and reopened). */
   askingAboutUnsynced: boolean;
   error: string | null;
+  /** While a big download is under way (a new device, say): records received so far, of about how many. */
+  progress: { done: number; total: number } | null;
 }
 
 const BATCH = 500;
@@ -47,7 +53,7 @@ const AFTER_CHANGE_MS = 2_000;
 const OWNER_KEY = "sync.userId";
 const CURSOR_KEY = "sync.cursor";
 
-let state: SyncState = { user: null, status: "off", lastSyncedAt: null, unsyncedSolves: 0, askingAboutUnsynced: false, error: null };
+let state: SyncState = { user: null, status: "off", lastSyncedAt: null, unsyncedSolves: 0, askingAboutUnsynced: false, error: null, progress: null };
 
 /**
  * The signed-in person's WCA ID: null when signed out (or sign-in isn't set
@@ -96,47 +102,75 @@ function stillAsSent<T extends SyncFlag & { updatedAt: number }>(current: (T | u
 
 const present = <T>(records: (T | undefined)[]) => records.filter((r): r is T => r !== undefined);
 
-/** Sends local changes and fetches remote ones, repeating until both are caught up. */
+type Changes = SyncChanges<TimerSession, Solve, SotdMark>;
+const NO_CHANGES: Changes = { sessions: [], solves: [], sotd: [] };
+
+async function requestSync(cursor: number, changes: Changes): Promise<TimerSyncResponse> {
+  const response = await fetch("/api/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cursor, changes }),
+  });
+  if (response.status === 401) throw new SignedOutError();
+  if (!response.ok) throw new Error(`Sync failed (${response.status}).`);
+  // The server's own response type.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return (await response.json()) as TimerSyncResponse;
+}
+
+/**
+ * Sends local changes and fetches remote ones, repeating until both are
+ * caught up. While only downloading, the next page is requested while this
+ * one is being saved, so a new device fills up about twice as fast.
+ */
 async function syncRounds(): Promise<void> {
-  for (let round = 0; round < 100; round++) {
-    const cursor = await getMeta<number>(CURSOR_KEY, 0);
-    const [sessions, solves, sotd] = await Promise.all([
-      db.sessions.where("pendingSync").equals(1).limit(BATCH).toArray(),
-      db.solves.where("pendingSync").equals(1).limit(BATCH).toArray(),
-      db.sotd.where("pendingSync").equals(1).limit(BATCH).toArray(),
-    ]);
-    const response = await fetch("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cursor,
-        changes: { sessions: sessions.map(withoutSyncFlag), solves: solves.map(withoutSyncFlag), sotd: sotd.map(withoutSyncFlag) },
-      }),
-    });
-    if (response.status === 401) throw new SignedOutError();
-    if (!response.ok) throw new Error(`Sync failed (${response.status}).`);
-    // The server's own response type.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const data = (await response.json()) as TimerSyncResponse;
+  let received = 0;
+  let prefetched: { cursor: number; response: Promise<TimerSyncResponse> } | null = null;
+  try {
+    for (;;) {
+      const cursor = await getMeta<number>(CURSOR_KEY, 0);
+      const [sessions, solves, sotd] = await Promise.all([
+        db.sessions.where("pendingSync").equals(1).limit(BATCH).toArray(),
+        db.solves.where("pendingSync").equals(1).limit(BATCH).toArray(),
+        db.sotd.where("pendingSync").equals(1).limit(BATCH).toArray(),
+      ]);
+      const sending = sessions.length + solves.length + sotd.length > 0;
+      // A prefetched page is only good if nothing needs sending and the cursor is the one it asked from.
+      const data: TimerSyncResponse = !sending && prefetched?.cursor === cursor
+        ? await prefetched.response
+        : await requestSync(cursor, { sessions: sessions.map(withoutSyncFlag), solves: solves.map(withoutSyncFlag), sotd: sotd.map(withoutSyncFlag) });
+      prefetched = null;
 
-    await remoteWrite(async () => {
-      const remote = data.changes;
-      const localSessions = await db.sessions.bulkGet(remote.sessions.map((r) => r.id));
-      const localSolves = await db.solves.bulkGet(remote.solves.map((r) => r.id));
-      const localMarks = await db.sotd.bulkGet(remote.sotd.map((r) => r.date));
-      await db.sessions.bulkPut(recordsToApply(remote.sessions, present(localSessions), (r) => r.id).map((r) => ({ ...r, pendingSync: 0 as const })));
-      await db.solves.bulkPut(recordsToApply(remote.solves, present(localSolves), (r) => r.id).map((r) => ({ ...r, pendingSync: 0 as const })));
-      await db.sotd.bulkPut(recordsToApply(remote.sotd, present(localMarks), (r) => r.date).map((r) => ({ ...r, pendingSync: 0 as const })));
+      const morePending = sessions.length === BATCH || solves.length === BATCH || sotd.length === BATCH;
+      if (data.hasMore && !morePending && data.cursor === cursor && !sending) {
+        throw new Error("Sync stopped making progress.");
+      }
+      if (data.hasMore && !morePending) prefetched = { cursor: data.cursor, response: requestSync(data.cursor, NO_CHANGES) };
 
-      // What was sent is on the server now, unless it was edited again meanwhile.
-      await db.sessions.bulkPut(stillAsSent(await db.sessions.bulkGet(sessions.map((r) => r.id)), sessions));
-      await db.solves.bulkPut(stillAsSent(await db.solves.bulkGet(solves.map((r) => r.id)), solves));
-      await db.sotd.bulkPut(stillAsSent(await db.sotd.bulkGet(sotd.map((r) => r.date)), sotd));
-      await setMeta(CURSOR_KEY, data.cursor);
-    });
+      await remoteWrite(async () => {
+        const remote = data.changes;
+        const localSessions = await db.sessions.bulkGet(remote.sessions.map((r) => r.id));
+        const localSolves = await db.solves.bulkGet(remote.solves.map((r) => r.id));
+        const localMarks = await db.sotd.bulkGet(remote.sotd.map((r) => r.date));
+        await db.sessions.bulkPut(recordsToApply(remote.sessions, present(localSessions), (r) => r.id).map((r) => ({ ...r, pendingSync: 0 as const })));
+        await db.solves.bulkPut(recordsToApply(remote.solves, present(localSolves), (r) => r.id).map((r) => ({ ...r, pendingSync: 0 as const })));
+        await db.sotd.bulkPut(recordsToApply(remote.sotd, present(localMarks), (r) => r.date).map((r) => ({ ...r, pendingSync: 0 as const })));
 
-    const morePending = sessions.length === BATCH || solves.length === BATCH || sotd.length === BATCH;
-    if (!data.hasMore && !morePending) return;
+        // What was sent is on the server now, unless it was edited again meanwhile.
+        await db.sessions.bulkPut(stillAsSent(await db.sessions.bulkGet(sessions.map((r) => r.id)), sessions));
+        await db.solves.bulkPut(stillAsSent(await db.solves.bulkGet(solves.map((r) => r.id)), solves));
+        await db.sotd.bulkPut(stillAsSent(await db.sotd.bulkGet(sotd.map((r) => r.date)), sotd));
+        await setMeta(CURSOR_KEY, data.cursor);
+      });
+
+      received += data.changes.sessions.length + data.changes.solves.length + data.changes.sotd.length;
+      if (data.hasMore) setState({ progress: { done: received, total: received + (data.remaining ?? 0) } });
+      if (!data.hasMore && !morePending) return;
+    }
+  } finally {
+    // A request still in flight (after an error) is left to finish on its own.
+    prefetched?.response.catch(() => {});
+    if (state.progress) setState({ progress: null });
   }
 }
 

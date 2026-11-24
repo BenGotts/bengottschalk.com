@@ -77,8 +77,13 @@ const sotdRecord = z.object({
 
 /** At most this many records of each kind in one request; devices send more in later requests. */
 export const MAX_PUSH = 500;
-/** At most this many records of each kind in one response. */
-export const MAX_PULL = 1000;
+/**
+ * At most this many records of each kind in one response, and about this
+ * many bytes of JSON in all (Vercel caps a response at 4.5 MB). A new device
+ * downloads a big account in a few dozen pages instead of hundreds.
+ */
+export const MAX_PULL = 5000;
+export const MAX_PULL_BYTES = 3_000_000;
 
 export const syncRequestSchema = z.object({
   cursor: z.number().int().nonnegative(),
@@ -125,8 +130,24 @@ function stripServerColumns<T extends { userId: string; seq: number }>({ userId:
   return record;
 }
 
-/** Runs one sync for a signed-in user. */
-export async function syncForUser(db: TimerDb, userId: string, request: SyncRequestBody): Promise<TimerSyncResponse> {
+/** How many of the user's records changed after `cursor` (uses the (user, seq) indexes). */
+async function countSince(tx: TimerDb, userId: string, cursor: number): Promise<number> {
+  const counts = await Promise.all(
+    [timerSession, solve, sotdMark].map((table) =>
+      tx.select({ n: sql<number>`count(*)::int` }).from(table).where(and(eq(table.userId, userId), gt(table.seq, cursor)))),
+  );
+  return counts.reduce((sum, [row]) => sum + (row?.n ?? 0), 0);
+}
+
+/** Runs one sync for a signed-in user. (`limits` are for tests.) */
+export async function syncForUser(
+  db: TimerDb,
+  userId: string,
+  request: SyncRequestBody,
+  limits: { maxRows?: number; maxBytes?: number } = {},
+): Promise<TimerSyncResponse> {
+  const maxRows = limits.maxRows ?? MAX_PULL;
+  const maxBytes = limits.maxBytes ?? MAX_PULL_BYTES;
   return db.transaction(async (tx) => {
     await tx.execute(sql`select 1 from "user" where id = ${userId} for update`);
 
@@ -137,24 +158,37 @@ export async function syncForUser(db: TimerDb, userId: string, request: SyncRequ
 
     const since = request.cursor;
     const [sessionRows, solveRows, markRows] = await Promise.all([
-      tx.select().from(timerSession).where(and(eq(timerSession.userId, userId), gt(timerSession.seq, since))).orderBy(asc(timerSession.seq)).limit(MAX_PULL + 1),
-      tx.select().from(solve).where(and(eq(solve.userId, userId), gt(solve.seq, since))).orderBy(asc(solve.seq)).limit(MAX_PULL + 1),
-      tx.select().from(sotdMark).where(and(eq(sotdMark.userId, userId), gt(sotdMark.seq, since))).orderBy(asc(sotdMark.seq)).limit(MAX_PULL + 1),
+      tx.select().from(timerSession).where(and(eq(timerSession.userId, userId), gt(timerSession.seq, since))).orderBy(asc(timerSession.seq)).limit(maxRows + 1),
+      tx.select().from(solve).where(and(eq(solve.userId, userId), gt(solve.seq, since))).orderBy(asc(solve.seq)).limit(maxRows + 1),
+      tx.select().from(sotdMark).where(and(eq(sotdMark.userId, userId), gt(sotdMark.seq, since))).orderBy(asc(sotdMark.seq)).limit(maxRows + 1),
     ]);
 
     // When a kind has more than fits, only send changes up to the lowest
     // cursor that's complete for every kind, and ask the device to come back.
     let cutoff = Infinity;
     for (const rows of [sessionRows, solveRows, markRows]) {
-      if (rows.length > MAX_PULL) cutoff = Math.min(cutoff, rows[MAX_PULL - 1].seq);
+      if (rows.length > maxRows) cutoff = Math.min(cutoff, rows[maxRows - 1].seq);
     }
-    const upTo = <T extends { seq: number }>(rows: T[]) => rows.slice(0, MAX_PULL).filter((row) => row.seq <= cutoff);
+    // Keep the response under the size limit too: walk the changes in cursor
+    // order and stop before the one that would go over (always sending at least one).
+    let bytes = 0;
+    const inOrder = [...sessionRows, ...solveRows, ...markRows].filter((row) => row.seq <= cutoff).toSorted((a, b) => a.seq - b.seq);
+    for (const [i, row] of inOrder.entries()) {
+      bytes += JSON.stringify(row).length;
+      if (bytes > maxBytes && i > 0) {
+        cutoff = inOrder[i - 1].seq;
+        break;
+      }
+    }
+    const upTo = <T extends { seq: number }>(rows: T[]) => rows.slice(0, maxRows).filter((row) => row.seq <= cutoff);
     const sent = [upTo(sessionRows), upTo(solveRows), upTo(markRows)] as const;
     const cursor = Math.max(since, ...sent.flat().map((row) => row.seq));
+    const hasMore = cutoff !== Infinity;
 
     return {
       cursor,
-      hasMore: cutoff !== Infinity,
+      hasMore,
+      remaining: hasMore ? await countSince(tx, userId, cursor) : 0,
       changes: {
         sessions: sent[0].map(stripServerColumns),
         solves: sent[1].map((row) => stripServerColumns(row)),

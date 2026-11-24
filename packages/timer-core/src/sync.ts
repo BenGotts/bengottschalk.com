@@ -47,4 +47,6 @@ export interface SyncResponse<Session, Solve, Mark> {
   changes: SyncChanges<Session, Solve, Mark>;
   /** More changes are waiting: sync again straight away. */
   hasMore: boolean;
+  /** When `hasMore`: about how many records are still to come (for showing progress). */
+  remaining?: number;
 }

@@ -45,6 +45,10 @@ const STATUS_TEXT: Record<SyncState["status"], string> = {
   waiting: "Waiting for you to choose what to do with this device's solves",
 };
 
+/** "12,000 of 200,000" while a big download is under way. */
+const progressText = ({ done, total }: { done: number; total: number }) =>
+  `${done.toLocaleString()} of ${total.toLocaleString()}`;
+
 function StatusIcon({ status }: { status: SyncState["status"] }) {
   const className = "size-4";
   if (status === "syncing") return <LuRefreshCw className={`${className} animate-spin`} aria-hidden />;
@@ -121,6 +125,10 @@ export function AccountButton() {
     <details ref={menu} className="dropdown dropdown-end">
       <summary className="btn btn-sm btn-ghost gap-2" aria-label={`Account: ${sync.user.name}. ${STATUS_TEXT[sync.status]}`}>
         <StatusIcon status={sync.status} />
+        {/* A big download (a new device) shows how far along it is, without opening the menu. */}
+        {sync.status === "syncing" && sync.progress && sync.progress.total > 0 && (
+          <span className="text-xs tabular-nums text-muted">{Math.floor((sync.progress.done / sync.progress.total) * 100)}%</span>
+        )}
         <Avatar name={sync.user.name} image={sync.user.image} />
       </summary>
       <div className="dropdown-content z-10 mt-2 w-72 rounded-box border border-base-300 bg-base-200 p-3 shadow-lg">
@@ -130,6 +138,7 @@ export function AccountButton() {
           <StatusIcon status={sync.status} />
           <span>
             {STATUS_TEXT[sync.status]}
+            {sync.status === "syncing" && sync.progress && <span className="text-muted"> {progressText(sync.progress)}</span>}
             {sync.status === "synced" && sync.lastSyncedAt && <span className="text-muted"> · {new Date(sync.lastSyncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
             {sync.error && <span className="block text-muted">{sync.error}</span>}
           </span>
@@ -166,7 +175,8 @@ export function AccountSettings() {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="flex items-center gap-2 text-xs text-muted">
-        <StatusIcon status={sync.status} /> Signed in as {sync.user.name}. {STATUS_TEXT[sync.status]}.
+        <StatusIcon status={sync.status} /> Signed in as {sync.user.name}. {STATUS_TEXT[sync.status]}
+        {sync.status === "syncing" && sync.progress ? ` ${progressText(sync.progress)}.` : "."}
       </p>
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => void signOut()}>Sign out</button>
     </div>

@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { testUtils, type TestHelpers } from "better-auth/plugins";
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import type { TimerSession } from "@bengottschalk/timer-core/sessions";
@@ -14,7 +15,7 @@ import type { TimerDb } from "./db";
 import { schema } from "./schema";
 import type { SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { SyncRequest } from "@bengottschalk/timer-core/sync";
-import { handleSync, MAX_PULL, type TimerSyncResponse } from "./sync";
+import { handleSync, MAX_PULL, syncForUser, type TimerSyncResponse } from "./sync";
 
 /** A request as a device sends it. */
 type DeviceRequest = SyncRequest<TimerSession, Solve, SotdMark>;
@@ -148,6 +149,33 @@ describe("POST /api/sync", () => {
       if (!page.data.hasMore) break;
     }
     expect(pages).toBe(2);
+    expect(seen.size).toBe(ids.length);
+  }, 120_000);
+
+  it("keeps each page under the size limit and says how much is left", async () => {
+    const dave = await signIn("dave@example.com");
+    const [daveUser] = await db.select().from(schema.user).where(eq(schema.user.email, "dave@example.com"));
+    const ids = Array.from({ length: 40 }, (_, i) => `d${String(i).padStart(2, "0")}`);
+    await sync(dave, { cursor: 0, changes: { ...empty, solves: ids.map((id) => solve(id, 10, { scramble: "R U ".repeat(500) })) } });
+    // Each solve is about 1.5 KB of JSON, so a 10 KB page holds a handful.
+    const first = await syncForUser(db, daveUser.id, { cursor: 0, changes: empty }, { maxBytes: 10_000 });
+    const sent = first.changes.solves.length + first.changes.sessions.length;
+    expect(first.hasMore).toBe(true);
+    expect(sent).toBeGreaterThan(0);
+    expect(sent).toBeLessThan(10);
+    expect(first.remaining).toBe(40 - first.changes.solves.length);
+
+    const seen = new Set(first.changes.solves.map((s) => s.id));
+    let cursor = first.cursor;
+    for (let page = 0; page < 40; page++) {
+      const next = await syncForUser(db, daveUser.id, { cursor, changes: empty }, { maxBytes: 10_000 });
+      next.changes.solves.forEach((s) => seen.add(s.id));
+      cursor = next.cursor;
+      if (!next.hasMore) {
+        expect(next.remaining).toBe(0);
+        break;
+      }
+    }
     expect(seen.size).toBe(ids.length);
   }, 60_000);
 });
