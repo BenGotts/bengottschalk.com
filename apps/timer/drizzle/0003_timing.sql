@@ -1,0 +1,1 @@
+ALTER TABLE "solve" ADD COLUMN "timing" text;

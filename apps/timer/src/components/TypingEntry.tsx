@@ -34,7 +34,8 @@ export default function TypingEntry({ precision, onSave, disabled }: { precision
         placeholder="12.34"
       />
       <p className="h-5 text-sm text-muted">
-        {text && (parsed ? `${parsed.penalty === "dnf" ? "DNF " : ""}${formatTime(parsed.ms, "thousandths")}${parsed.penalty === "+2" ? " +2" : ""} · Enter to save` : "Not a time yet")}
+        {/* Shown to the chosen precision, like every time; it's saved exactly as typed. */}
+        {text && (parsed ? `${parsed.penalty === "dnf" ? "DNF " : ""}${formatTime(parsed.ms, precision)}${parsed.penalty === "+2" ? " +2" : ""} · Enter to save` : "Not a time yet")}
       </p>
     </form>
   );

@@ -11,7 +11,7 @@
 
 import { sql } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgSequence, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
-import type { CompetitionAttempt, MultiBlindResult } from "@bengottschalk/timer-core/solve";
+import type { CompetitionAttempt, MultiBlindResult, TimingMethod } from "@bengottschalk/timer-core/solve";
 
 // ---------------------------------------------------------------------------
 // better-auth
@@ -111,6 +111,8 @@ export const solve = pgTable("solve", {
   fmc: jsonb("fmc").$type<{ solution: string; moves: number }>(),
   multi: jsonb("multi").$type<MultiBlindResult>(),
   entry: text("entry", { enum: ["timer", "typed", "stackmat", "import"] }).notNull(),
+  /** How the time was taken (keyboard, touch, typed, …); null for solves saved before it was recorded. Not an enum, so new hardware needs no migration. */
+  timing: text("timing").$type<TimingMethod>(),
   createdAt: ms("created_at").notNull(),
   updatedAt: ms("updated_at").notNull(),
   deletedAt: ms("deleted_at"),

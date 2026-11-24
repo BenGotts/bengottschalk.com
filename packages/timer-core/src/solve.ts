@@ -41,6 +41,54 @@ export interface CompetitionAttempt {
 export const competitionSolveId = (competitionId: string, eventId: string, roundTypeId: string, attempt: number): string =>
   `wca-${competitionId}-${eventId}-${roundTypeId}-${attempt}`;
 
+/**
+ * How a time was taken. New hardware gets a new value here (and a label
+ * below); the server accepts any short lowercase name, so a newer device's
+ * method still syncs.
+ *
+ * - keyboard: the space bar
+ * - touch: holding the screen
+ * - typed: typed in (also Fewest Moves results)
+ * - stackmat: a Stackmat timer plugged in (to come)
+ * - bluetooth: a Bluetooth timer or smart cube (to come)
+ * - imported: brought in from csTimer
+ * - competition: an official or WCA Live attempt (timed by the judges)
+ */
+export type TimingMethod = "keyboard" | "touch" | "typed" | "stackmat" | "bluetooth" | "imported" | "competition";
+
+export const TIMING_LABELS: Record<TimingMethod | "unknown", string> = {
+  keyboard: "Space bar",
+  touch: "Touch screen",
+  typed: "Typed",
+  stackmat: "Stackmat",
+  bluetooth: "Bluetooth",
+  imported: "Imported from csTimer",
+  competition: "Competition (judged)",
+  unknown: "Not recorded",
+};
+
+/**
+ * How a solve was timed. Solves saved before this was recorded have no
+ * `timing`, so it's worked out from where they came from; a timer solve from
+ * then could have been the space bar or a touch, so that's "unknown".
+ */
+export function timingOf(solve: Pick<Solve, "timing" | "entry" | "source">): TimingMethod | "unknown" {
+  if (solve.timing) return solve.timing;
+  if (solve.source === "competition") return "competition";
+  if (solve.entry === "typed") return "typed";
+  if (solve.entry === "import") return "imported";
+  if (solve.entry === "stackmat") return "stackmat";
+  return "unknown";
+}
+
+/**
+ * Whether the solve's own time is known. The WCA records no time for a DNF
+ * or DNS attempt (its timeMs is 0); a DNF done here still has the time it
+ * was stopped at.
+ */
+export const rawTimeKnown = (solve: Pick<Solve, "source" | "penalty" | "timeMs">): boolean =>
+  !(solve.source === "competition" && solve.penalty === "dnf") && solve.timeMs > 0;
+
 export interface MultiBlindResult {
   solved: number;
   attempted: number;
@@ -70,8 +118,10 @@ export interface Solve {
   fmc: { solution: string; moves: number } | null;
   /** Multi-Blind: cubes solved out of attempted. */
   multi: MultiBlindResult | null;
-  /** How the time was entered. */
+  /** How the time was entered (kept for older devices; `timing` says more). */
   entry: "timer" | "typed" | "stackmat" | "import";
+  /** How the time was taken. Missing on solves saved before it was recorded: use `timingOf`. */
+  timing?: TimingMethod | null;
   createdAt: number;
   updatedAt: number;
   /** Deleted solves are kept (marked) so the deletion reaches other devices. */

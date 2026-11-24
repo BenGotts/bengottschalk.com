@@ -367,6 +367,7 @@ function roundToSolves(round: RoundInput, info: CompetitionInfo, now: number): S
     },
     memoMs: null,
     entry: "import",
+    timing: "competition",
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
@@ -426,6 +427,8 @@ export function groupByCompetition(results: WcaPersonResult[]): Map<string, WcaP
 export function competitionSolveChanged(stored: Solve, fresh: Solve): boolean {
   return stored.timeMs !== fresh.timeMs
     || stored.penalty !== fresh.penalty
+    // Attempts saved before the timing method was recorded get it on the next refresh.
+    || (stored.timing ?? null) !== (fresh.timing ?? null)
     || stored.startedAt !== fresh.startedAt
     || stored.deletedAt !== null
     || stableJson([stored.fmc, stored.multi, stored.competition]) !== stableJson([fresh.fmc, fresh.multi, fresh.competition]);

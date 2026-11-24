@@ -86,6 +86,7 @@ export default function ImportDialog({ open, onClose }: { open: boolean; onClose
             fmc: null,
             multi: null,
             entry: "import",
+            timing: "imported",
             createdAt: now,
             updatedAt: now,
             deletedAt: null,

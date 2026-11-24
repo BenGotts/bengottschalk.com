@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { compareMultiBlind, countFmcMoves, multiBlindPoints, solveValue, type Solve } from "./solve";
+import { compareMultiBlind, countFmcMoves, multiBlindPoints, rawTimeKnown, solveValue, timingOf, type Solve } from "./solve";
+
+describe("timing method", () => {
+  it("uses the recorded method, and works one out for solves saved before it was recorded", () => {
+    expect(timingOf({ timing: "touch", entry: "timer", source: "home" })).toBe("touch");
+    expect(timingOf({ entry: "timer", source: "home" })).toBe("unknown");
+    expect(timingOf({ timing: null, entry: "typed", source: "home" })).toBe("typed");
+    expect(timingOf({ entry: "import", source: "home" })).toBe("imported");
+    expect(timingOf({ entry: "import", source: "competition" })).toBe("competition");
+    expect(timingOf({ entry: "stackmat", source: "home" })).toBe("stackmat");
+  });
+
+  it("knows when a solve's own time is unknown (WCA DNFs record none)", () => {
+    expect(rawTimeKnown({ source: "competition", penalty: "dnf", timeMs: 0 })).toBe(false);
+    expect(rawTimeKnown({ source: "home", penalty: "dnf", timeMs: 12_345 })).toBe(true);
+    expect(rawTimeKnown({ source: "competition", penalty: "none", timeMs: 8_070 })).toBe(true);
+  });
+});
 
 const solve = (overrides: Partial<Solve>): Solve => ({
   id: "x", eventId: "333", sessionId: "main-333", timeMs: 10000, penalty: "none", scramble: "", comment: "",

@@ -185,7 +185,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const saveTyped = (time: ParsedTime) => {
     if (!current || !scrambleText) return;
     const now = Date.now();
-    void save({ eventId: activeEventId, sessionId: current.id, timeMs: time.ms, penalty: time.penalty, scramble: scrambleText, startedAt: now, endedAt: null, memoMs: null, fmc: null, multi: null, entry: "typed" });
+    void save({ eventId: activeEventId, sessionId: current.id, timeMs: time.ms, penalty: time.penalty, scramble: scrambleText, startedAt: now, endedAt: null, memoMs: null, fmc: null, multi: null, entry: "typed", timing: "typed" });
   };
 
   const saveFmc = (result: FmcResult) => {
@@ -193,7 +193,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     void save({
       eventId: activeEventId, sessionId: current.id, timeMs: result.timeMs, penalty: result.dnf ? "dnf" : "none", scramble: scrambleText,
       startedAt: result.startedAt, endedAt: result.timeMs ? result.startedAt + result.timeMs : null, memoMs: null,
-      fmc: { solution: result.solution, moves: result.moves }, multi: null, entry: "typed",
+      fmc: { solution: result.solution, moves: result.moves }, multi: null, entry: "typed", timing: "typed",
     });
   };
 

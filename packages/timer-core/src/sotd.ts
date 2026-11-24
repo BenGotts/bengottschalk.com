@@ -2,7 +2,7 @@
 // from solves, so a competition attempt (which is read-only) can be marked,
 // and refreshing results from the WCA keeps the mark.
 
-import type { Solve } from "./solve";
+import { rawTimeKnown, type Solve } from "./solve";
 import { formatAverage, formatTime, type Precision } from "./time";
 import { timerEvent } from "./events";
 import { formatRoundAverage, ordinal, roundName } from "./competition";
@@ -35,12 +35,11 @@ export interface SotdDetails {
 }
 
 /** The text "Copy for Claude" puts on the clipboard, for the Solve of the Day skill. */
-export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionName }: SotdDetails, homePrecision: Precision = "thousandths"): string {
+export function sotdClipboardText({ solve, ao5, ao12, wasPersonalBest, sessionName }: SotdDetails, precision: Precision): string {
   const event = timerEvent(solve.eventId);
-  // Competition results are only recorded to the hundredth.
-  const precision: Precision = solve.competition ? "hundredths" : homePrecision;
+  // A DNF shows the time it was stopped at when there is one (the WCA records none for its DNFs).
   const time = solve.penalty === "dnf"
-    ? `DNF (${formatTime(solve.timeMs, precision)})`
+    ? (rawTimeKnown(solve) ? `DNF (${formatTime(solve.timeMs, precision)})` : "DNF")
     : formatTime(solve.timeMs + (solve.penalty === "+2" ? 2000 : 0), precision) + (solve.penalty === "+2" ? " (+2)" : "");
   const lines = [
     "Solve of the Day",

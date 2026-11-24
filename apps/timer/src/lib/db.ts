@@ -8,7 +8,7 @@
 // transaction, which the hooks leave alone.
 
 import { Dexie, type EntityTable, type Transaction } from "dexie";
-import type { Solve } from "@bengottschalk/timer-core/solve";
+import type { Solve, TimingMethod } from "@bengottschalk/timer-core/solve";
 import { createMainSession, deleteBranch, deletingKeepsSolves, mainSessionId, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import type { SotdMark } from "@bengottschalk/timer-core/sotd";
 import { uuidv7 } from "@bengottschalk/timer-core/id";
@@ -123,7 +123,11 @@ export async function ensureMainSession(eventId: string): Promise<TimerSession> 
   return session;
 }
 
-export type NewSolve = Omit<Solve, "id" | "createdAt" | "updatedAt" | "deletedAt" | "comment" | "source" | "competition"> & { comment?: string };
+/** A solve done here. Every new solve says how it was timed. */
+export type NewSolve = Omit<Solve, "id" | "createdAt" | "updatedAt" | "deletedAt" | "comment" | "source" | "competition" | "timing"> & {
+  comment?: string;
+  timing: TimingMethod;
+};
 
 export async function addSolve(input: NewSolve): Promise<Solve> {
   const now = Date.now();
