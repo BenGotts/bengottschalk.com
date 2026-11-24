@@ -4,12 +4,22 @@
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { loadAlg, loadPuzzles, loadScramble } from "./cubing";
 
+/**
+ * cubing.js ends 3BLD scrambles with a random orientation like `Rw Dw'`; the
+ * WCA's own scrambles (TNoodle) use `Uw` there, e.g. `Rw Uw'`. Either set
+ * reaches all 24 orientations equally often, so swapping the final `Dw` for
+ * `Uw` keeps the scramble just as random and makes it look like a real one.
+ */
+export function wcaOrientationSuffix(scramble: string): string {
+  return scramble.replace(/\bDw(2|')?$/, "Uw$1");
+}
+
 /** One scramble for an event. Multi-Blind and the other blindfolded 3×3 events use 3BLD scrambles. */
 export async function generateScramble(eventId: string): Promise<string> {
   const { randomScrambleForEvent } = await loadScramble();
   const id = eventId === "333mbf" ? "333bf" : timerEvent(eventId).scrambleId;
   const alg = await randomScrambleForEvent(id);
-  return alg.toString();
+  return id === "333bf" ? wcaOrientationSuffix(alg.toString()) : alg.toString();
 }
 
 /** Multi-Blind: one scramble per cube. */
