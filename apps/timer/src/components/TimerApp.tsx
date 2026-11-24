@@ -19,6 +19,7 @@ import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
+import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
 import AverageDialog, { type AverageView } from "./AverageDialog";
 import EventPicker from "./EventPicker";
 import SourceFilter, { type SourceFilterValue } from "./SourceFilter";
@@ -331,6 +332,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   );
 
   return (
+    <CompetitionResultsContext.Provider value={competitionResults}>
     <div data-solving={solving} className="flex h-dvh flex-col">
       {/* Phones: the title, account and settings on one line, the event and session on the next. Wide screens: the event and session are at the top of the sidebar. */}
       <header className="focus-fade flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 bg-base-200 px-3 py-2 lg:h-14 lg:flex-nowrap lg:py-0">
@@ -434,7 +436,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${shownView === "timer" ? "hidden" : "flex"}`}>
           <div className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">{eventControls}</div>
           <div className={`lg:block ${shownView === "solves" || shownView === "stats" ? "" : "hidden"}`}>
-            <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
+            <SourceFilter value={sourceFilter} onChange={setSourceFilter} wcaId={competitionResults.wcaId} />
           </div>
           <div className={`lg:block ${shownView === "stats" ? "" : "hidden"}`}>
             <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
@@ -552,6 +554,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />
       </Modal>
     </div>
+    </CompetitionResultsContext.Provider>
   );
 }
 

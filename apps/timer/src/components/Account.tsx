@@ -4,7 +4,8 @@
 // about solves made before signing in. Only rendered when sign-in is set up.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { LuCloud, LuCloudAlert, LuCloudOff, LuLogOut, LuRefreshCw } from "react-icons/lu";
+import { LuCloud, LuCloudAlert, LuCloudOff, LuLogOut, LuRefreshCw, LuTrophy } from "react-icons/lu";
+import { useCompetitionResultsState } from "@/lib/wca/competitionResultsContext";
 import { authClient, signInWithWca } from "@/lib/auth-client";
 import { askAboutUnsyncedSolves, finishSignOut, prepareSignOut, signedInWcaId, resolveUnsyncedSolves, startSync, stopSync, syncNow, syncStore, type SyncState } from "@/lib/sync";
 import Modal from "./Modal";
@@ -78,6 +79,7 @@ function Avatar({ name, image }: { name: string; image: string | null }) {
 
 /** The header's account control: a sign-in button, or the account menu with the sync status. */
 export function AccountButton() {
+  const results = useCompetitionResultsState();
   const sync = useSyncState();
   const [busy, setBusy] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export function AccountButton() {
     <details ref={menu} className="dropdown dropdown-end">
       <summary className="btn btn-sm btn-ghost gap-2" aria-label={`Account: ${sync.user.name}. ${STATUS_TEXT[sync.status]}`}>
         <StatusIcon status={sync.status} />
+        {results?.loading && <LuTrophy className="size-4 animate-pulse text-ink-gold" aria-label="Loading WCA results" />}
         {/* A big download (a new device) shows how far along it is, without opening the menu. */}
         {sync.status === "syncing" && sync.progress && sync.progress.total > 0 && (
           <span className="text-xs tabular-nums text-muted">{Math.floor((sync.progress.done / sync.progress.total) * 100)}%</span>
@@ -154,6 +157,7 @@ export function AccountButton() {
             <LuLogOut aria-hidden /> Sign out
           </button>
         </div>
+        <WcaResultsStatus className="mt-3 border-t border-base-300 pt-3" />
       </div>
     </details>
   );
@@ -179,6 +183,43 @@ export function AccountSettings() {
         {sync.status === "syncing" && sync.progress ? ` ${progressText(sync.progress)}.` : "."}
       </p>
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => void signOut()}>Sign out</button>
+      <WcaResultsStatus className="w-full" />
+    </div>
+  );
+}
+
+const timeAgo = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+function ago(ms: number): string {
+  const minutes = Math.round((ms - Date.now()) / 60_000);
+  if (minutes > -60) return timeAgo.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  return hours > -48 ? timeAgo.format(hours, "hour") : timeAgo.format(Math.round(hours / 24), "day");
+}
+
+/**
+ * The WCA results, next to cloud sync but separate from it: when they were
+ * last brought in (or how far a first download has got), and a button to
+ * fetch them now. Only for accounts with a WCA ID.
+ */
+function WcaResultsStatus({ className = "" }: { className?: string }) {
+  const results = useCompetitionResultsState();
+  if (!results?.wcaId) return null;
+  const status = results.loading
+    ? `Loading${results.progress ? ` (${results.progress.done}/${results.progress.total} competitions)` : "…"}`
+    : results.error ?? (results.liveCompetitionIds.length > 0 ? "Following WCA Live" : results.refreshedAt ? `Updated ${ago(results.refreshedAt)}` : "Not loaded yet");
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-2 text-sm ${className}`}>
+      <p className="flex items-start gap-2">
+        <LuTrophy className="mt-0.5 shrink-0 text-ink-gold" aria-hidden />
+        <span>
+          WCA results
+          <output className={`block text-xs ${results.error ? "text-warning" : "text-muted"}`}>{status}</output>
+        </span>
+      </p>
+      <button type="button" className="btn btn-sm" onClick={results.refresh} disabled={results.loading}>
+        <LuRefreshCw aria-hidden className={results.loading ? "animate-spin" : ""} /> Refresh results
+      </button>
     </div>
   );
 }
