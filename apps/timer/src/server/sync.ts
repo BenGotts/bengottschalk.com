@@ -60,7 +60,8 @@ const solveRecord = z.object({
     averageRecord: z.string().max(10).nullable().optional(),
   }).nullable().default(null),
   memoMs: z.number().int().nonnegative().nullable(),
-  fmc: z.object({ solution: z.string().max(2_000), moves: z.number().int().nonnegative() }).nullable(),
+  // `notes` (the attempt's scratch pad) is newer: older versions leave it out.
+  fmc: z.object({ solution: z.string().max(2_000), moves: z.number().int().nonnegative(), notes: z.string().max(20_000).optional() }).nullable(),
   multi: z.object({ solved: z.number().int().nonnegative(), attempted: z.number().int().nonnegative() }).nullable(),
   entry: z.enum(["timer", "typed", "stackmat", "import"]),
   // Any short lowercase name, so a method a newer timer adds (new hardware) still syncs.

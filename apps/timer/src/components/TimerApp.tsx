@@ -197,11 +197,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   };
 
   const saveFmc = (result: FmcResult) => {
-    if (!current || !scrambleText) return;
+    if (!current) return;
     void save({
-      eventId: activeEventId, sessionId: current.id, timeMs: result.timeMs, penalty: result.dnf ? "dnf" : "none", scramble: scrambleText,
-      startedAt: result.startedAt, endedAt: result.timeMs ? result.startedAt + result.timeMs : null, memoMs: null,
-      fmc: { solution: result.solution, moves: result.moves }, multi: null, entry: "typed", timing: "typed",
+      eventId: activeEventId, sessionId: current.id, timeMs: result.timeMs, penalty: result.dnf ? "dnf" : "none", scramble: result.scramble,
+      startedAt: result.startedAt, endedAt: result.startedAt + result.timeMs, memoMs: null,
+      fmc: { solution: result.solution, moves: result.moves, ...(result.notes.trim() ? { notes: result.notes } : {}) }, multi: null, entry: "typed", timing: "typed",
     });
   };
 
@@ -301,7 +301,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   if (eventId === null) return <div className="min-h-dvh" />;
 
-  const scrambleImage = settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" ? (
+  const scrambleImage = settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && event.kind !== "fewest-moves" ? (
     <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
   ) : null;
   /** The scramble picture as a button that opens it large. */
@@ -378,7 +378,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             </div>
           )}
 
-          <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-3 text-center lg:max-h-none" aria-label="Scramble">
+          {/* FMC keeps its scramble hidden until the attempt starts, then shows it in its own panel. */}
+          {event.kind !== "fewest-moves" && <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-3 text-center lg:max-h-none" aria-label="Scramble">
             {event.kind === "multi-blind" ? (
               <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} scheme={colorsFor(activeEventId)} />
             ) : (
@@ -393,12 +394,12 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                 </div>
               </>
             )}
-          </section>
+          </section>}
 
           {/* On phones with a scramble picture, the time sits under the scramble and the picture fills the space below; otherwise the time is centred. */}
           <div className={`flex min-h-0 flex-col items-center justify-center gap-1 px-4 py-4 lg:flex-1 [@media(max-height:700px)]:py-1 ${scrambleImage ? "flex-none" : "flex-1"}`}>
             {event.kind === "fewest-moves" ? (
-              <FmcPanel scramble={scramble.scramble} onSave={saveFmc} disabled={!writable} />
+              <FmcPanel scramble={scramble.scramble} error={scramble.error} puzzleId={event.puzzleId} scheme={settings.scheme} showImage={settings.showScrambleImage} onSave={saveFmc} disabled={!writable} />
             ) : settings.entry === "typing" ? (
               <>
                 <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
@@ -547,7 +548,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       )}
       <AverageDialog view={averageView} onClose={() => setAverageView(null)} eventId={activeEventId} solves={viewSolves} precision={settings.precision} onOpenSolve={(s) => setOpenSolveId(s.id)} />
       <Modal open={dialog === "scramble"} onClose={() => setDialog(null)} title="Scramble" wide>
-        {event.puzzleId && scramble.scramble && (
+        {event.puzzleId && scramble.scramble && event.kind !== "fewest-moves" && (
           <div className="space-y-3">
             <div className="h-[min(60dvh,28rem)] w-full">
               <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
