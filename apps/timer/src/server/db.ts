@@ -2,6 +2,7 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { schema } from "./schema";
+import { serverEnv } from "./env";
 
 /** Any Drizzle Postgres database with the timer's schema (postgres.js in production, PGlite in tests). */
 export type TimerDb = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -16,7 +17,7 @@ let cached: TimerDb | null = null;
  * right choice for serverless functions) doesn't support prepared statements.
  */
 export function getDb(): TimerDb | null {
-  const url = process.env.DATABASE_URL;
+  const url = serverEnv("DATABASE_URL");
   if (!url) return null;
   cached ??= drizzle(postgres(url, { prepare: false, max: 5 }), { schema });
   return cached;

@@ -13,6 +13,7 @@ import { z } from "zod";
 import { TIMER_URL } from "@bengottschalk/content/site";
 import { getDb, type TimerDb } from "@/server/db";
 import { schema } from "@/server/schema";
+import { serverEnv } from "@/server/env";
 
 const WCA = "https://www.worldcubeassociation.org";
 
@@ -107,7 +108,7 @@ export type Auth = ReturnType<typeof createAuth>;
 
 /** Whether sign-in is set up (every variable it needs is present). */
 export function isAuthConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL && process.env.BETTER_AUTH_SECRET && process.env.WCA_CLIENT_ID && process.env.WCA_CLIENT_SECRET);
+  return ["DATABASE_URL", "BETTER_AUTH_SECRET", "WCA_CLIENT_ID", "WCA_CLIENT_SECRET"].every((name) => serverEnv(name) !== undefined);
 }
 
 let cached: Auth | null = null;
@@ -116,7 +117,8 @@ let cached: Auth | null = null;
 export function getAuth(): Auth | null {
   if (cached) return cached;
   const db = getDb();
-  const { BETTER_AUTH_SECRET, BETTER_AUTH_URL, WCA_CLIENT_ID, WCA_CLIENT_SECRET } = process.env;
+  const [BETTER_AUTH_SECRET, BETTER_AUTH_URL, WCA_CLIENT_ID, WCA_CLIENT_SECRET] =
+    ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "WCA_CLIENT_ID", "WCA_CLIENT_SECRET"].map(serverEnv);
   if (!db || !BETTER_AUTH_SECRET || !WCA_CLIENT_ID || !WCA_CLIENT_SECRET) return null;
   cached = createAuth({
     db,
