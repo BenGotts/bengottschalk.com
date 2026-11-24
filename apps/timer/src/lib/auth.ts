@@ -9,6 +9,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { TIMER_URL } from "@bengottschalk/content/site";
 import { getDb, type TimerDb } from "@/server/db";
@@ -28,6 +29,27 @@ const wcaMe = z.object({
   }),
 });
 
+/**
+ * WCA IDs from profiles just fetched, by WCA account number, waiting for the
+ * account hook below to save them. better-auth won't save `wcaId` from the
+ * profile itself: it's `input: false` (so nobody can set their own through
+ * better-auth's update-user endpoint), and better-auth drops such fields from
+ * provider profiles too. Both steps run in the same sign-in request.
+ */
+const pendingWcaIds = new Map<string, string | null>();
+
+/**
+ * Saves the WCA ID fetched during this sign-in onto the user. Runs after
+ * better-auth creates or updates the person's WCA account row.
+ */
+export async function saveWcaIdForAccount(db: TimerDb, account: { providerId?: string; accountId?: string; userId?: string } | null | undefined): Promise<void> {
+  if (!account || account.providerId !== "wca" || !account.accountId || !account.userId) return;
+  if (!pendingWcaIds.has(account.accountId)) return;
+  const wcaId = pendingWcaIds.get(account.accountId) ?? null;
+  pendingWcaIds.delete(account.accountId);
+  await db.update(schema.user).set({ wcaId }).where(eq(schema.user.id, account.userId));
+}
+
 /** Looks up the signed-in WCA account. */
 async function fetchWcaProfile(accessToken: string | undefined) {
   if (!accessToken) return null;
@@ -36,6 +58,7 @@ async function fetchWcaProfile(accessToken: string | undefined) {
   const parsed = wcaMe.safeParse(await response.json());
   if (!parsed.success) return null;
   const { me } = parsed.data;
+  pendingWcaIds.set(String(me.id), me.wca_id ?? null);
   return {
     id: String(me.id),
     name: me.name,
@@ -70,6 +93,13 @@ export function createAuth({ db, secret, baseURL, wca, plugins = [] }: AuthConfi
     user: {
       additionalFields: {
         wcaId: { type: "string", required: false, input: false },
+      },
+    },
+    databaseHooks: {
+      // New sign-ins create the account row; returning ones update its tokens.
+      account: {
+        create: { after: (account) => saveWcaIdForAccount(db, account) },
+        update: { after: (account) => saveWcaIdForAccount(db, account) },
       },
     },
     plugins: [
