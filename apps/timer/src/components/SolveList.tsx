@@ -14,8 +14,6 @@ interface Props {
   rolling: (number | null)[];
   rollingLabel: string;
   sotdSolveIds: Set<string>;
-  /** Solves done in a temporary session (a branch), when showing a main session. */
-  branchNames: Map<string, string>;
   precision: Precision;
   onOpen: (solve: Solve) => void;
   /** Opens the solves in the rolling average ending at index `end`. */
@@ -27,7 +25,7 @@ const ROW_HEIGHT = 28;
 /** Extra rows drawn above and below the visible ones, so fast scrolling doesn't show gaps. */
 const OVERSCAN = 20;
 
-export default function SolveList({ eventId, solves, rolling, rollingLabel, sotdSolveIds, branchNames, precision, onOpen, onOpenAverage }: Props) {
+export default function SolveList({ eventId, solves, rolling, rollingLabel, sotdSolveIds, precision, onOpen, onOpenAverage }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ top: 0, height: 800 });
 
@@ -67,7 +65,6 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
           {first > 0 && <tr aria-hidden style={{ height: first * ROW_HEIGHT }} />}
           {rows.map((i) => {
             const solve = solves[i];
-            const branch = branchNames.get(solve.sessionId);
             return (
               <tr key={solve.id} style={{ height: ROW_HEIGHT }} className={solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"}>
                 <td className="text-muted">{i + 1}</td>
@@ -92,7 +89,6 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                       aria-label={`Competition attempt: ${solve.competition.competitionName}`}
                     />
                   )}
-                  {branch && <span className="badge badge-ghost badge-xs font-sans" title={`Done in temporary session “${branch}”`}>{branch}</span>}
                   {solve.comment && <span className="text-muted" title={solve.comment} aria-label="Has a comment">“</span>}
                   {sotdSolveIds.has(solve.id) && <FaStar className="text-accent" title="Solve of the Day" aria-label="Solve of the Day" />}
                   </div>

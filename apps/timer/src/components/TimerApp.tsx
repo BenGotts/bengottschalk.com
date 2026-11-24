@@ -137,12 +137,6 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const rolling = useMemo(() => rollingAverages(values, rollingSpec), [values, rollingSpec]);
   const sotdMap = useMemo(() => marksByDate(marks), [marks]);
   const sotdSolveIds = useMemo(() => new Set(sotdMap.values()), [sotdMap]);
-  const branchNames = useMemo(() => {
-    const names = new Map<string, string>();
-    // A deleted merged branch's solves stay in Main, without a badge for the gone branch.
-    if (current && isMainSession(current)) for (const s of sessions) if (s.parentId === current.id && s.deletedAt === null) names.set(s.id, s.name);
-    return names;
-  }, [current, sessions]);
 
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const writable = current !== null && acceptsSolves(current);
@@ -431,7 +425,6 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               rolling={rolling}
               rollingLabel={event.format === "mo3" ? "mo3" : "ao5"}
               sotdSolveIds={sotdSolveIds}
-              branchNames={branchNames}
               precision={settings.precision}
               onOpen={(s) => setOpenSolveId(s.id)}
               onOpenAverage={(end) => openAverage(rollingSpec, end)}

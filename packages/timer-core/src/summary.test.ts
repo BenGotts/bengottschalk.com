@@ -32,6 +32,13 @@ describe("sessionSummary", () => {
     expect(s.full?.label).toBe("ao20");
   });
 
+  it("uses a mean, never ao3 or ao4, for sessions under five solves", () => {
+    expect(sessionSummary([1000, 2000, 3000]).full).toEqual({ label: "mo3", spec: { kind: "mean", size: 3 }, value: 2000 });
+    expect(sessionSummary([1000, 2000, 3000, 4000]).full?.label).toBe("mo4");
+    // mo3 isn't listed twice for a 3-solve session.
+    expect(sessionSummary([1000, 2000, 3000]).averages.map((a) => a.label)).toEqual([]);
+  });
+
   it("makes a 100-solve session's full average an ao100 (five dropped each end)", () => {
     const values = Array.from({ length: 100 }, (_, i) => 1000 * (i + 1));
     const s = sessionSummary(values);

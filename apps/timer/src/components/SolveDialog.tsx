@@ -12,6 +12,7 @@ import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, setSotd, updateSolve } from "@/lib/db";
 import { formatDateTime, formatDay, formatSolve } from "@/lib/format";
 import Modal from "./Modal";
+import ScrambleImage from "./ScrambleImage";
 
 interface Props {
   solve: Solve | null;
@@ -130,6 +131,12 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdDetails, read
         <p className="timer-digits whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">
           {solve.scramble || (solve.competition ? <span className="font-sans text-muted">Not known: the WCA posts each round's scramble sets, but not which set a competitor had.</span> : "—")}
         </p>
+        {/* Multi-Blind has several scrambles, so no single picture. */}
+        {solve.scramble && event.puzzleId && event.kind !== "multi-blind" && (
+          <div className="mt-2 h-40 w-full">
+            <ScrambleImage puzzleId={event.puzzleId} scramble={solve.scramble} />
+          </div>
+        )}
       </div>
       {solve.fmc && (
         <div>

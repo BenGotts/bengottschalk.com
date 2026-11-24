@@ -116,12 +116,14 @@ export function sessionSummary(values: readonly number[], { fullKind = "average"
     if (worst === null || value > worst.value) worst = { value, end };
   });
 
-  const fullSpec: AverageSpec = { kind: fullKind, size: values.length };
-  const fullValue = values.length >= 3 ? averageOf(values, fullKind) : null;
+  // Under five solves there's nothing to trim, so the WCA's way is a mean (mo3, not ao3).
+  const kind: AverageKind = values.length < 5 ? "mean" : fullKind;
+  const fullSpec: AverageSpec = { kind, size: values.length };
+  const fullValue = values.length >= 3 ? averageOf(values, kind) : null;
 
   const averages = SUMMARY_AVERAGES
     // The full average already covers a session exactly as long as one of these.
-    .filter((spec) => values.length >= spec.size && !(spec.size === values.length && spec.kind === fullKind))
+    .filter((spec) => values.length >= spec.size && !(spec.size === values.length && spec.kind === kind))
     .map((spec) => ({ spec, label: averageLabel(spec), ...bestAndWorst(rollingAverages(values, spec)) }));
 
   return {
