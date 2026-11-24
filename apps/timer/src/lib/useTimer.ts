@@ -7,6 +7,11 @@
 // With inspection on, pressing and releasing in idle starts inspection first;
 // then hold and release as usual. Times come from the input events'
 // timestamps (performance.now's clock), not from screen frames.
+//
+// Like csTimer, a mouse click never starts anything (only the space bar, or a
+// touch or pen on the timer); any key, click or touch stops a running solve.
+// The space bar always belongs to the timer, even when a button or the event
+// menu has focus, unless the person is typing in a text field.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Penalty } from "@bengottschalk/timer-core/solve";
@@ -41,6 +46,24 @@ export function inspectionPenalty(elapsedMs: number): Penalty {
 
 /** Wall-clock time of a performance.now() timestamp. */
 const wallClock = (perfTime: number) => Math.round(performance.timeOrigin + perfTime);
+
+/** Stops any spoken callout, including one already queued. */
+function hush() {
+  try {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  } catch {
+    // Nothing to stop.
+  }
+}
+
+/** Input types where the space bar doesn't type anything. */
+const NON_TEXT_INPUTS = new Set(["button", "checkbox", "radio", "range", "color", "file", "submit", "reset", "image"]);
+
+/** Whether the space bar would type a space here (so the timer leaves it alone). */
+export function isTextEntry(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement) return !NON_TEXT_INPUTS.has(target.type);
+  return target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
+}
 
 function speak(text: string) {
   try {
@@ -80,9 +103,12 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
     if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = null;
   }, []);
+  /** Cancels inspection's "8 seconds" and "12 seconds" callouts, including one being spoken. */
   const clearCallouts = useCallback(() => {
+    const hadCallouts = calloutTimers.current.length > 0;
     calloutTimers.current.forEach(clearTimeout);
     calloutTimers.current = [];
+    if (hadCallouts) hush();
   }, []);
 
   const beginInspection = useCallback((time: number) => {
@@ -139,6 +165,8 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
     } else if (current === "holding") {
       go(inspectionStartRef.current === null ? "idle" : "inspecting");
     } else if (current === "ready") {
+      // Inspection is over: no callouts once the solve has started.
+      clearCallouts();
       startRef.current = time;
       memoRef.current = null;
       setMemoMs(null);
@@ -149,7 +177,7 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       setInspectionStartedAt(null);
       go("idle");
     }
-  }, [beginInspection, go, clearHold]);
+  }, [beginInspection, go, clearHold, clearCallouts]);
 
   /** Stops inspection or a solve without saving anything. */
   const cancel = useCallback(() => {
@@ -163,10 +191,10 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
   useEffect(() => {
     if (!enabled) return undefined;
     const isSpace = (e: KeyboardEvent) => e.code === "Space";
-    const typing = (e: Event) =>
-      e.target instanceof HTMLElement && (e.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName));
+    const typing = (e: Event) => isTextEntry(e.target);
+    const dialogOpen = () => document.querySelector("dialog[open]") !== null;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (typing(e) || document.querySelector("dialog[open]")) return;
+      if (typing(e) || dialogOpen()) return;
       if (e.repeat) {
         if (isSpace(e)) e.preventDefault();
         return;
@@ -189,20 +217,29 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (typing(e)) return;
+      // In a dialog the space bar works its controls as usual.
+      if (typing(e) || (dialogOpen() && phaseRef.current === "idle")) return;
       const current = phaseRef.current;
       if (isSpace(e) || current === "stopped") {
+        // Keeps a focused button, menu or checkbox from reacting to the space bar.
         if (isSpace(e)) e.preventDefault();
         release(e.timeStamp);
       }
     };
+    // Switching away mid-press loses the key release: don't leave the timer armed.
+    const onBlur = () => {
+      clearHold();
+      if (phaseRef.current === "holding" || phaseRef.current === "ready") go(inspectionStartRef.current === null ? "idle" : "inspecting");
+    };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
     };
-  }, [enabled, press, release, cancel]);
+  }, [enabled, press, release, cancel, clearHold, go]);
 
   // Stop hold and callout timers if the component goes away mid-solve.
   useEffect(() => () => {
@@ -214,9 +251,12 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
   const surfaceHandlers = {
     onPointerDown: (e: React.PointerEvent) => {
       if (!enabled || e.button !== 0) return;
+      const running = phaseRef.current === "running";
+      // A mouse click only stops a running solve; starting is for the space bar, or a touch or pen.
+      if (e.pointerType === "mouse" && !running) return;
       // Buttons and fields on the timer screen work as usual, except that any touch stops a running solve.
       const onControl = e.target instanceof Element && e.target.closest("button, a, input, textarea, select, label, summary, details");
-      if (onControl && phaseRef.current !== "running") return;
+      if (onControl && !running) return;
       pointerRef.current = e.pointerId;
       // Keep getting this pointer's release even if the thumb slides off the timer.
       e.currentTarget.setPointerCapture?.(e.pointerId);

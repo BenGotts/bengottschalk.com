@@ -8,7 +8,11 @@ export default function EventPicker({ eventId, onChange }: { eventId: string; on
     <label className="flex items-center gap-2">
       <span className={`${eventIconClass(eventId)} text-xl`} aria-hidden />
       <span className="sr-only">Event</span>
-      <select className="select select-sm w-auto" value={eventId} onChange={(e) => onChange(e.target.value)}>
+      <select className="select select-sm w-auto" value={eventId} onChange={(e) => {
+        onChange(e.target.value);
+        // Hand the space bar back to the timer (a focused menu would open on Space).
+        e.target.blur();
+      }}>
         {TIMER_EVENTS.map((event) => (
           <option key={event.id} value={event.id}>{event.name}</option>
         ))}
