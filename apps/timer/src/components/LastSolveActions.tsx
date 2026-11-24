@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FaRegComment, FaRegStar, FaStar, FaTrash } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import type { Penalty, Solve } from "@bengottschalk/timer-core/solve";
-import { localDate } from "@bengottschalk/timer-core/sotd";
+import { localDate, sotdKey, sotdReplaceQuestion } from "@bengottschalk/timer-core/sotd";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, restoreSolve, setSotd, updateSolve } from "@/lib/db";
@@ -13,8 +13,8 @@ import Modal from "./Modal";
 interface Props {
   /** The latest solve done here (competition attempts are never edited); null hides the buttons. */
   solve: Solve | null;
-  /** Which solve is Solve of the Day on each day. */
-  sotdByDate: Map<string, string>;
+  /** Which solve is Solve of the Day for each event and day (keyed by `sotdKey`). */
+  sotdByEventDay: Map<string, string>;
   /** Solve of the Day is only for the site owner's account. */
   sotdEnabled: boolean;
   precision: Precision;
@@ -36,7 +36,7 @@ const blur = (e: React.MouseEvent<HTMLButtonElement>) => e.currentTarget.blur();
  * DNF, delete (asks first, then offers undo), a comment, and Solve of the Day. Alt+1/2/3, Alt+Z
  * and Alt+S still do the same from the keyboard.
  */
-export default function LastSolveActions({ solve, sotdByDate, sotdEnabled, precision }: Props) {
+export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, precision }: Props) {
   const [deleted, setDeleted] = useState<{ solve: Solve; wasSotd: boolean } | null>(null);
   const [commenting, setCommenting] = useState(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,7 +54,7 @@ export default function LastSolveActions({ solve, sotdByDate, sotdEnabled, preci
           onClick={(e) => {
             blur(e);
             if (undoTimer.current) clearTimeout(undoTimer.current);
-            void restoreSolve(deleted.solve.id).then(() => (deleted.wasSotd ? setSotd(localDate(deleted.solve.startedAt), deleted.solve.id) : undefined));
+            void restoreSolve(deleted.solve.id).then(() => (deleted.wasSotd ? setSotd(deleted.solve.eventId, localDate(deleted.solve.startedAt), deleted.solve.id) : undefined));
             setDeleted(null);
           }}
         >
@@ -66,14 +66,14 @@ export default function LastSolveActions({ solve, sotdByDate, sotdEnabled, preci
   if (!solve) return <div className="h-10" />;
 
   const day = localDate(solve.startedAt);
-  const sotdId = sotdByDate.get(day);
+  const sotdId = sotdByEventDay.get(sotdKey(solve.eventId, day));
   const isSotd = sotdId === solve.id;
   const timed = timerEvent(solve.eventId).kind === "time";
 
   const toggleSotd = async () => {
-    if (isSotd) return setSotd(day, null);
-    if (sotdId && !confirm("Another solve is already Solve of the Day for today. Replace it with this one?")) return;
-    await setSotd(day, solve.id);
+    if (isSotd) return setSotd(solve.eventId, day, null);
+    if (sotdId && !confirm(sotdReplaceQuestion(solve.eventId, "today"))) return;
+    await setSotd(solve.eventId, day, solve.id);
   };
 
   const remove = async () => {

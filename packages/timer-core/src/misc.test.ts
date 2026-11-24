@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { uuidv7 } from "./id";
 import { TIMER_EVENTS, timerEvent } from "./events";
-import { localDate, sotdByDate } from "./sotd";
+import { localDate, sotdByEventDay, sotdKey, sotdReplaceQuestion, withMarkEvents } from "./sotd";
 
 describe("uuidv7", () => {
   it("is a version 7 UUID that sorts by time", () => {
@@ -25,12 +25,35 @@ describe("events", () => {
 });
 
 describe("Solve of the Day", () => {
-  it("keeps one solve per day and drops unmarked days", () => {
-    const map = sotdByDate([
-      { date: "2026-11-23", solveId: "a", updatedAt: 1, deletedAt: null },
-      { date: "2026-11-22", solveId: "b", updatedAt: 1, deletedAt: 2 },
+  it("keeps one solve per event per day and drops unmarked days", () => {
+    const map = sotdByEventDay([
+      { eventId: "333", date: "2026-11-23", solveId: "a", updatedAt: 1, deletedAt: null },
+      { eventId: "sq1", date: "2026-11-23", solveId: "c", updatedAt: 1, deletedAt: null },
+      { eventId: "333", date: "2026-11-22", solveId: "b", updatedAt: 1, deletedAt: 2 },
     ]);
-    expect([...map]).toEqual([["2026-11-23", "a"]]);
+    expect([...map]).toEqual([[sotdKey("333", "2026-11-23"), "a"], [sotdKey("sq1", "2026-11-23"), "c"]]);
+    expect(map.get(sotdKey("333", "2026-11-22"))).toBeUndefined();
     expect(localDate(new Date(2026, 10, 23, 23, 59).getTime())).toBe("2026-11-23");
+    expect(sotdReplaceQuestion("333", "this day")).toBe("Another 3×3 solve is already Solve of the Day for this day. Replace it with this one?");
+  });
+
+  it("gives older marks the event of their solve", () => {
+    const events: Record<string, string> = { a: "333", b: "sq1", c: "333" };
+    const marks = withMarkEvents([
+      { date: "2026-11-23", solveId: "a", updatedAt: 1, deletedAt: null, pendingSync: 0 },
+      { date: "2026-11-22", solveId: "b", updatedAt: 2, deletedAt: 5 },
+      { date: "2026-11-21", solveId: "gone", updatedAt: 1, deletedAt: null },
+      { eventId: "444", date: "2026-11-20", solveId: "x", updatedAt: 1, deletedAt: null },
+    ], (id) => events[id]);
+    expect(marks).toEqual([
+      { eventId: "333", date: "2026-11-23", solveId: "a", updatedAt: 1, deletedAt: null, pendingSync: 0 },
+      { eventId: "sq1", date: "2026-11-22", solveId: "b", updatedAt: 2, deletedAt: 5 },
+      { eventId: "444", date: "2026-11-20", solveId: "x", updatedAt: 1, deletedAt: null },
+    ]);
+    // Two marks for one event and day (only from merging backups): the newer edit stays.
+    expect(withMarkEvents([
+      { date: "2026-11-23", solveId: "a", updatedAt: 1, deletedAt: null },
+      { date: "2026-11-23", solveId: "c", updatedAt: 3, deletedAt: null },
+    ], (id) => events[id]).map((m) => m.solveId)).toEqual(["c"]);
   });
 });

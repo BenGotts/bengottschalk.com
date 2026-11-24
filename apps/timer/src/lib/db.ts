@@ -7,10 +7,10 @@
 // writer is covered). Writes that come from the server run in a "remote"
 // transaction, which the hooks leave alone.
 
-import { Dexie, type EntityTable, type Transaction } from "dexie";
+import { Dexie, type EntityTable, type Table, type Transaction } from "dexie";
 import type { Solve, TimingMethod } from "@bengottschalk/timer-core/solve";
 import { createMainSession, deleteBranch, deletingKeepsSolves, mainSessionId, type TimerSession } from "@bengottschalk/timer-core/sessions";
-import type { SotdMark } from "@bengottschalk/timer-core/sotd";
+import { withMarkEvents, type DatedSotdMark, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import { uuidv7 } from "@bengottschalk/timer-core/id";
 
 interface MetaEntry {
@@ -23,10 +23,15 @@ export interface SyncFlag {
   pendingSync?: 0 | 1;
 }
 
+/** Transactions whose writes come from the server (or an upgrade), which the change-tracking hooks leave alone. */
+const remoteTransactions = new WeakSet<IDBTransaction>();
+const isRemote = (tx: Transaction) => remoteTransactions.has(tx.idbtrans);
+
 class TimerDatabase extends Dexie {
   solves!: EntityTable<Solve & SyncFlag, "id">;
   sessions!: EntityTable<TimerSession & SyncFlag, "id">;
-  sotd!: EntityTable<SotdMark & SyncFlag, "date">;
+  /** Solve of the Day marks, one per event per day: keyed by [eventId, date]. */
+  sotdMarks!: Table<SotdMark & SyncFlag, [string, string]>;
   meta!: EntityTable<MetaEntry, "key">;
 
   constructor() {
@@ -47,13 +52,28 @@ class TimerDatabase extends Dexie {
       .upgrade(async (tx) => {
         for (const table of ["solves", "sessions", "sotd"]) await tx.table(table).toCollection().modify({ pendingSync: 1 });
       });
+    // Version 3: each event has its own Solve of the Day. A primary key can't
+    // change in place, so marks move to a new table keyed by [eventId, date],
+    // each taking its solve's event, with its sync flag as it was (the
+    // server's marks get their events from its own migration).
+    this.version(3)
+      .stores({ sotdMarks: "[eventId+date], solveId, updatedAt, pendingSync" })
+      .upgrade(async (tx) => {
+        remoteTransactions.add(tx.idbtrans);
+        // Records saved by version 2 of this app.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const marks = (await tx.table("sotd").toArray()) as (DatedSotdMark & SyncFlag)[];
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const solves = (await tx.table("solves").bulkGet(marks.map((m) => m.solveId))) as (Solve | undefined)[];
+        const events = new Map(solves.filter((s) => s !== undefined).map((s) => [s.id, s.eventId]));
+        await tx.table("sotdMarks").bulkPut(withMarkEvents(marks, (id) => events.get(id)));
+      });
+    // Version 4: the old table goes once its marks have moved.
+    this.version(4).stores({ sotd: null });
   }
 }
 
 export const db = new TimerDatabase();
-
-const remoteTransactions = new WeakSet<IDBTransaction>();
-const isRemote = (tx: Transaction) => remoteTransactions.has(tx.idbtrans);
 
 let localChangeListener: (() => void) | null = null;
 
@@ -66,7 +86,7 @@ const notifyLocalChange = () => {
   if (localChangeListener) setTimeout(localChangeListener, 0);
 };
 
-for (const table of [db.solves, db.sessions, db.sotd]) {
+for (const table of [db.solves, db.sessions, db.sotdMarks] as Table<SyncFlag>[]) {
   table.hook("creating", (_key, record, tx) => {
     if (isRemote(tx)) return;
     record.pendingSync = 1;
@@ -84,7 +104,7 @@ for (const table of [db.solves, db.sessions, db.sotd]) {
  * they don't mark records as needing to sync.
  */
 export function remoteWrite<T>(fn: () => Promise<T>): Promise<T> {
-  return db.transaction("rw", [db.solves, db.sessions, db.sotd, db.meta], (tx) => {
+  return db.transaction("rw", [db.solves, db.sessions, db.sotdMarks, db.meta], (tx) => {
     remoteTransactions.add(tx.idbtrans);
     return fn();
   });
@@ -93,7 +113,7 @@ export function remoteWrite<T>(fn: () => Promise<T>): Promise<T> {
 /** Removes every solve, session and Solve of the Day mark from this device (after signing out, say). */
 export async function clearLocalData(): Promise<void> {
   await remoteWrite(async () => {
-    await Promise.all([db.solves.clear(), db.sessions.clear(), db.sotd.clear()]);
+    await Promise.all([db.solves.clear(), db.sessions.clear(), db.sotdMarks.clear()]);
   });
 }
 
@@ -143,10 +163,10 @@ export async function updateSolve(id: string, changes: Partial<Omit<Solve, "id">
 /** Marks a solve deleted (kept so the deletion syncs) and clears its Solve of the Day mark. */
 export async function deleteSolve(id: string): Promise<void> {
   const now = Date.now();
-  await db.transaction("rw", db.solves, db.sotd, async () => {
+  await db.transaction("rw", db.solves, db.sotdMarks, async () => {
     await db.solves.update(id, { deletedAt: now, updatedAt: now });
-    const marks = await db.sotd.where("solveId").equals(id).toArray();
-    for (const mark of marks) await db.sotd.update(mark.date, { deletedAt: now, updatedAt: now });
+    const marks = await db.sotdMarks.where("solveId").equals(id).toArray();
+    for (const mark of marks) await db.sotdMarks.update([mark.eventId, mark.date], { deletedAt: now, updatedAt: now });
   });
 }
 
@@ -165,29 +185,30 @@ export async function saveSession(session: TimerSession): Promise<void> {
  */
 export async function removeBranch(branch: TimerSession): Promise<void> {
   const now = Date.now();
-  await db.transaction("rw", db.sessions, db.solves, db.sotd, async () => {
+  await db.transaction("rw", db.sessions, db.solves, db.sotdMarks, async () => {
     await db.sessions.put(deleteBranch(branch, now));
     if (deletingKeepsSolves(branch)) return;
     const solves = await db.solves.where("sessionId").equals(branch.id).filter((s) => s.deletedAt === null).toArray();
     const ids = solves.map((s) => s.id);
     await db.solves.where("id").anyOf(ids).modify({ deletedAt: now, updatedAt: now });
-    const marks = await db.sotd.where("solveId").anyOf(ids).filter((m) => m.deletedAt === null).toArray();
-    for (const mark of marks) await db.sotd.update(mark.date, { deletedAt: now, updatedAt: now });
+    const marks = await db.sotdMarks.where("solveId").anyOf(ids).filter((m) => m.deletedAt === null).toArray();
+    for (const mark of marks) await db.sotdMarks.update([mark.eventId, mark.date], { deletedAt: now, updatedAt: now });
   });
 }
 
-export async function setSotd(date: string, solveId: string | null): Promise<void> {
+/** Sets (or, with null, clears) an event's Solve of the Day for a day, leaving other events' alone. */
+export async function setSotd(eventId: string, date: string, solveId: string | null): Promise<void> {
   const now = Date.now();
   if (solveId === null) {
-    await db.sotd.update(date, { deletedAt: now, updatedAt: now });
+    await db.sotdMarks.update([eventId, date], { deletedAt: now, updatedAt: now });
     return;
   }
-  await db.sotd.put({ date, solveId, updatedAt: now, deletedAt: null });
+  await db.sotdMarks.put({ eventId, date, solveId, updatedAt: now, deletedAt: null });
 }
 
 /** Everything on this device as one JSON backup. */
 export async function exportBackup(): Promise<string> {
-  const [solves, sessions, sotd] = await Promise.all([db.solves.toArray(), db.sessions.toArray(), db.sotd.toArray()]);
+  const [solves, sessions, sotd] = await Promise.all([db.solves.toArray(), db.sessions.toArray(), db.sotdMarks.toArray()]);
   return JSON.stringify({
     app: "cube-timer",
     version: 1,
@@ -205,13 +226,13 @@ const newer = <T extends { updatedAt: number }>(incoming: T, existing: T | undef
 export async function importBackup(text: string): Promise<{ solves: number; sessions: number }> {
   // A file this app wrote (checked by `app` below); its records are trusted as written.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const data = JSON.parse(text) as { app?: string; solves?: Solve[]; sessions?: TimerSession[]; sotd?: SotdMark[] };
+  const data = JSON.parse(text) as { app?: string; solves?: Solve[]; sessions?: TimerSession[]; sotd?: DatedSotdMark[] };
   if (data.app !== "cube-timer" || !Array.isArray(data.solves) || !Array.isArray(data.sessions)) {
     throw new Error("That file isn't a backup from this timer.");
   }
   let solves = 0;
   let sessions = 0;
-  await db.transaction("rw", db.solves, db.sessions, db.sotd, async () => {
+  await db.transaction("rw", db.solves, db.sessions, db.sotdMarks, async () => {
     for (const session of data.sessions!) {
       if (newer(session, await db.sessions.get(session.id))) {
         await db.sessions.put(session);
@@ -224,8 +245,13 @@ export async function importBackup(text: string): Promise<{ solves: number; sess
         solves++;
       }
     }
-    for (const mark of data.sotd ?? []) {
-      if (newer(mark, await db.sotd.get(mark.date))) await db.sotd.put(mark);
+    // Backups from before each event had its own Solve of the Day have marks
+    // without an event: they take their solve's (as saved here by now).
+    const marks = data.sotd ?? [];
+    const solveEvents = await db.solves.bulkGet(marks.map((m) => m.solveId));
+    const events = new Map(solveEvents.filter((s) => s !== undefined).map((s) => [s.id, s.eventId]));
+    for (const mark of withMarkEvents(marks, (id) => events.get(id))) {
+      if (newer(mark, await db.sotdMarks.get([mark.eventId, mark.date]))) await db.sotdMarks.put(mark);
     }
   });
   return { solves, sessions };

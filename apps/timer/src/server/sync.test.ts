@@ -90,7 +90,7 @@ describe("POST /api/sync", () => {
       changes: {
         sessions: [main],
         solves: [solve("a", 100), solve("b", 100, { competition: null, fmc: null })],
-        sotd: [{ date: "2026-11-23", solveId: "a", updatedAt: 100, deletedAt: null }],
+        sotd: [{ eventId: "333", date: "2026-11-23", solveId: "a", updatedAt: 100, deletedAt: null }],
       },
     });
     expect(first.status).toBe(200);
@@ -149,6 +149,60 @@ describe("POST /api/sync", () => {
     const withTiming = (id: string, timing: string) => JSON.stringify({ cursor: start, changes: { ...empty, solves: [{ ...solve(id, 800), timing }] } });
     expect((await sync(alice, withTiming("t3", "smart-cube-v2"))).status).toBe(200);
     expect((await sync(alice, withTiming("t4", "<script>"))).status).toBe(400);
+  });
+
+  it("keeps a Solve of the Day for each event on the same day", async () => {
+    const erin = await signIn("erin@example.com");
+    const day = "2026-11-24";
+    const first = await sync(erin, {
+      cursor: 0,
+      changes: {
+        ...empty,
+        solves: [solve("e1", 10), solve("e2", 10, { eventId: "sq1", sessionId: "main-sq1" })],
+        sotd: [
+          { eventId: "333", date: day, solveId: "e1", updatedAt: 10, deletedAt: null },
+          { eventId: "sq1", date: day, solveId: "e2", updatedAt: 10, deletedAt: null },
+        ],
+      },
+    });
+    expect(first.status).toBe(200);
+    expect(first.data.changes.sotd.map((m) => `${m.eventId} ${m.solveId}`).toSorted()).toEqual(["333 e1", "sq1 e2"]);
+    // A new 3x3 Solve of the Day for that day replaces only the 3x3 one.
+    const replaced = await sync(erin, {
+      cursor: first.data.cursor,
+      changes: { ...empty, solves: [solve("e3", 20)], sotd: [{ eventId: "333", date: day, solveId: "e3", updatedAt: 20, deletedAt: null }] },
+    });
+    expect(replaced.data.changes.sotd).toEqual([{ eventId: "333", date: day, solveId: "e3", updatedAt: 20, deletedAt: null }]);
+    const all = await sync(erin, { cursor: 0, changes: empty });
+    expect(all.data.changes.sotd.map((m) => `${m.eventId} ${m.solveId}`).toSorted()).toEqual(["333 e3", "sq1 e2"]);
+    // An event that isn't a short id is refused, like a solve's.
+    const bad = JSON.stringify({ cursor: 0, changes: { ...empty, sotd: [{ eventId: "", date: day, solveId: "e1", updatedAt: 30, deletedAt: null }] } });
+    expect((await sync(erin, bad)).status).toBe(400);
+  });
+
+  it("gives marks from an older version of the timer their solve's event", async () => {
+    const frank = await signIn("frank@example.com");
+    const day = "2026-11-24";
+    const start = (await sync(frank, { cursor: 0, changes: { ...empty, solves: [solve("f1", 10, { eventId: "sq1", sessionId: "main-sq1" })] } })).data.cursor;
+    // As an older device sends it: no event. "f2" arrives in the same request; "nowhere" isn't a solve the server has.
+    const older = JSON.stringify({
+      cursor: start,
+      changes: {
+        ...empty,
+        solves: [solve("f2", 20)],
+        sotd: [
+          { date: day, solveId: "f1", updatedAt: 20, deletedAt: null },
+          { date: day, solveId: "f2", updatedAt: 20, deletedAt: null },
+          { date: "2026-11-23", solveId: "nowhere", updatedAt: 20, deletedAt: null },
+        ],
+      },
+    });
+    const result = await sync(frank, older);
+    expect(result.status).toBe(200);
+    expect(result.data.changes.sotd.map((m) => `${m.eventId} ${m.date} ${m.solveId}`).toSorted()).toEqual([`333 ${day} f2`, `sq1 ${day} f1`]);
+    // Unmarking from an older device clears the right event's mark.
+    const unmarked = await sync(frank, JSON.stringify({ cursor: result.data.cursor, changes: { ...empty, sotd: [{ date: day, solveId: "f1", updatedAt: 30, deletedAt: 30 }] } }));
+    expect(unmarked.data.changes.sotd).toEqual([{ eventId: "sq1", date: day, solveId: "f1", updatedAt: 30, deletedAt: 30 }]);
   });
 
   it("keeps each person's records apart", async () => {

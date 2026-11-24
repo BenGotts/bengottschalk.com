@@ -121,13 +121,15 @@ export const solve = pgTable("solve", {
 
 export const sotdMark = pgTable("sotd_mark", {
   userId: owner(),
+  /** Each event has its own Solve of the Day: the marked solve's event. */
+  eventId: text("event_id").notNull(),
   /** The local calendar day, YYYY-MM-DD. */
   date: text("date").notNull(),
   solveId: text("solve_id").notNull(),
   updatedAt: ms("updated_at").notNull(),
   deletedAt: ms("deleted_at"),
   seq: changeCursor(),
-}, (t) => [primaryKey({ columns: [t.userId, t.date] }), index("sotd_mark_user_seq_idx").on(t.userId, t.seq)]).enableRLS();
+}, (t) => [primaryKey({ columns: [t.userId, t.eventId, t.date] }), index("sotd_mark_user_seq_idx").on(t.userId, t.seq)]).enableRLS();
 
 // ---------------------------------------------------------------------------
 // WCA data, fetched by the server and kept here so the WCA API is asked as
