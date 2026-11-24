@@ -6,7 +6,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
-import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
+import { solveValue, type Solve, type TimingMethod } from "@bengottschalk/timer-core/solve";
 import { DEFAULT_AVERAGES, isNewBest, rollingAverages, sessionStats, uniqueSpecs, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByEventDay, sotdKey, sotdReplaceQuestion, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
@@ -80,7 +80,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [mbldCubes, setMbldCubes] = useState(2);
   const [mbldScrambles, setMbldScrambles] = useState<string[] | null>(null);
   const [mbldGenerating, setMbldGenerating] = useState(false);
-  const [pendingMulti, setPendingMulti] = useState<FinishedSolve | null>(null);
+  /** A finished Multi-Blind attempt waiting for how many cubes were solved: timed, or typed in. */
+  const [pendingMulti, setPendingMulti] = useState<(Omit<FinishedSolve, "timing" | "endedAt"> & { endedAt: number | null; timing: TimingMethod }) | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>("all");
   const competitionResults = useCompetitionResults();
 
@@ -193,6 +194,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const saveTyped = (time: ParsedTime) => {
     if (!current || !scrambleText) return;
     const now = Date.now();
+    // Multi-Blind still needs how many cubes were solved.
+    if (event.kind === "multi-blind") {
+      setPendingMulti({ timeMs: time.ms, penalty: time.penalty, memoMs: null, startedAt: now, endedAt: null, timing: "typed" });
+      return;
+    }
     void save({ eventId: activeEventId, sessionId: current.id, timeMs: time.ms, penalty: time.penalty, scramble: scrambleText, startedAt: now, endedAt: null, memoMs: null, fmc: null, multi: null, entry: "typed", timing: "typed" });
   };
 
@@ -208,7 +214,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const saveMulti = (solved: number) => {
     if (!pendingMulti || !current || !mbldScrambles) return;
     const overLimit = pendingMulti.timeMs > Math.min(mbldScrambles.length, 6) * 600_000;
-    void save({ eventId: activeEventId, sessionId: current.id, ...pendingMulti, penalty: overLimit ? "dnf" : pendingMulti.penalty, scramble: mbldScrambles.join("\n"), fmc: null, multi: { solved, attempted: mbldScrambles.length }, entry: "timer" });
+    void save({ eventId: activeEventId, sessionId: current.id, ...pendingMulti, penalty: overLimit ? "dnf" : pendingMulti.penalty, scramble: mbldScrambles.join("\n"), fmc: null, multi: { solved, attempted: mbldScrambles.length }, entry: pendingMulti.timing === "typed" ? "typed" : "timer" });
     setPendingMulti(null);
   };
 
