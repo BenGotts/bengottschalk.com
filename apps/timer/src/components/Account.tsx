@@ -76,6 +76,7 @@ function Avatar({ name, image }: { name: string; image: string | null }) {
 export function AccountButton() {
   const sync = useSyncState();
   const [busy, setBusy] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
   const menu = useRef<HTMLDetailsElement>(null);
 
   // The menu closes on a click outside it or Escape.
@@ -95,17 +96,24 @@ export function AccountButton() {
 
   if (!sync.user) {
     return (
-      <button
-        type="button"
-        className="btn btn-sm btn-ghost"
-        disabled={busy}
-        onClick={() => {
-          setBusy(true);
-          void signInWithWca().finally(() => setBusy(false));
-        }}
-      >
-        Sign in with WCA
-      </button>
+      <span className="flex items-center gap-2">
+        {signInError && <output className="text-xs text-error">{signInError}</output>}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setSignInError(null);
+            void (async () => {
+              setSignInError(await signInWithWca());
+              setBusy(false);
+            })();
+          }}
+        >
+          Sign in with WCA
+        </button>
+      </span>
     );
   }
 
@@ -145,11 +153,13 @@ export function AccountButton() {
 /** The account part of Settings → Your data. */
 export function AccountSettings() {
   const sync = useSyncState();
+  const [signInError, setSignInError] = useState<string | null>(null);
   if (!sync.user) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted">Sign in with your WCA account to keep your solves in sync across devices.</p>
-        <button type="button" className="btn btn-sm btn-primary" onClick={() => void signInWithWca()}>Sign in with WCA</button>
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => void signInWithWca().then(setSignInError)}>Sign in with WCA</button>
+        {signInError && <output className="w-full text-xs text-error">{signInError}</output>}
       </div>
     );
   }
