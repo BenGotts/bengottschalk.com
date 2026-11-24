@@ -267,6 +267,8 @@ export function useTimer({ enabled, inspection, holdMs, memoSplit, voice, onFini
       if (e.target instanceof Element && e.target.closest("[data-timer-cancel]")) return;
       const onControl = e.target instanceof Element && e.target.closest("button, a, input, textarea, select, label, summary, details");
       if (onControl && !running) return;
+      // Nor do touches on the stats cards and other areas marked off from the timer (they only stop a running solve).
+      if (!running && e.target instanceof Element && e.target.closest("[data-timer-ignore]")) return;
       pointerRef.current = e.pointerId;
       // Keep getting this pointer's release even if the thumb slides off the timer.
       e.currentTarget.setPointerCapture?.(e.pointerId);

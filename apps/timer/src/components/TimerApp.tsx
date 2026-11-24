@@ -411,10 +411,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             <button
               type="button"
               data-timer-cancel
-              className="btn btn-outline btn-sm absolute bottom-4 left-1/2 z-10 -translate-x-1/2 gap-2 bg-base-100 lg:bottom-6"
+              className="btn btn-outline btn-lg absolute bottom-6 left-1/2 z-10 h-14 min-w-56 -translate-x-1/2 gap-3 border-2 bg-base-100 text-lg lg:bottom-8"
               onClick={timer.cancel}
             >
-              <FaXmark aria-hidden /> Cancel solve <kbd className="kbd kbd-xs hidden lg:inline-flex">Esc</kbd>
+              <FaXmark className="size-5" aria-hidden /> Cancel solve <kbd className="kbd kbd-xs hidden lg:inline-flex">Esc</kbd>
             </button>
           )}
 
@@ -449,7 +449,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                 </div>
               </>
             )}
-            <div className="focus-fade mt-3"><CurrentAverages eventId={activeEventId} format={event.format} specs={screenSpecs} stats={stats} solves={viewSolves} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} /></div>
+            <div className="focus-fade mt-3" data-timer-ignore><CurrentAverages eventId={activeEventId} format={event.format} specs={screenSpecs} stats={stats} solves={viewSolves} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} /></div>
           </div>
 
           {/* Phones: the scramble picture centred in the space between the time and the stats. */}

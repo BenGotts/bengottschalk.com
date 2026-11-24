@@ -48,7 +48,7 @@ export default function ScreenStats({ eventId, format, stats, specs, solves, pre
   const newestFirst = recent.map((solve, i) => ({ solve, index: first + i, end: dropped[i] })).toReversed();
 
   return (
-    <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats">
+    <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Stats" data-timer-ignore>
       <section className="rounded-box bg-base-200 px-2.5 py-1.5">
         <div className="flex justify-between gap-2 text-xs text-muted">
           <h2>{full ? <button type="button" className="link-hover" onClick={() => onOpenAverage(recentAverage, stats.count - 1)}>Last {recentAverage.size}</button> : `Last ${recentAverage.size}`}</h2>
