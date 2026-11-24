@@ -29,7 +29,7 @@ import LastSolveActions from "./LastSolveActions";
 import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
 import ScrambleImage from "./ScrambleImage";
-import ScreenStats from "./ScreenStats";
+import ScreenStats, { RecentSolves } from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
 import { SessionSummaryDialog } from "./SessionSummary";
 import { EndSessionDialog, StartSessionDialog } from "./TemporarySession";
@@ -146,6 +146,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const shownView: MobileView = view === "sotd" && !sotdEnabled ? "solves" : view;
   const shownTab = tab === "sotd" && !sotdEnabled ? "solves" : tab;
 
+  const recentSolves = useMemo(() => viewSolves.slice(-5), [viewSolves]);
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const writable = current !== null && acceptsSolves(current);
   const scramble = useScramble(activeEventId);
@@ -403,6 +404,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             )}
           </div>
 
+          {/* Phones: the last five solves, across the full width. */}
+          <div className="focus-fade shrink-0 px-3 pb-1.5 lg:hidden">
+            <RecentSolves solves={recentSolves} total={viewSolves.length} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
+          </div>
           {/* The key stats along the bottom, and the scramble picture beside them. */}
           <div className="focus-fade flex shrink-0 items-end gap-3 px-3 pb-3">
             {scrambleImage && <div className="hidden w-56 shrink-0 lg:block" aria-hidden />}
