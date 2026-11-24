@@ -20,6 +20,8 @@ interface Props {
   precision: Precision;
   /** Which solve is Solve of the Day on each day. */
   sotdByDate: Map<string, string>;
+  /** Solve of the Day is only for the site owner's account. */
+  sotdEnabled: boolean;
   /** The details "Copy for Claude" needs, worked out from the session. */
   sotdDetails: (solve: Solve) => SotdDetails;
   /** Read-only when the solve's branch was merged or discarded, or it came from a competition. */
@@ -32,10 +34,10 @@ const PENALTIES: { value: Penalty; label: string }[] = [
   { value: "dnf", label: "DNF" },
 ];
 
-export default function SolveDialog({ solve, onClose, precision, sotdByDate, sotdDetails, readOnly }: Props) {
+export default function SolveDialog({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly }: Props) {
   return (
     <Modal open={solve !== null} onClose={onClose} title={solve ? formatSolve(solve, precision) : "Solve"}>
-      {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByDate={sotdByDate} sotdDetails={sotdDetails} readOnly={readOnly} />}
+      {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByDate={sotdByDate} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={readOnly} />}
     </Modal>
   );
 }
@@ -79,7 +81,7 @@ function CompetitionDetails({ solve, competition, precision }: { solve: Solve; c
   );
 }
 
-function SolveDetails({ solve, onClose, precision, sotdByDate, sotdDetails, readOnly }: Props & { solve: Solve }) {
+function SolveDetails({ solve, onClose, precision, sotdByDate, sotdEnabled, sotdDetails, readOnly }: Props & { solve: Solve }) {
   const [comment, setComment] = useState(solve.comment);
   const [copied, setCopied] = useState<string | null>(null);
   const event = timerEvent(solve.eventId);
@@ -177,13 +179,15 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdDetails, read
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={`btn btn-sm ${isSotd ? "btn-accent" : ""}`} aria-pressed={isSotd} onClick={() => void toggleSotd()}>
-          {isSotd ? <FaStar aria-hidden /> : <FaRegStar aria-hidden />} Solve of the Day
-        </button>
+        {sotdEnabled && (
+          <button type="button" className={`btn btn-sm ${isSotd ? "btn-accent" : ""}`} aria-pressed={isSotd} onClick={() => void toggleSotd()}>
+            {isSotd ? <FaStar aria-hidden /> : <FaRegStar aria-hidden />} Solve of the Day
+          </button>
+        )}
         <button type="button" className="btn btn-sm" onClick={() => void copy("Copied", `${formatSolve(solve, precision)}   ${solve.scramble}`)}>
           <FaRegCopy aria-hidden /> Copy
         </button>
-        {isSotd && (
+        {sotdEnabled && isSotd && (
           <button type="button" className="btn btn-sm" onClick={() => void copy("Copied for Claude", sotdClipboardText(sotdDetails(solve)))}>
             <FaRegCopy aria-hidden /> Copy for Claude
           </button>

@@ -15,6 +15,8 @@ interface Props {
   solve: Solve | null;
   /** Which solve is Solve of the Day on each day. */
   sotdByDate: Map<string, string>;
+  /** Solve of the Day is only for the site owner's account. */
+  sotdEnabled: boolean;
   precision: Precision;
 }
 
@@ -34,7 +36,7 @@ const blur = (e: React.MouseEvent<HTMLButtonElement>) => e.currentTarget.blur();
  * DNF, delete (asks first, then offers undo), a comment, and Solve of the Day. Alt+1/2/3, Alt+Z
  * and Alt+S still do the same from the keyboard.
  */
-export default function LastSolveActions({ solve, sotdByDate, precision }: Props) {
+export default function LastSolveActions({ solve, sotdByDate, sotdEnabled, precision }: Props) {
   const [deleted, setDeleted] = useState<{ solve: Solve; wasSotd: boolean } | null>(null);
   const [commenting, setCommenting] = useState(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,16 +118,18 @@ export default function LastSolveActions({ solve, sotdByDate, precision }: Props
         >
           <FaRegComment aria-hidden />
         </button>
-        <button
-          type="button"
-          className={`btn join-item btn-square ${isSotd ? "btn-accent" : ""}`}
-          aria-pressed={isSotd}
-          aria-label="Solve of the Day"
-          title="Solve of the Day (Alt+S)"
-          onClick={(e) => { blur(e); void toggleSotd(); }}
-        >
-          {isSotd ? <FaStar aria-hidden /> : <FaRegStar aria-hidden />}
-        </button>
+        {sotdEnabled && (
+          <button
+            type="button"
+            className={`btn join-item btn-square ${isSotd ? "btn-accent" : ""}`}
+            aria-pressed={isSotd}
+            aria-label="Solve of the Day"
+            title="Solve of the Day (Alt+S)"
+            onClick={(e) => { blur(e); void toggleSotd(); }}
+          >
+            {isSotd ? <FaStar aria-hidden /> : <FaRegStar aria-hidden />}
+          </button>
+        )}
       </div>
       {/* The dialog sits inside the timer's touch area in React's tree: keep its taps from reaching the timer. */}
       <div className="contents" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>

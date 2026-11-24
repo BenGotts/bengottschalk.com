@@ -10,6 +10,7 @@ import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByDate as marksByDate, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
+import { WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
@@ -33,7 +34,7 @@ import SessionsDialog from "./SessionsDialog";
 import { SessionSummaryDialog } from "./SessionSummary";
 import { EndSessionDialog, StartSessionDialog } from "./TemporarySession";
 import SettingsDialog from "./SettingsDialog";
-import { AccountButton, AccountSession, UnsyncedSolvesDialog } from "./Account";
+import { AccountButton, useSignedInWcaId, AccountSession, UnsyncedSolvesDialog } from "./Account";
 import SolveDialog from "./SolveDialog";
 import SolveList from "./SolveList";
 import SotdList from "./SotdList";
@@ -56,6 +57,7 @@ const MOBILE_TABS: { view: MobileView; label: string; icon: React.ReactNode }[] 
 const NO_SESSIONS: TimerSession[] = [];
 const NO_SOLVES: Solve[] = [];
 const NO_MARKS: SotdMark[] = [];
+const NO_IDS = new Set<string>();
 const MEAN_OF_3: AverageSpec = { kind: "mean", size: 3 };
 const AVERAGE_OF_5: AverageSpec = { kind: "average", size: 5 };
 
@@ -135,8 +137,14 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   // The solve list's running average: mo3 for mean-of-3 events, ao5 for the rest.
   const rollingSpec = event.format === "mo3" ? MEAN_OF_3 : AVERAGE_OF_5;
   const rolling = useMemo(() => rollingAverages(values, rollingSpec), [values, rollingSpec]);
+  // Solve of the Day is only for the site owner's account (it feeds their Solve of the Day videos).
+  const sotdEnabled = useSignedInWcaId() === OWNER_WCA_ID;
   const sotdMap = useMemo(() => marksByDate(marks), [marks]);
-  const sotdSolveIds = useMemo(() => new Set(sotdMap.values()), [sotdMap]);
+  const sotdSolveIds = useMemo(() => (sotdEnabled ? new Set(sotdMap.values()) : NO_IDS), [sotdEnabled, sotdMap]);
+  const mobileTabs = sotdEnabled ? MOBILE_TABS : MOBILE_TABS.filter((item) => item.view !== "sotd");
+  // Signing out (or into another account) while on the SOTD screen goes back to the solves.
+  const shownView: MobileView = view === "sotd" && !sotdEnabled ? "solves" : view;
+  const shownTab = tab === "sotd" && !sotdEnabled ? "solves" : tab;
 
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const writable = current !== null && acceptsSolves(current);
@@ -214,7 +222,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         Digit2: () => last && void updateSolve(last.id, { penalty: "+2" }),
         Digit3: () => last && void updateSolve(last.id, { penalty: "dnf" }),
         KeyS: () => {
-          if (!last) return;
+          if (!last || !sotdEnabled) return;
           const day = localDate(last.startedAt);
           const marked = sotdMap.get(day);
           if (marked === last.id) void setSotd(day, null);
@@ -236,7 +244,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [timer.phase, lastHomeSolve, sotdMap, scramble, settings.precision]);
+  }, [timer.phase, lastHomeSolve, sotdMap, sotdEnabled, scramble, settings.precision]);
 
   const openSolve = allSolves.find((s) => s.id === openSolveId) ?? null;
   const openSolveReadOnly = openSolve ? !sessions.some((s) => s.id === openSolve.sessionId && acceptsSolves(s)) : true;
@@ -327,7 +335,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <main
-          className={`relative min-h-0 flex-1 flex-col lg:order-2 lg:flex ${view === "timer" ? "flex" : "hidden"} ${usesTimer && writable ? "touch-surface" : ""}`}
+          className={`relative min-h-0 flex-1 flex-col lg:order-2 lg:flex ${shownView === "timer" ? "flex" : "hidden"} ${usesTimer && writable ? "touch-surface" : ""}`}
           {...(usesTimer ? timer.surfaceHandlers : {})}
         >
           {!writable && current && (
@@ -369,7 +377,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             ) : settings.entry === "typing" ? (
               <>
                 <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
-                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByDate={sotdMap} precision={settings.precision} /></div>
+                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} /></div>
               </>
             ) : (
               <>
@@ -389,7 +397,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                     : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
                 </p>
                 <div className={`focus-fade ${timer.phase === "idle" ? "" : "invisible"}`}>
-                  <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} precision={settings.precision} />
+                  <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} />
                 </div>
               </>
             )}
@@ -405,20 +413,20 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           </div>
         </main>
 
-        <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${view === "timer" ? "hidden" : "flex"}`}>
+        <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${shownView === "timer" ? "hidden" : "flex"}`}>
           <div className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">{eventControls}</div>
-          <div className={`lg:block ${view === "solves" || view === "stats" ? "" : "hidden"}`}>
+          <div className={`lg:block ${shownView === "solves" || shownView === "stats" ? "" : "hidden"}`}>
             <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
           </div>
-          <div className={`lg:block ${view === "stats" ? "" : "hidden"}`}>
+          <div className={`lg:block ${shownView === "stats" ? "" : "hidden"}`}>
             <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
           </div>
           <div role="tablist" className="tabs tabs-box tabs-sm hidden lg:flex">
-            <button type="button" role="tab" className={`tab grow ${tab === "solves" ? "tab-active" : ""}`} aria-selected={tab === "solves"} onClick={() => setTab("solves")}>Solves</button>
-            <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>
+            <button type="button" role="tab" className={`tab grow ${shownTab === "solves" ? "tab-active" : ""}`} aria-selected={shownTab === "solves"} onClick={() => setTab("solves")}>Solves</button>
+            {sotdEnabled && <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>}
           </div>
           {/* On phones the bottom tabs pick the list; on wide screens the tabs above do. */}
-          <div className={`min-h-0 flex-1 overflow-hidden ${view === "solves" ? "block" : "hidden"} ${tab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+          <div className={`min-h-0 flex-1 overflow-hidden ${shownView === "solves" ? "block" : "hidden"} ${shownTab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
             <SolveList
               eventId={activeEventId}
               solves={viewSolves}
@@ -430,19 +438,19 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               onOpenAverage={(end) => openAverage(rollingSpec, end)}
             />
           </div>
-          <div className={`min-h-0 flex-1 overflow-y-auto ${view === "sotd" ? "block" : "hidden"} ${tab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+          <div className={`min-h-0 flex-1 overflow-y-auto ${shownView === "sotd" ? "block" : "hidden"} ${shownTab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
             <SotdList precision={settings.precision} onOpen={openFromSotd} />
           </div>
         </aside>
       </div>
 
-      <nav className="focus-fade grid shrink-0 grid-cols-4 border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Screens">
-        {MOBILE_TABS.map((item) => (
+      <nav className={`focus-fade grid shrink-0 ${mobileTabs.length === 4 ? "grid-cols-4" : "grid-cols-3"} border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] lg:hidden`} aria-label="Screens">
+        {mobileTabs.map((item) => (
           <button
             key={item.view}
             type="button"
-            className={`flex flex-col items-center gap-0.5 py-2 text-xs ${view === item.view ? "text-primary" : "text-muted"}`}
-            aria-current={view === item.view ? "page" : undefined}
+            className={`flex flex-col items-center gap-0.5 py-2 text-xs ${shownView === item.view ? "text-primary" : "text-muted"}`}
+            aria-current={shownView === item.view ? "page" : undefined}
             onClick={() => setView(item.view)}
           >
             <span className="text-base">{item.icon}</span>
@@ -510,7 +518,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       <AverageDialog view={averageView} onClose={() => setAverageView(null)} eventId={activeEventId} solves={viewSolves} precision={settings.precision} onOpenSolve={(s) => setOpenSolveId(s.id)} />
       {/* Opens above whichever dialog asked (native dialogs stack in the order they open). */}
       <ConfirmDialog />
-      <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
+      <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
       <Modal open={pendingMulti !== null} onClose={() => setPendingMulti(null)} title="How many did you solve?">
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />
       </Modal>
