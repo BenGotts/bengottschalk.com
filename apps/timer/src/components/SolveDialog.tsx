@@ -8,6 +8,7 @@ import type { CompetitionAttempt, Penalty, Solve } from "@bengottschalk/timer-co
 import { loadCompetitionScrambles } from "@/lib/wca/results";
 import { localDate, sotdClipboardText, type SotdDetails } from "@bengottschalk/timer-core/sotd";
 import { formatTime, type Precision } from "@bengottschalk/timer-core/time";
+import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, setSotd, updateSolve } from "@/lib/db";
 import { formatDateTime, formatDay, formatSolve } from "@/lib/format";
 import Modal from "./Modal";
@@ -185,9 +186,11 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdDetails, read
             type="button"
             className="btn btn-sm btn-ghost text-error"
             onClick={() => {
-              if (!confirm("Delete this solve?")) return;
-              void deleteSolve(solve.id);
-              onClose();
+              void (async () => {
+                if (!(await confirmSolveDeletion(solve, precision))) return;
+                await deleteSolve(solve.id);
+                onClose();
+              })();
             }}
           >
             <FaTrash aria-hidden /> Delete
