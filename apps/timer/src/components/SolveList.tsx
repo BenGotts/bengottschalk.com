@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { FaStar, FaTrophy } from "react-icons/fa6";
-import type { Solve } from "@bengottschalk/timer-core/solve";
+import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
+import { averageBreakdown } from "@bengottschalk/timer-core/stats";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { formatMean, formatSolve } from "@/lib/format";
@@ -49,6 +50,10 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
   const rows = [];
   for (let r = first; r < last; r++) rows.push(solves.length - 1 - r);
 
+  // The latest five stand out: their ao5's dropped best and worst in brackets (green and red), and a line under them.
+  const recentFrom = solves.length - 5;
+  const recentDropped = solves.length >= 5 ? averageBreakdown(solves.slice(recentFrom).map(solveValue), "average").dropped : [];
+
   return (
     <div ref={scroller} className="h-full overflow-y-auto">
       {solves.length === 0 && <p className="px-1 py-6 text-center text-sm text-muted">No solves yet. Hold space (or the timer) and let go to start.</p>}
@@ -66,12 +71,22 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
           {rows.map((i) => {
             const solve = solves[i];
             return (
-              <tr key={solve.id} style={{ height: ROW_HEIGHT }} className={solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"}>
+              <tr key={solve.id} style={{ height: ROW_HEIGHT }} className={`${solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"} ${i === recentFrom ? "border-b-2 border-b-base-content/25" : ""}`}>
                 <td className="text-muted">{i + 1}</td>
                 <td>
-                  <button type="button" className={`link-hover text-left ${solve.competition ? "text-ink-gold" : ""}`} onClick={() => onOpen(solve)}>
-                    {formatSolve(solve, precision)}
-                  </button>
+                  {(() => {
+                    const dropped = i >= recentFrom ? recentDropped[i - recentFrom] : null;
+                    const time = formatSolve(solve, precision);
+                    return (
+                      <button
+                        type="button"
+                        className={`link-hover text-left ${dropped === "best" ? "text-success" : dropped === "worst" ? "text-error" : solve.competition ? "text-ink-gold" : ""}`}
+                        onClick={() => onOpen(solve)}
+                      >
+                        {dropped ? `(${time})` : time}
+                      </button>
+                    );
+                  })()}
                 </td>
                 <td className="text-muted">
                   {rolling[i] === null ? formatMean(eventId, null, precision) : (

@@ -29,7 +29,7 @@ import LastSolveActions from "./LastSolveActions";
 import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
 import ScrambleImage from "./ScrambleImage";
-import ScreenStats, { RecentSolves } from "./ScreenStats";
+import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
 import { SessionSummaryDialog } from "./SessionSummary";
 import { EndSessionDialog, StartSessionDialog } from "./TemporarySession";
@@ -404,17 +404,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             )}
           </div>
 
-          {/* Phones: the last five solves, across the full width. */}
-          <div className="focus-fade shrink-0 px-3 pb-1.5 lg:hidden">
-            <RecentSolves solves={recentSolves} total={viewSolves.length} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
-          </div>
-          {/* The key stats along the bottom, and the scramble picture beside them. */}
-          <div className="focus-fade flex shrink-0 items-end gap-3 px-3 pb-3">
-            {scrambleImage && <div className="hidden w-56 shrink-0 lg:block" aria-hidden />}
-            <div className="mx-auto min-w-0 max-w-3xl flex-1">
-              <ScreenStats eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
-            </div>
-            {scrambleImage && <div className="pointer-events-none h-20 w-28 shrink-0 lg:h-40 lg:w-56">{scrambleImage}</div>}
+          {/* The scramble picture at the bottom right; on phones, the stats under it across the full width (wide screens have them in the sidebar). */}
+          <div className="focus-fade flex shrink-0 flex-col gap-2 px-3 pb-3">
+            {scrambleImage && <div className="pointer-events-none h-20 w-28 self-end lg:h-40 lg:w-56">{scrambleImage}</div>}
+            <ScreenStats eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} recent={recentSolves} />
           </div>
         </main>
 
@@ -426,7 +419,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           <div className={`lg:block ${shownView === "stats" ? "" : "hidden"}`}>
             <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
           </div>
-          <div role="tablist" className="tabs tabs-box tabs-sm hidden lg:flex">
+          {/* Only worth tabs when there's Solve of the Day to switch to. */}
+          <div role="tablist" className={`tabs tabs-box tabs-sm hidden ${sotdEnabled ? "lg:flex" : ""}`}>
             <button type="button" role="tab" className={`tab grow ${shownTab === "solves" ? "tab-active" : ""}`} aria-selected={shownTab === "solves"} onClick={() => setTab("solves")}>Solves</button>
             {sotdEnabled && <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>}
           </div>
