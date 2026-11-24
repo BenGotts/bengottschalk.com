@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import type { Settings } from "@/lib/settings";
+import { useLiveQuery } from "dexie-react-hooks";
 import { exportBackup, importBackup } from "@/lib/db";
+import { currentWcaId, setWcaId } from "@/lib/wca/results";
 import { AccountSettings } from "./Account";
 import Modal from "./Modal";
 import ThemeToggle from "./ThemeToggle";
@@ -85,6 +87,7 @@ export default function SettingsDialog({ open, onClose, settings, onChange, onIm
 
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-muted">Your data</h3>
+          <WcaIdField />
           <p className="text-xs text-muted">Solves are saved in this browser, so the timer works offline.</p>
           {authEnabled && <AccountSettings />}
           <div className="flex flex-wrap gap-2">
@@ -99,6 +102,39 @@ export default function SettingsDialog({ open, onClose, settings, onChange, onIm
         </section>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Temporary, until signing in with WCA: whose competition results to bring
+ * into the main sessions. Sign-in will use the signed-in person's WCA ID.
+ */
+function WcaIdField() {
+  const saved = useLiveQuery(() => currentWcaId(), []);
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? saved ?? "";
+  const valid = value === "" || /^\d{4}[A-Z]{4}\d{2}$/.test(value);
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        void setWcaId(value || null).then(() => setDraft(null));
+      }}
+    >
+      <label className="grow">
+        <span className="mb-1 block text-xs text-muted">WCA ID for competition results (temporary, until sign-in)</span>
+        <input
+          className={`input input-sm w-full uppercase ${valid ? "" : "input-error"}`}
+          value={value}
+          onChange={(e) => setDraft(e.target.value.toUpperCase().replaceAll(/\s/g, ""))}
+          placeholder="2016GOTT01"
+          aria-invalid={!valid}
+        />
+      </label>
+      <button type="submit" className="btn btn-sm" disabled={!valid || draft === null}>Save</button>
+    </form>
   );
 }
 

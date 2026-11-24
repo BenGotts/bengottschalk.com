@@ -6,11 +6,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LuCloud, LuCloudAlert, LuCloudOff, LuLogOut, LuRefreshCw } from "react-icons/lu";
 import { authClient, signInWithWca } from "@/lib/auth-client";
-import { askAboutUnsyncedSolves, finishSignOut, prepareSignOut, resolveUnsyncedSolves, startSync, stopSync, syncNow, syncStore, type SyncState } from "@/lib/sync";
+import { askAboutUnsyncedSolves, finishSignOut, prepareSignOut, signedInWcaId, resolveUnsyncedSolves, startSync, stopSync, syncNow, syncStore, type SyncState } from "@/lib/sync";
 import Modal from "./Modal";
 
 export function useSyncState(): SyncState {
   return useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot, syncStore.getSnapshot);
+}
+
+/** The signed-in person's WCA ID (null when signed out or not yet competed), updating on sign-in and sign-out. */
+export function useSignedInWcaId(): string | null {
+  return useSyncExternalStore(syncStore.subscribe, signedInWcaId, signedInWcaId);
 }
 
 /** Watches the signed-in session and starts or stops syncing to match. Renders nothing. */

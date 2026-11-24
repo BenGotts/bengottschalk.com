@@ -44,13 +44,20 @@ const solveRecord = z.object({
   startedAt: ms,
   endedAt: nullableMs,
   source: z.enum(["home", "competition"]),
-  competition: z.object({
-    competitionId: z.string(),
-    competitionName: z.string(),
-    roundTypeId: z.string(),
+  // Stored as JSON. Unknown fields are kept (not dropped), so new details a
+  // later version of the timer adds about competition attempts still sync.
+  competition: z.looseObject({
+    competitionId: z.string().max(100),
+    competitionName: z.string().max(300),
+    roundTypeId: z.string().max(10),
+    roundNumber: z.number().int().nullable().optional(),
     attempt: z.number().int(),
     status: z.enum(["live", "official"]),
     timeEstimate: z.enum(["group", "round", "day"]),
+    position: z.number().int().nullable().optional(),
+    roundAverage: z.number().int().nullable().optional(),
+    singleRecord: z.string().max(10).nullable().optional(),
+    averageRecord: z.string().max(10).nullable().optional(),
   }).nullable().default(null),
   memoMs: z.number().int().nonnegative().nullable(),
   fmc: z.object({ solution: z.string().max(2_000), moves: z.number().int().nonnegative() }).nullable(),

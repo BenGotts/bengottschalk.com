@@ -17,6 +17,15 @@ export interface CompetitionAttempt {
   status: "live" | "official";
   /** How `startedAt` was worked out: the competitor's group slot, the round's slot, or just the day. */
   timeEstimate: "group" | "round" | "day";
+  /** The round's number at the competition (1, 2, …), when the schedule says. */
+  roundNumber: number | null;
+  /** How the competitor placed in the round, when known. */
+  position: number | null;
+  /** The round's average or mean as the WCA stores it (centiseconds; FMC × 100; 0 none, -1 DNF). */
+  roundAverage: number | null;
+  /** Records set in the round, like "NR" (official) or "PR" (WCA Live). */
+  singleRecord: string | null;
+  averageRecord: string | null;
 }
 
 /**

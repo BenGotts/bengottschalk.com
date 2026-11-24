@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaArrowLeft, FaArrowRight, FaCodeBranch, FaGear, FaRegCopy } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaCodeBranch, FaGear, FaRegCopy, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
@@ -15,7 +15,9 @@ import { generateMultiBlindScrambles } from "@/lib/scrambles";
 import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
+import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
 import EventPicker from "./EventPicker";
+import SourceFilter, { type SourceFilterValue } from "./SourceFilter";
 import FmcPanel, { type FmcResult } from "./FmcPanel";
 import ImportDialog from "./ImportDialog";
 import Modal from "./Modal";
@@ -50,6 +52,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [mbldScrambles, setMbldScrambles] = useState<string[] | null>(null);
   const [mbldGenerating, setMbldGenerating] = useState(false);
   const [pendingMulti, setPendingMulti] = useState<FinishedSolve | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>("all");
+  const competitionResults = useCompetitionResults();
 
   // Restore settings and the last event and sessions used on this device.
   useEffect(() => {
@@ -95,7 +99,14 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const main = sessions.find((s) => s.id === mainSessionId(activeEventId)) ?? null;
   const current: TimerSession | null = sessions.find((s) => s.id === sessionIds[activeEventId] && s.deletedAt === null) ?? main;
 
-  const viewSolves = useMemo(() => (current ? sessionSolves(current, sessions, allSolves) : []), [current, sessions, allSolves]);
+  const sessionView = useMemo(() => (current ? sessionSolves(current, sessions, allSolves) : []), [current, sessions, allSolves]);
+  // Competition attempts count in stats like any solve, unless the filter leaves them (or home solves) out.
+  const viewSolves = useMemo(
+    () => (sourceFilter === "all" ? sessionView : sessionView.filter((s) => s.source === sourceFilter)),
+    [sessionView, sourceFilter],
+  );
+  // Shortcuts act on the latest solve done here (competition attempts are read-only).
+  const lastHomeSolve = useMemo(() => sessionView.findLast((s) => s.source === "home" && s.sessionId === current?.id) ?? null, [sessionView, current]);
   const values = useMemo(() => viewSolves.map(solveValue), [viewSolves]);
   const stats = useMemo(() => sessionStats(values), [values]);
   const meanOf3 = event.format === "mo3";
@@ -175,7 +186,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey || timer.phase !== "idle" || document.querySelector("dialog[open]")) return;
       if (e.target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
-      const last = lastSolve && lastSolve.sessionId === current?.id ? lastSolve : null;
+      const last = lastHomeSolve;
       const actions: Record<string, () => void> = {
         Digit1: () => last && void updateSolve(last.id, { penalty: "none" }),
         Digit2: () => last && void updateSolve(last.id, { penalty: "+2" }),
@@ -198,7 +209,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [timer.phase, lastSolve, current, sotdMap, scramble]);
+  }, [timer.phase, lastHomeSolve, sotdMap, scramble]);
 
   const openSolve = allSolves.find((s) => s.id === openSolveId) ?? null;
   const openSolveReadOnly = openSolve ? !sessions.some((s) => s.id === openSolve.sessionId && acceptsSolves(s)) : true;
@@ -294,7 +305,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                 hideRunningTime={settings.hideRunningTime}
               />
               <p className="focus-fade h-6 text-sm">
-                {newBest ? <span className="font-medium text-accent">New best single</span>
+                {timer.phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
+                  : newBest ? <span className="font-medium text-accent">New best single</span>
                   : event.kind === "multi-blind" && !mbldScrambles ? <span className="text-muted">Make scrambles to start</span>
                   : timer.phase === "idle" && <span className="text-muted">{settings.inspection && event.inspection ? "Press space or tap to inspect" : "Hold space or the timer, then let go"}</span>}
               </p>
@@ -314,6 +326,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           <h1 className="font-semibold">Cube Timer</h1>
           <span className="text-xs text-muted">{event.shortName} · {current && !isMainSession(current) ? current.name : "Main"}</span>
         </div>
+        <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
         <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} />
         <div role="tablist" className="tabs tabs-box tabs-sm">
           <button type="button" role="tab" className={`tab grow ${tab === "solves" ? "tab-active" : ""}`} aria-selected={tab === "solves"} onClick={() => setTab("solves")}>Solves</button>

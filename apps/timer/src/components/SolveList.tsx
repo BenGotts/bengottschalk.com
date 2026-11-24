@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FaStar } from "react-icons/fa6";
+import { FaStar, FaTrophy } from "react-icons/fa6";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
@@ -46,15 +46,22 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
             const solve = solves[i];
             const branch = branchNames.get(solve.sessionId);
             return (
-              <tr key={solve.id} className="hover:bg-base-300">
+              <tr key={solve.id} className={solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"}>
                 <td className="text-muted">{i + 1}</td>
                 <td>
-                  <button type="button" className="link-hover text-left" onClick={() => onOpen(solve)}>
+                  <button type="button" className={`link-hover text-left ${solve.competition ? "text-ink-gold" : ""}`} onClick={() => onOpen(solve)}>
                     {formatSolve(solve, precision)}
                   </button>
                 </td>
                 <td className="text-muted">{formatMean(eventId, rolling[i], precision)}</td>
                 <td className="flex items-center justify-end gap-1.5">
+                  {solve.competition && (
+                    <FaTrophy
+                      className="text-ink-gold"
+                      title={`${solve.competition.competitionName}${solve.competition.status === "live" ? " (live)" : ""}`}
+                      aria-label={`Competition attempt: ${solve.competition.competitionName}`}
+                    />
+                  )}
                   {branch && <span className="badge badge-ghost badge-xs font-sans" title={`Done in branch “${branch}”`}>{branch}</span>}
                   {solve.comment && <span className="text-muted" title={solve.comment} aria-label="Has a comment">“</span>}
                   {sotdSolveIds.has(solve.id) && <FaStar className="text-accent" title="Solve of the Day" aria-label="Solve of the Day" />}

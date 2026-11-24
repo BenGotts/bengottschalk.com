@@ -1,0 +1,382 @@
+[
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "333",
+  "round_type_id": "1",
+  "pos": 3,
+  "best": 732,
+  "average": 787,
+  "attempts": [
+   761,
+   749,
+   1024,
+   850,
+   732
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "333bf",
+  "round_type_id": "1",
+  "pos": 1,
+  "best": 9975,
+  "average": 12920,
+  "attempts": [
+   12864,
+   12489,
+   13408,
+   -1,
+   9975
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "444",
+  "round_type_id": "d",
+  "pos": 2,
+  "best": 3182,
+  "average": 3329,
+  "attempts": [
+   3387,
+   3182,
+   3321,
+   3280,
+   3764
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "clock",
+  "round_type_id": "d",
+  "pos": 4,
+  "best": 589,
+  "average": 951,
+  "attempts": [
+   -1,
+   975,
+   1146,
+   733,
+   589
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "skewb",
+  "round_type_id": "1",
+  "pos": 3,
+  "best": 455,
+  "average": 537,
+  "attempts": [
+   590,
+   575,
+   529,
+   508,
+   455
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "333",
+  "round_type_id": "2",
+  "pos": 4,
+  "best": 755,
+  "average": 870,
+  "attempts": [
+   919,
+   806,
+   885,
+   972,
+   755
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "333bf",
+  "round_type_id": "f",
+  "pos": 1,
+  "best": 12241,
+  "average": -1,
+  "attempts": [
+   18020,
+   -1,
+   -1,
+   -1,
+   12241
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "444",
+  "round_type_id": "f",
+  "pos": 3,
+  "best": 2936,
+  "average": 3561,
+  "attempts": [
+   3356,
+   3944,
+   2936,
+   3655,
+   3672
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "clock",
+  "round_type_id": "f",
+  "pos": 8,
+  "best": 799,
+  "average": -1,
+  "attempts": [
+   -1,
+   808,
+   799,
+   -1,
+   856
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "skewb",
+  "round_type_id": "f",
+  "pos": 5,
+  "best": 254,
+  "average": 486,
+  "attempts": [
+   477,
+   463,
+   519,
+   254,
+   623
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "UOFall2026",
+  "competition_short_name": "UO Fall 2026",
+  "competition_start_date": "2026-11-21",
+  "event_id": "333",
+  "round_type_id": "f",
+  "pos": 3,
+  "best": 778,
+  "average": 904,
+  "attempts": [
+   807,
+   1037,
+   778,
+   867,
+   1154
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333mbf",
+  "round_type_id": "f",
+  "pos": 3,
+  "best": -1,
+  "average": 0,
+  "attempts": [
+   -1,
+   0,
+   0,
+   0,
+   0
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333ft",
+  "round_type_id": "c",
+  "pos": 1,
+  "best": 10996,
+  "average": 12263,
+  "attempts": [
+   11404,
+   14388,
+   10996,
+   0,
+   0
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333bf",
+  "round_type_id": "f",
+  "pos": 9,
+  "best": -1,
+  "average": -1,
+  "attempts": [
+   -1,
+   -1,
+   -1,
+   0,
+   0
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333fm",
+  "round_type_id": "f",
+  "pos": 8,
+  "best": 47,
+  "average": -1,
+  "attempts": [
+   -1,
+   56,
+   47,
+   0,
+   0
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333",
+  "round_type_id": "1",
+  "pos": 4,
+  "best": 985,
+  "average": 1236,
+  "attempts": [
+   1415,
+   1438,
+   1046,
+   1248,
+   985
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333",
+  "round_type_id": "2",
+  "pos": 4,
+  "best": 1165,
+  "average": 1251,
+  "attempts": [
+   1165,
+   1272,
+   1299,
+   1211,
+   1271
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333",
+  "round_type_id": "f",
+  "pos": 4,
+  "best": 968,
+  "average": 1235,
+  "attempts": [
+   1314,
+   1229,
+   1450,
+   1162,
+   968
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333oh",
+  "round_type_id": "d",
+  "pos": 4,
+  "best": 1751,
+  "average": 2439,
+  "attempts": [
+   2646,
+   3695,
+   1751,
+   2232,
+   2439
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ },
+ {
+  "competition_id": "Eugene3x3Mania2017",
+  "competition_short_name": "Eugene 3x3 Mania 2017",
+  "competition_start_date": "2017-04-08",
+  "event_id": "333oh",
+  "round_type_id": "f",
+  "pos": 4,
+  "best": 1870,
+  "average": 2263,
+  "attempts": [
+   2273,
+   3337,
+   1870,
+   2279,
+   2236
+  ],
+  "regional_single_record": null,
+  "regional_average_record": null
+ }
+]

@@ -49,6 +49,13 @@ const CURSOR_KEY = "sync.cursor";
 
 let state: SyncState = { user: null, status: "off", lastSyncedAt: null, unsyncedSolves: 0, askingAboutUnsynced: false, error: null };
 
+/**
+ * The signed-in person's WCA ID: null when signed out (or sign-in isn't set
+ * up), or when they haven't competed yet. Listen for changes with
+ * `syncStore.subscribe`, or use `useSignedInWcaId` in components.
+ */
+export const signedInWcaId = (): string | null => state.user?.wcaId ?? null;
+
 /** Shows or puts off the question about solves made before signing in. */
 export function askAboutUnsyncedSolves(open: boolean): void {
   setState({ askingAboutUnsynced: open });

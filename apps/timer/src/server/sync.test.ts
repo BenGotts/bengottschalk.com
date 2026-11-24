@@ -12,7 +12,12 @@ import type { TimerSession } from "@bengottschalk/timer-core/sessions";
 import { createAuth } from "@/lib/auth";
 import type { TimerDb } from "./db";
 import { schema } from "./schema";
-import { handleSync, MAX_PULL, type SyncRequestBody, type TimerSyncResponse } from "./sync";
+import type { SotdMark } from "@bengottschalk/timer-core/sotd";
+import type { SyncRequest } from "@bengottschalk/timer-core/sync";
+import { handleSync, MAX_PULL, type TimerSyncResponse } from "./sync";
+
+/** A request as a device sends it. */
+type DeviceRequest = SyncRequest<TimerSession, Solve, SotdMark>;
 
 let db: TimerDb;
 let auth: ReturnType<typeof createAuth>;
@@ -51,7 +56,7 @@ const main: TimerSession = {
 
 const empty = { sessions: [], solves: [], sotd: [] };
 
-async function sync(headers: Headers | null, body: SyncRequestBody | string): Promise<{ status: number; data: TimerSyncResponse }> {
+async function sync(headers: Headers | null, body: DeviceRequest | string): Promise<{ status: number; data: TimerSyncResponse }> {
   const request = new Request("http://localhost:3004/api/sync", {
     method: "POST",
     headers: headers ?? undefined,
@@ -105,6 +110,18 @@ describe("POST /api/sync", () => {
     // A deletion is an edit like any other.
     const deleted = await sync(alice, { cursor: newer.data.cursor, changes: { ...empty, solves: [solve("a", 300, { deletedAt: 300 })] } });
     expect(deleted.data.changes.solves[0].deletedAt).toBe(300);
+  });
+
+  it("keeps every detail of a competition attempt, including ones added later", async () => {
+    const competition = {
+      competitionId: "BayAreaSpeedcubin2026", competitionName: "Bay Area Speedcubin' 2026", roundTypeId: "f", roundNumber: 3,
+      attempt: 2, status: "official" as const, timeEstimate: "group" as const, position: 1, roundAverage: 712,
+      singleRecord: "NR", averageRecord: null, futureField: { nested: true },
+    };
+    const attempt = solve("wca-BayAreaSpeedcubin2026-333-f-2", 400, { source: "competition", competition });
+    const start = (await sync(alice, { cursor: 0, changes: empty })).data.cursor;
+    const result = await sync(alice, { cursor: start, changes: { ...empty, solves: [attempt] } });
+    expect(result.data.changes.solves).toEqual([attempt]);
   });
 
   it("keeps each person's records apart", async () => {
