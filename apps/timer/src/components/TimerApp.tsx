@@ -293,32 +293,38 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
   ) : null;
 
+  // The event picker and session controls: in the sidebar on wide screens, in the header on phones.
+  const eventControls = (
+    <>
+      <EventPicker eventId={activeEventId} onChange={setEventId} />
+      <button type="button" className="btn btn-sm min-w-0" onClick={() => setDialog("sessions")}>
+        <FaCodeBranch aria-hidden /> <span className="truncate">{temporary ? temporary.name : "Main"}</span>
+        {temporary && <span className="timer-digits text-muted">{temporary.goal === null ? ownCount : `${ownCount} / ${temporary.goal}`}</span>}
+      </button>
+      {!temporary && main && (
+        <button type="button" className="btn btn-sm btn-ghost shrink-0" onClick={() => setDialog("start-temporary")} aria-label="New temporary session">
+          <FaPlus aria-hidden /> <span className="hidden sm:inline">Temporary session</span>
+        </button>
+      )}
+      {temporary?.status === "active" && (
+        <button type="button" className="btn btn-sm btn-ghost shrink-0" onClick={() => setEndFor(temporary.id)}>
+          <FaFlagCheckered aria-hidden /> End<span className="hidden sm:inline"> session</span>
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div data-solving={solving} className="flex h-dvh flex-col">
-      {/* Phones: the title, account and settings on one line, the event and session on the next. Wide screens: one line. */}
+      {/* Phones: the title, account and settings on one line, the event and session on the next. Wide screens: the event and session are at the top of the sidebar. */}
       <header className="focus-fade flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 bg-base-200 px-3 py-2 lg:h-14 lg:flex-nowrap lg:py-0">
         <h1 className="order-1 text-base font-semibold">
           <Link href="/" className="flex items-center gap-2">
             <FaStopwatch className="text-primary" aria-hidden /> Cube Timer
           </Link>
         </h1>
-        <div className="order-3 flex w-full min-w-0 items-center gap-2 lg:order-2 lg:ml-4 lg:w-auto">
-          <EventPicker eventId={activeEventId} onChange={setEventId} />
-          <button type="button" className="btn btn-sm min-w-0" onClick={() => setDialog("sessions")}>
-            <FaCodeBranch aria-hidden /> <span className="truncate">{temporary ? temporary.name : "Main"}</span>
-            {temporary && <span className="timer-digits text-muted">{temporary.goal === null ? ownCount : `${ownCount} / ${temporary.goal}`}</span>}
-          </button>
-          {!temporary && main && (
-            <button type="button" className="btn btn-sm btn-ghost shrink-0" onClick={() => setDialog("start-temporary")} aria-label="New temporary session">
-              <FaPlus aria-hidden /> <span className="hidden sm:inline">Temporary session</span>
-            </button>
-          )}
-          {temporary?.status === "active" && (
-            <button type="button" className="btn btn-sm btn-ghost shrink-0" onClick={() => setEndFor(temporary.id)}>
-              <FaFlagCheckered aria-hidden /> End<span className="hidden sm:inline"> session</span>
-            </button>
-          )}
-        </div>
+        {/* Phones have no sidebar, so the event and session stay in the header. */}
+        <div className="order-3 flex w-full min-w-0 items-center gap-2 lg:hidden">{eventControls}</div>
         <div className="order-2 ml-auto flex items-center gap-1 lg:order-3">
           {authEnabled && <AccountButton />}
           <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
@@ -406,6 +412,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         </main>
 
         <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${view === "timer" ? "hidden" : "flex"}`}>
+          <div className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">{eventControls}</div>
           <div className={`lg:block ${view === "solves" || view === "stats" ? "" : "hidden"}`}>
             <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
           </div>
