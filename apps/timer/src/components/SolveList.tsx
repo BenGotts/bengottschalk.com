@@ -6,12 +6,12 @@ import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import { averageBreakdown } from "@bengottschalk/timer-core/stats";
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
-import { formatMean, formatSolve } from "@/lib/format";
+import { formatMean, formatSolve, multiPointsText } from "@/lib/format";
 
 interface Props {
   eventId: string;
   solves: Solve[];
-  /** Rolling ao5 (or mo3) for each solve, same order as `solves`. */
+  /** Rolling ao5 (or mo3) for each solve, same order as `solves`. Multi-Blind shows each attempt's points instead. */
   rolling: (number | null)[];
   rollingLabel: string;
   sotdSolveIds: Set<string>;
@@ -52,8 +52,10 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
 
   // On desktop the latest five stand out: their ao5's dropped best and worst in brackets (green and red), and a
   // thick line under them. Phones already show the last five on the timer screen, so the list stays plain there.
+  // Multi-Blind has no averages: no brackets, and its points where the running average would be.
+  const multi = timerEvent(eventId).kind === "multi-blind";
   const recentFrom = solves.length - 5;
-  const recentDropped = solves.length >= 5 ? averageBreakdown(solves.slice(recentFrom).map(solveValue), "average").dropped : [];
+  const recentDropped = solves.length >= 5 && !multi ? averageBreakdown(solves.slice(recentFrom).map(solveValue), "average").dropped : [];
 
   return (
     <div ref={scroller} className="h-full overflow-y-auto">
@@ -63,7 +65,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
           <tr>
             <th scope="col">#</th>
             <th scope="col">{{ "fewest-moves": "moves", "multi-blind": "result", time: "time" }[timerEvent(eventId).kind]}</th>
-            <th scope="col">{rollingLabel}</th>
+            <th scope="col">{multi ? "points" : rollingLabel}</th>
             <th scope="col"><span className="sr-only">Notes</span></th>
           </tr>
         </thead>
@@ -90,7 +92,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                   })()}
                 </td>
                 <td className="text-muted">
-                  {rolling[i] === null ? formatMean(eventId, null, precision) : (
+                  {multi ? (multiPointsText(solve) ?? "–") : rolling[i] === null ? formatMean(eventId, null, precision) : (
                     <button type="button" className="link-hover" onClick={() => onOpenAverage(i)} aria-label={`${rollingLabel} ending at solve ${i + 1}`}>
                       {formatMean(eventId, rolling[i], precision)}
                     </button>

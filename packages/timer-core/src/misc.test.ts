@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { uuidv7 } from "./id";
-import { TIMER_EVENTS, timerEvent } from "./events";
+import { formatAverageSpec, TIMER_EVENTS, timerEvent } from "./events";
 import { localDate, sotdByEventDay, sotdKey, sotdReplaceQuestion, withMarkEvents } from "./sotd";
 
 describe("uuidv7", () => {
@@ -55,5 +55,22 @@ describe("Solve of the Day", () => {
       { date: "2026-11-23", solveId: "a", updatedAt: 1, deletedAt: null },
       { date: "2026-11-23", solveId: "c", updatedAt: 3, deletedAt: null },
     ], (id) => events[id]).map((m) => m.solveId)).toEqual(["c"]);
+  });
+});
+
+describe("event formats", () => {
+  it("averages each event the way cubers expect", () => {
+    const formats = Object.fromEntries(TIMER_EVENTS.map((event) => [event.id, event.format]));
+    expect(formats).toEqual({
+      "333": "ao5", "222": "ao5", "444": "ao5", "555": "ao5", "666": "mo3", "777": "mo3",
+      "333bf": "ao5", "333fm": "mo3", "333oh": "ao5", clock: "ao5", minx: "ao5", pyram: "ao5",
+      skewb: "ao5", sq1: "ao5", "444bf": "mo3", "555bf": "mo3", "333mbf": "best", fto: "ao5",
+    });
+  });
+
+  it("leads with mo3 or ao5, and nothing for single-result events", () => {
+    expect(formatAverageSpec(timerEvent("333bf").format)).toEqual({ kind: "average", size: 5 });
+    expect(formatAverageSpec(timerEvent("444bf").format)).toEqual({ kind: "mean", size: 3 });
+    expect(formatAverageSpec(timerEvent("333mbf").format)).toBeNull();
   });
 });

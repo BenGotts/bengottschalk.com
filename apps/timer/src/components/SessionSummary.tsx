@@ -3,11 +3,12 @@
 import { useMemo, useState } from "react";
 import { FaRegCopy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
+import { multiBlindStats } from "@bengottschalk/timer-core/multi";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
 import type { AverageSpec } from "@bengottschalk/timer-core/stats";
 import { sessionSummary, type PlacedAverage } from "@bengottschalk/timer-core/summary";
 import type { Precision } from "@bengottschalk/timer-core/time";
-import { formatMean, formatSolve, formatValue } from "@/lib/format";
+import { formatMean, formatMultiResult, formatSolveWithPoints, formatValue, multiPointsText } from "@/lib/format";
 import { sessionClipboardText } from "@/lib/sessionText";
 import AverageDialog, { type AverageView } from "./AverageDialog";
 import Modal from "./Modal";
@@ -55,10 +56,25 @@ export function SessionSummary({ name, eventId, solves, precision, onOpenSolve }
   const open = (spec: AverageSpec, placed: PlacedAverage | null) => placed && setAverage({ spec, end: placed.end });
   const openSingle = (placed: PlacedAverage | null) => placed && onOpenSolve(solves[placed.end]);
   const tallest = Math.max(1, ...summary.histogram.map((b) => b.count));
+  // Multi-Blind has no averages or spread of times: its results by points instead.
+  const multi = event.kind === "multi-blind" ? multiBlindStats(solves) : null;
+  const multiBest = multi?.bestIndex === null || multi === null ? null : solves[multi.bestIndex];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {multi ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <Tile label="Attempts" value={multi.attempts.toLocaleString()} detail={multi.attempts === multi.successes ? "no DNFs" : `${multi.attempts - multi.successes} DNF`} />
+          <Tile
+            label="Best"
+            value={multiBest ? formatMultiResult(multiBest, precision) : "–"}
+            detail={multiBest && multi.bestIndex !== null ? `${multiPointsText(multiBest)} · attempt ${multi.bestIndex + 1}` : undefined}
+            onClick={multiBest ? () => onOpenSolve(multiBest) : undefined}
+          />
+          <Tile label="Mean points" value={multi.meanPoints === null ? "–" : multi.meanPoints.toFixed(2)} detail="of the attempts that count" />
+          <Tile label="Cubes" value={`${multi.cubesSolved}/${multi.cubesAttempted}`} detail="solved" />
+        </div>
+      ) : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Tile label="Solves" value={summary.count.toLocaleString()} detail={summary.dnfs ? `${summary.dnfs} DNF` : "no DNFs"} />
         {summary.full && (
           <Tile
@@ -71,9 +87,9 @@ export function SessionSummary({ name, eventId, solves, precision, onOpenSolve }
         <Tile label="Mean" value={mean(summary.mean)} detail={summary.sd === null ? undefined : `σ ${mean(summary.sd)}`} />
         <Tile label="Best" value={single(summary.best?.value ?? null)} detail={summary.best ? `solve ${summary.best.end + 1}` : undefined} onClick={summary.best ? () => openSingle(summary.best) : undefined} />
         <Tile label="Worst" value={single(summary.worst?.value ?? null)} detail={summary.worst ? `solve ${summary.worst.end + 1}` : undefined} onClick={summary.worst ? () => openSingle(summary.worst) : undefined} />
-      </div>
+      </div>}
 
-      {summary.averages.length > 0 && (
+      {!multi && summary.averages.length > 0 && (
         <table className="table table-sm">
           <thead>
             <tr><th scope="col"><span className="sr-only">Average</span></th><th scope="col">best</th><th scope="col">worst</th></tr>
@@ -90,7 +106,7 @@ export function SessionSummary({ name, eventId, solves, precision, onOpenSolve }
         </table>
       )}
 
-      {summary.histogram.length > 1 && (
+      {!multi && summary.histogram.length > 1 && (
         <figure>
           <figcaption className="mb-2 text-sm font-medium">How the times spread out</figcaption>
           <ul className="space-y-1">
@@ -120,7 +136,7 @@ export function SessionSummary({ name, eventId, solves, precision, onOpenSolve }
             <li key={solve.id}>
               <button type="button" className="grid w-full grid-cols-[2.5rem_5.5rem_1fr] gap-x-3 px-3 py-1.5 text-left hover:bg-base-200" onClick={() => onOpenSolve(solve)}>
                 <span className="timer-digits text-sm text-muted">{i + 1}.</span>
-                <span className="timer-digits text-sm">{formatSolve(solve, precision)}</span>
+                <span className="timer-digits text-sm">{formatSolveWithPoints(solve, precision)}</span>
                 <span className="timer-digits truncate text-xs text-muted">{solve.scramble || "–"}</span>
               </button>
             </li>

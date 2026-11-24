@@ -7,13 +7,13 @@ import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
-import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
+import { DEFAULT_AVERAGES, isNewBest, rollingAverages, sessionStats, uniqueSpecs, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByEventDay, sotdKey, sotdReplaceQuestion, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
 import { TIMER_NAME, WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
-import { colorsForEvent, DEFAULT_STORED, migrateSettings, settingsForEvent, type StoredSettings } from "@/lib/settings";
+import { colorsForEvent, DEFAULT_STORED, migrateSettings, screenAverageSpecs, settingsForEvent, type StoredSettings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
 import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
@@ -21,6 +21,7 @@ import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
 import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
 import AverageDialog, { type AverageView } from "./AverageDialog";
+import CurrentAverages from "./CurrentAverages";
 import EventPicker from "./EventPicker";
 import SourceFilter, { type SourceFilterValue } from "./SourceFilter";
 import FmcPanel, { type FmcResult } from "./FmcPanel";
@@ -139,7 +140,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   // Shortcuts act on the latest solve done here (competition attempts are read-only).
   const lastHomeSolve = useMemo(() => sessionView.findLast((s) => s.source === "home" && s.sessionId === current?.id) ?? null, [sessionView, current]);
   const values = useMemo(() => viewSolves.map(solveValue), [viewSolves]);
-  const stats = useMemo(() => sessionStats(values), [values]);
+  // The averages the timer screen shows (a setting), worked out along with the usual ones.
+  const screenSpecs = useMemo(() => screenAverageSpecs(settings, event.format), [settings, event.format]);
+  const stats = useMemo(() => sessionStats(values, uniqueSpecs(DEFAULT_AVERAGES, screenSpecs)), [values, screenSpecs]);
   // The solve list's running average: mo3 for mean-of-3 events, ao5 for the rest.
   const rollingSpec = event.format === "mo3" ? MEAN_OF_3 : AVERAGE_OF_5;
   const rolling = useMemo(() => rollingAverages(values, rollingSpec), [values, rollingSpec]);
@@ -152,7 +155,6 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const shownView: MobileView = view === "sotd" && !sotdEnabled ? "solves" : view;
   const shownTab = tab === "sotd" && !sotdEnabled ? "solves" : tab;
 
-  const recentSolves = useMemo(() => viewSolves.slice(-5), [viewSolves]);
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const writable = current !== null && acceptsSolves(current);
   const scramble = useScramble(activeEventId);
@@ -423,6 +425,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                 </div>
               </>
             )}
+            <div className="focus-fade mt-3"><CurrentAverages eventId={activeEventId} format={event.format} specs={screenSpecs} stats={stats} solves={viewSolves} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} /></div>
           </div>
 
           {/* Phones: the scramble picture centred in the space between the time and the stats. */}
@@ -434,7 +437,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           {/* Wide screens: the scramble picture at the bottom right. Phones: the stats across the full width (wide screens have them in the sidebar). */}
           <div className="focus-fade flex shrink-0 flex-col gap-2 px-3 pb-3">
             {scrambleImage && <div className="hidden self-end lg:block">{enlargeButton("h-40 w-56")}</div>}
-            <ScreenStats eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} recent={recentSolves} />
+            <ScreenStats eventId={activeEventId} format={event.format} stats={stats} specs={screenSpecs} solves={viewSolves} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
           </div>
         </main>
 
@@ -444,7 +447,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             <SourceFilter value={sourceFilter} onChange={setSourceFilter} wcaId={competitionResults.wcaId} />
           </div>
           <div className={`lg:block ${shownView === "stats" ? "" : "hidden"}`}>
-            <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
+            <StatsPanel eventId={activeEventId} format={event.format} stats={stats} solves={viewSolves} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
           </div>
           {/* Only worth tabs when there's Solve of the Day to switch to. */}
           <div role="tablist" className={`tabs tabs-box tabs-sm hidden ${sotdEnabled ? "lg:flex" : ""}`}>

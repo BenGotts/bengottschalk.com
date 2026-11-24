@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { averageBreakdown, averageOf, isNewBest, rollingAverages, sessionStats, trimCount } from "./stats";
+import { averageBreakdown, averageLabel, averageOf, isNewBest, parseAverageLabel, rollingAverages, sessionStats, trimCount, uniqueSpecs } from "./stats";
 
 const D = Infinity;
 
@@ -108,3 +108,39 @@ describe("averageBreakdown", () => {
   });
 });
 
+
+describe("any average of N", () => {
+  it("trims ceil(5%) from each end, as csTimer does", () => {
+    expect([3, 25, 200, 500, 20, 21].map(trimCount)).toEqual([1, 2, 10, 25, 1, 2]);
+  });
+
+  it("reads labels like ao25 and mo10 back, and refuses ones it can't average", () => {
+    expect(parseAverageLabel("ao25")).toEqual({ kind: "average", size: 25 });
+    expect(parseAverageLabel(" MO10 ")).toEqual({ kind: "mean", size: 10 });
+    expect(parseAverageLabel("ao2")).toBeNull();
+    expect(parseAverageLabel("mo1")).toBeNull();
+    expect(parseAverageLabel("ao05")).toBeNull();
+    expect(parseAverageLabel("best")).toBeNull();
+    expect(averageLabel({ kind: "average", size: 1000 })).toBe("ao1000");
+  });
+
+  it("works out rolling aoN for any N, matching averageOf", () => {
+    const values = Array.from({ length: 120 }, (_, i) => (i % 23 === 0 ? D : 9000 + ((i * 7919) % 4000)));
+    for (const size of [3, 25, 30, 77]) {
+      const rolling = rollingAverages(values, { kind: "average", size });
+      for (let end = size - 1; end < values.length; end++) {
+        const expected = averageOf(values.slice(end - size + 1, end + 1), "average");
+        if (expected !== null && Number.isFinite(expected)) expect(rolling[end]).toBeCloseTo(expected, 6);
+        else expect(rolling[end]).toBe(expected);
+      }
+    }
+  });
+
+  it("adds extra averages to the stats without repeating any", () => {
+    const specs = uniqueSpecs([{ kind: "average", size: 5 }], [{ kind: "average", size: 5 }, { kind: "average", size: 25 }]);
+    expect(specs.map(averageLabel)).toEqual(["ao5", "ao25"]);
+    const stats = sessionStats(Array.from({ length: 25 }, (_, i) => 1000 + i), specs);
+    // ao25 drops the best and worst two: the mean of 1002…1022.
+    expect(stats.averages.find((a) => a.label === "ao25")?.current).toBe(1012);
+  });
+});

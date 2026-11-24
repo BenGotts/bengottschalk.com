@@ -5,7 +5,7 @@ import { TIMER_NAME } from "@bengottschalk/content/site";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import { localDate } from "@bengottschalk/timer-core/sotd";
 import type { Precision } from "@bengottschalk/timer-core/time";
-import { formatMean, formatSolve } from "./format";
+import { formatMean, formatSolveWithPoints } from "./format";
 
 interface AverageText {
   /** Like "ao5" or "mo3". */
@@ -35,7 +35,7 @@ interface AverageText {
  */
 export function averageClipboardText({ label, eventId, value, solves, trimmed, precision, generatedAt }: AverageText): string {
   const lines = solves.map((solve, i) => {
-    const time = formatSolve(solve, precision);
+    const time = formatSolveWithPoints(solve, precision);
     const shown = trimmed[i] ? `(${time})` : time;
     const comment = solve.comment.trim() ? `[${solve.comment.trim().replace(/\s+/g, " ")}]` : "";
     const scramble = solve.scramble.trim().replace(/\s*\n\s*/g, " | ");

@@ -10,7 +10,7 @@ import { localDate, sotdClipboardText, sotdKey, sotdReplaceQuestion, type SotdDe
 import { formatTime, type Precision } from "@bengottschalk/timer-core/time";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, setSotd, updateSolve } from "@/lib/db";
-import { formatDateTime, formatDay, formatSolve } from "@/lib/format";
+import { formatDateTime, formatDay, formatSolveWithPoints, multiPointsText } from "@/lib/format";
 import Modal from "./Modal";
 import type { ColorScheme } from "@/lib/colorSchemes";
 import ScrambleImage from "./ScrambleImage";
@@ -39,7 +39,7 @@ const PENALTIES: { value: Penalty; label: string }[] = [
 
 export default function SolveDialog({ solve, onClose, precision, sotdByEventDay, sotdEnabled, sotdDetails, readOnly, colorsFor }: Props) {
   return (
-    <Modal open={solve !== null} onClose={onClose} title={solve ? formatSolve(solve, precision) : "Solve"}>
+    <Modal open={solve !== null} onClose={onClose} title={solve ? formatSolveWithPoints(solve, precision) : "Solve"}>
       {solve && <SolveDetails key={solve.id} solve={solve} onClose={onClose} precision={precision} sotdByEventDay={sotdByEventDay} sotdEnabled={sotdEnabled} sotdDetails={sotdDetails} readOnly={readOnly} colorsFor={colorsFor} />}
     </Modal>
   );
@@ -133,7 +133,13 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
           </>
         )}
         {solve.memoMs !== null && <><dt className="text-muted">Memo</dt><dd className="timer-digits">{formatTime(solve.memoMs, precision)}</dd></>}
-        {solve.multi && <><dt className="text-muted">Cubes</dt><dd>{solve.multi.solved}/{solve.multi.attempted}</dd></>}
+        {solve.multi && (
+          <>
+            <dt className="text-muted">Cubes</dt><dd className="timer-digits">{solve.multi.solved}/{solve.multi.attempted}</dd>
+            {/* Solved minus missed; fewer than 2 solved or below 0 points is a DNF. */}
+            <dt className="text-muted">Points</dt><dd>{multiPointsText(solve) ?? <span className="text-muted">none: {solve.penalty === "dnf" ? "a DNF" : solve.multi.solved < 2 ? "a DNF (fewer than 2 solved)" : "a DNF (more missed than solved)"}</span>}</dd>
+          </>
+        )}
         <dt className="text-muted">Timed with</dt><dd>{TIMING_LABELS[timingOf(solve)]}</dd>
       </dl>
 
@@ -193,7 +199,7 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
             {isSotd ? <FaStar aria-hidden /> : <FaRegStar aria-hidden />} Solve of the Day
           </button>
         )}
-        <button type="button" className="btn btn-sm" onClick={() => void copy("Copied", `${formatSolve(solve, precision)}   ${solve.scramble}`)}>
+        <button type="button" className="btn btn-sm" onClick={() => void copy("Copied", `${formatSolveWithPoints(solve, precision)}   ${solve.scramble}`)}>
           <FaRegCopy aria-hidden /> Copy
         </button>
         {sotdEnabled && isSotd && (

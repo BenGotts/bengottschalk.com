@@ -45,6 +45,19 @@ export function formatAverage(ms: number, precision: Precision = "hundredths"): 
   return layout(Math.round(ms / unit) * unit, precision);
 }
 
+/**
+ * A long result on a clock, for Multi-Blind: `m:ss.cc` or `h:mm:ss.cc`, cut
+ * off to the shown precision and keeping the fraction however long it is
+ * (unlike `formatTime`, which rounds ten minutes or more to the second).
+ * `wholeSeconds`: the time is only known to the second (WCA Multi-Blind
+ * results), so no fraction is shown.
+ */
+export function formatClockTime(ms: number, precision: Precision = "hundredths", { wholeSeconds = false }: { wholeSeconds?: boolean } = {}): string {
+  if (!Number.isFinite(ms)) return "DNF";
+  const value = Math.max(0, Math.floor(ms));
+  return wholeSeconds ? layout(Math.floor(value / 1000) * 1000, precision, false) : layout(value, precision);
+}
+
 /** A running time on the display: hundredths or thousandths, never rounded up. */
 export function formatRunning(ms: number, precision: Precision = "hundredths"): string {
   return layout(Math.max(0, Math.floor(ms)), precision);

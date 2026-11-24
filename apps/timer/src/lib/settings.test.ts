@@ -1,8 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { colorFamilyFor, isDark, recolorSvg } from "./colorSchemes";
+import { averageLabel } from "@bengottschalk/timer-core/stats";
+import { timerEvent } from "@bengottschalk/timer-core/events";
 import {
-  DEFAULT_SETTINGS, DEFAULT_STORED, eventOverrides, migrateSettings, resetEvent, setEventColors, setFamilyColors, setForEvent, setGlobal, settingsForEvent,
+  DEFAULT_SETTINGS, DEFAULT_STORED, eventOverrides, migrateSettings, resetEvent, screenAverageSpecs, setEventColors, setFamilyColors, setForEvent, setGlobal, settingsForEvent,
+  sortAverageLabels,
 } from "./settings";
+
+const shownFor = (stored: Parameters<typeof settingsForEvent>[0], eventId: string) =>
+  screenAverageSpecs(settingsForEvent(stored, eventId), timerEvent(eventId).format).map(averageLabel);
+
+describe("averages on the timer screen", () => {
+  it("defaults by event format: ao5 and ao12, mo3 and ao5, or none for Multi-Blind", () => {
+    expect(shownFor(DEFAULT_STORED, "333")).toEqual(["ao5", "ao12"]);
+    expect(shownFor(DEFAULT_STORED, "333bf")).toEqual(["ao5", "ao12"]);
+    expect(shownFor(DEFAULT_STORED, "666")).toEqual(["mo3", "ao5"]);
+    expect(shownFor(DEFAULT_STORED, "333fm")).toEqual(["mo3", "ao5"]);
+    expect(shownFor(DEFAULT_STORED, "333mbf")).toEqual([]);
+  });
+
+  it("takes a list for all events, and an event's own list over it", () => {
+    let stored = setGlobal(DEFAULT_STORED, "screenAverages", ["ao12", "ao100"]);
+    stored = setForEvent(stored, "333oh", "screenAverages", ["ao5"]);
+    expect(shownFor(stored, "333")).toEqual(["ao12", "ao100"]);
+    expect(shownFor(stored, "777")).toEqual(["ao12", "ao100"]);
+    expect(shownFor(stored, "333oh")).toEqual(["ao5"]);
+    expect(eventOverrides(stored, "333oh", "screenAverages")).toBe(true);
+    // Multi-Blind never shows averages.
+    expect(shownFor(stored, "333mbf")).toEqual([]);
+    // An empty list shows none; clearing the event's own goes back to the list for all events.
+    stored = setForEvent(stored, "333oh", "screenAverages", []);
+    expect(shownFor(stored, "333oh")).toEqual([]);
+    stored = setForEvent(stored, "333oh", "screenAverages", undefined);
+    expect(shownFor(stored, "333oh")).toEqual(["ao12", "ao100"]);
+  });
+
+  it("keeps lists in order of size and drops what it can't read", () => {
+    expect(sortAverageLabels(["ao100", "ao5", "mo3", "ao3", "ao5", "junk", "ao2"])).toEqual(["mo3", "ao3", "ao5", "ao100"]);
+    const stored = migrateSettings({ version: 2, global: { screenAverages: ["ao12", 5, "ao5"] }, events: { "333": { screenAverages: "nope" }, "222": { screenAverages: ["mo3"] } } });
+    expect(stored.global.screenAverages).toEqual(["ao5", "ao12"]);
+    expect(stored.events).toEqual({ "333": {}, "222": { screenAverages: ["mo3"] } });
+    expect(migrateSettings({ version: 2, global: {} }).global.screenAverages).toBeNull();
+  });
+});
 
 describe("settings", () => {
   it("reads the old flat settings as the settings for all events", () => {

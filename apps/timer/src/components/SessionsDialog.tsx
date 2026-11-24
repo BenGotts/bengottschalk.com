@@ -9,7 +9,8 @@ import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { confirmAction } from "@/lib/confirm";
 import { removeBranch, saveSession } from "@/lib/db";
-import { formatMean } from "@/lib/format";
+import { multiBlindStats } from "@bengottschalk/timer-core/multi";
+import { formatMean, formatSolveWithPoints } from "@/lib/format";
 import Modal from "./Modal";
 import { SessionSummaryDialog } from "./SessionSummary";
 
@@ -46,9 +47,17 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
 
   const summary = (session: TimerSession) => {
     const list = sessionSolves(session, sessions, solves);
+    const ownCount = solves.filter((s) => s.sessionId === session.id && s.deletedAt === null).length;
+    // Multi-Blind has no averages: its best result by points instead.
+    if (event.format === "best") {
+      const { bestIndex } = multiBlindStats(list);
+      const best = bestIndex === null ? "–" : formatSolveWithPoints(list[bestIndex], precision);
+      return { count: list.length, ownCount, text: (extra: string) => `${list.length} ${list.length === 1 ? "attempt" : "attempts"}${extra} · best ${best}` };
+    }
     const stats = sessionStats(list.map(solveValue));
     const average = stats.averages.find((a) => a.label === averageLabel);
-    return { count: list.length, mean: stats.mean, best: average?.best ?? null, ownCount: solves.filter((s) => s.sessionId === session.id && s.deletedAt === null).length };
+    const text = (extra: string) => `${list.length} solves${extra} · mean ${formatMean(event.id, stats.mean, precision)} · best ${averageLabel} ${formatMean(event.id, average?.best ?? null, precision)}`;
+    return { count: list.length, ownCount, text };
   };
 
   const ownSolves = (branch: TimerSession) => solves.filter((s) => s.sessionId === branch.id && s.deletedAt === null).length;
@@ -98,7 +107,7 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
         <li>
           <SessionRow
             title="Main"
-            detail={`${mainSummary.count} solves · mean ${formatMean(main.eventId, mainSummary.mean, precision)} · best ${averageLabel} ${formatMean(main.eventId, mainSummary.best, precision)}`}
+            detail={mainSummary.text("")}
             current={currentId === main.id}
             onSelect={() => { onSelect(main.id); onClose(); }}
           >
@@ -113,7 +122,7 @@ export default function SessionsDialog({ open, onClose, main, sessions, solves, 
               <SessionRow
                 title={branch.name}
                 badge={STATUS_LABEL[branch.status]}
-                detail={`${s.count} solves${progress} · mean ${formatMean(main.eventId, s.mean, precision)} · best ${averageLabel} ${formatMean(main.eventId, s.best, precision)}`}
+                detail={s.text(progress)}
                 current={currentId === branch.id}
                 onSelect={() => { onSelect(branch.id); onClose(); }}
               >
