@@ -38,6 +38,32 @@ export function averageOf(values: readonly number[], kind: AverageKind): number 
   return kept.reduce((sum, value) => sum + value, 0) / kept.length;
 }
 
+export interface AverageBreakdown {
+  /** The average (Infinity for DNF), or null when there aren't enough values. */
+  value: number | null;
+  /** For each value, whether it's dropped from the average: the best and worst ends of an "average of". */
+  trimmed: boolean[];
+}
+
+/**
+ * One average with the solves it drops marked, the way the WCA and csTimer
+ * show them in parentheses. For an average of N the best and worst
+ * ceil(5% of N) are dropped; a DNF counts as the worst. When values tie, the
+ * earlier one is the better one, so the later one is dropped as worst.
+ * A mean drops nothing.
+ */
+export function averageBreakdown(values: readonly number[], kind: AverageKind): AverageBreakdown {
+  const trimmed = values.map(() => false);
+  const value = averageOf(values, kind);
+  if (kind === "mean" || value === null) return { value, trimmed };
+  const trim = trimCount(values.length);
+  const order = values
+    .map((_, index) => index)
+    .toSorted((a, b) => (values[a] === values[b] ? a - b : values[a] < values[b] ? -1 : 1));
+  for (const index of [...order.slice(0, trim), ...order.slice(order.length - trim)]) trimmed[index] = true;
+  return { value, trimmed };
+}
+
 /** Where `value` goes in an ascending array (the first index not below it). */
 function lowerBound(sorted: number[], value: number): number {
   let lo = 0;

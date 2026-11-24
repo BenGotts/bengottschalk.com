@@ -1,28 +1,32 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaGear, FaListUl, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
-import { isNewBest, rollingAverages, sessionStats } from "@bengottschalk/timer-core/stats";
+import { isNewBest, rollingAverages, sessionStats, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { localDate, sotdByDate as marksByDate, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
-import { formatMean, formatSolve, formatValue } from "@/lib/format";
+import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
+import AverageDialog, { type AverageView } from "./AverageDialog";
 import EventPicker from "./EventPicker";
 import SourceFilter, { type SourceFilterValue } from "./SourceFilter";
 import FmcPanel, { type FmcResult } from "./FmcPanel";
 import ImportDialog from "./ImportDialog";
+import LastSolveActions from "./LastSolveActions";
 import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
 import ScrambleImage from "./ScrambleImage";
+import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
 import SettingsDialog from "./SettingsDialog";
 import { AccountButton, AccountSession, UnsyncedSolvesDialog } from "./Account";
@@ -48,6 +52,8 @@ const MOBILE_TABS: { view: MobileView; label: string; icon: React.ReactNode }[] 
 const NO_SESSIONS: TimerSession[] = [];
 const NO_SOLVES: Solve[] = [];
 const NO_MARKS: SotdMark[] = [];
+const MEAN_OF_3: AverageSpec = { kind: "mean", size: 3 };
+const AVERAGE_OF_5: AverageSpec = { kind: "average", size: 5 };
 
 /** `authEnabled`: whether signing in with WCA is set up on this server (otherwise the timer is local-only). */
 export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
@@ -56,6 +62,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [sessionIds, setSessionIds] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<Dialog>(null);
   const [openSolveId, setOpenSolveId] = useState<string | null>(null);
+  const [averageView, setAverageView] = useState<AverageView | null>(null);
   const [tab, setTab] = useState<"solves" | "sotd">("solves");
   const [view, setView] = useState<MobileView>("timer");
   const [mbldCubes, setMbldCubes] = useState(2);
@@ -119,8 +126,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const lastHomeSolve = useMemo(() => sessionView.findLast((s) => s.source === "home" && s.sessionId === current?.id) ?? null, [sessionView, current]);
   const values = useMemo(() => viewSolves.map(solveValue), [viewSolves]);
   const stats = useMemo(() => sessionStats(values), [values]);
-  const meanOf3 = event.format === "mo3";
-  const rolling = useMemo(() => rollingAverages(values, meanOf3 ? { kind: "mean", size: 3 } : { kind: "average", size: 5 }), [values, meanOf3]);
+  // The solve list's running average: mo3 for mean-of-3 events, ao5 for the rest.
+  const rollingSpec = event.format === "mo3" ? MEAN_OF_3 : AVERAGE_OF_5;
+  const rolling = useMemo(() => rollingAverages(values, rollingSpec), [values, rollingSpec]);
   const sotdMap = useMemo(() => marksByDate(marks), [marks]);
   const sotdSolveIds = useMemo(() => new Set(sotdMap.values()), [sotdMap]);
   const branchNames = useMemo(() => {
@@ -152,7 +160,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   }, [activeEventId, current, event.kind, save, scrambleText]);
 
   const timer = useTimer({
-    enabled: usesTimer && writable && scrambleText !== null && dialog === null && openSolveId === null && pendingMulti === null,
+    enabled: usesTimer && writable && scrambleText !== null && dialog === null && openSolveId === null && averageView === null && pendingMulti === null,
     inspection: settings.inspection && event.inspection,
     holdMs: settings.holdMs,
     memoSplit: settings.bldMemoSplit && event.blindfolded,
@@ -246,143 +254,154 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     setOpenSolveId(solve.id);
   };
 
+  const openAverage = (spec: AverageSpec, end: number) => setAverageView({ spec, end });
+  const openSolveAt = (index: number) => {
+    const solve = viewSolves[index];
+    if (solve) setOpenSolveId(solve.id);
+  };
+  // The buttons under the time act on the solve the time shows, when it was done here.
+  const actionSolve = lastSolve && lastSolve.id === lastHomeSolve?.id && writable ? lastSolve : null;
+
   const lastResult = lastSolve ? formatSolve(lastSolve, settings.precision) : null;
   const newBest = timer.phase === "idle" && isNewBest(values);
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const goalReached = current && !isMainSession(current) && current.status === "active" && current.goal !== null && ownCount >= current.goal;
 
-  const quickStats = [
-    { label: "solves", value: String(stats.count) },
-    ...(event.format === "best"
-      ? [{ label: "best", value: formatValue(activeEventId, stats.best, settings.precision) }, { label: "mean", value: formatMean(activeEventId, stats.mean, settings.precision) }]
-      : (event.format === "mo3" ? ["mo3", "ao12"] : ["ao5", "ao12"]).map((label) => ({
-          label,
-          value: formatMean(activeEventId, stats.averages.find((a) => a.label === label)?.current ?? null, settings.precision),
-        }))),
-  ];
-
   if (eventId === null) return <div className="min-h-dvh" />;
 
+  const scrambleImage = settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" ? (
+    <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
+  ) : null;
+
   return (
-    <div data-solving={solving} className="flex h-dvh flex-col lg:flex-row">
-      <main
-        className={`relative min-h-0 flex-1 flex-col lg:order-2 lg:flex ${view === "timer" ? "flex" : "hidden"} ${usesTimer && writable ? "touch-surface" : ""}`}
-        {...(usesTimer ? timer.surfaceHandlers : {})}
-      >
-        <header className="focus-fade flex flex-wrap items-center gap-2 p-3">
+    <div data-solving={solving} className="flex h-dvh flex-col">
+      {/* Phones: the title, account and settings on one line, the event and session on the next. Wide screens: one line. */}
+      <header className="focus-fade flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 bg-base-200 px-3 py-2 lg:h-14 lg:flex-nowrap lg:py-0">
+        <h1 className="order-1 text-base font-semibold">
+          <Link href="/" className="flex items-center gap-2">
+            <FaStopwatch className="text-primary" aria-hidden /> Cube Timer
+          </Link>
+        </h1>
+        <div className="order-3 flex w-full min-w-0 items-center gap-2 lg:order-2 lg:ml-4 lg:w-auto">
           <EventPicker eventId={activeEventId} onChange={setEventId} />
-          <button type="button" className="btn btn-sm" onClick={() => setDialog("sessions")}>
-            <FaCodeBranch aria-hidden /> {current && !isMainSession(current) ? current.name : "Main"}
+          <button type="button" className="btn btn-sm min-w-0" onClick={() => setDialog("sessions")}>
+            <FaCodeBranch aria-hidden /> <span className="truncate">{current && !isMainSession(current) ? current.name : "Main"}</span>
             {current && current.goal !== null && <span className="text-muted">{ownCount}/{current.goal}</span>}
           </button>
-          <span className="grow" />
+        </div>
+        <div className="order-2 ml-auto flex items-center gap-1 lg:order-3">
           {authEnabled && <AccountButton />}
           <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
-        </header>
-
-        {!writable && current && (
-          <div className="focus-fade mx-3 alert alert-soft">
-            <span>“{current.name}” was {current.status} and is read-only.</span>
-            {main && <button type="button" className="btn btn-sm" onClick={() => selectSession(main.id)}>Back to Main</button>}
-          </div>
-        )}
-        {goalReached && (
-          <div className="focus-fade mx-3 alert alert-success alert-soft">
-            <span>Goal reached: {ownCount}/{current.goal} solves.</span>
-            <button type="button" className="btn btn-sm" onClick={() => setDialog("sessions")}>Merge into Main</button>
-          </div>
-        )}
-
-        <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-2 text-center lg:max-h-none" aria-label="Scramble">
-          {event.kind === "multi-blind" ? (
-            <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} />
-          ) : (
-            <>
-              <p className={`timer-digits mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
-                {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
-              </p>
-              <div className="mt-1 flex justify-center gap-1">
-                <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble"><FaArrowLeft aria-hidden /></button>
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => scramble.scramble && void navigator.clipboard.writeText(scramble.scramble)} aria-label="Copy scramble"><FaRegCopy aria-hidden /></button>
-                <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.next} aria-label="Next scramble"><FaArrowRight aria-hidden /></button>
-              </div>
-            </>
-          )}
-        </section>
-
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-6">
-          {event.kind === "fewest-moves" ? (
-            <FmcPanel scramble={scramble.scramble} onSave={saveFmc} disabled={!writable} />
-          ) : settings.entry === "typing" ? (
-            <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
-          ) : (
-            <>
-              <TimeDisplay
-                phase={timer.phase}
-                startedAt={timer.startedAt}
-                inspectionStartedAt={timer.inspectionStartedAt}
-                memoMs={timer.memoMs}
-                lastResult={lastResult}
-                precision={settings.precision}
-                hideRunningTime={settings.hideRunningTime}
-              />
-              <p className="focus-fade h-6 text-sm">
-                {timer.phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
-                  : newBest ? <span className="font-medium text-accent">New best single</span>
-                  : event.kind === "multi-blind" && !mbldScrambles ? <span className="text-muted">Make scrambles to start</span>
-                  : timer.phase === "idle" && <span className="text-muted">{settings.inspection && event.inspection ? "Press space or tap to inspect" : "Hold space or the timer, then let go"}</span>}
-              </p>
-            </>
-          )}
         </div>
+      </header>
 
-        {settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && (
-          <div className="focus-fade pointer-events-none absolute bottom-3 right-3 hidden h-40 w-56 lg:block">
-            <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
-          </div>
-        )}
-
-        {/* Phones: the key numbers under the timer, and the scramble picture beside them. */}
-        <div className="focus-fade flex shrink-0 items-end gap-3 px-3 pb-2 lg:hidden">
-          <button type="button" className="grid flex-1 grid-cols-3 gap-2 rounded-box bg-base-200 p-2 text-left text-sm" onClick={() => setView("stats")} aria-label="Show all stats">
-            {quickStats.map((item) => (
-              <span key={item.label}>
-                <span className="block text-xs text-muted">{item.label}</span>
-                <span className="timer-digits">{item.value}</span>
-              </span>
-            ))}
-          </button>
-          {settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && (
-            <div className="pointer-events-none h-20 w-32 shrink-0">
-              <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <main
+          className={`relative min-h-0 flex-1 flex-col lg:order-2 lg:flex ${view === "timer" ? "flex" : "hidden"} ${usesTimer && writable ? "touch-surface" : ""}`}
+          {...(usesTimer ? timer.surfaceHandlers : {})}
+        >
+          {!writable && current && (
+            <div className="focus-fade mx-3 mt-3 alert alert-soft">
+              <span>“{current.name}” was {current.status} and is read-only.</span>
+              {main && <button type="button" className="btn btn-sm" onClick={() => selectSession(main.id)}>Back to Main</button>}
             </div>
           )}
-        </div>
-      </main>
+          {goalReached && (
+            <div className="focus-fade mx-3 mt-3 alert alert-success alert-soft">
+              <span>Goal reached: {ownCount}/{current.goal} solves.</span>
+              <button type="button" className="btn btn-sm" onClick={() => setDialog("sessions")}>Merge into Main</button>
+            </div>
+          )}
 
-      <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${view === "timer" ? "hidden" : "flex"}`}>
-        <div className="flex items-baseline justify-between">
-          <h1 className="font-semibold">Cube Timer</h1>
-          <span className="text-xs text-muted">{event.shortName} · {current && !isMainSession(current) ? current.name : "Main"}</span>
-        </div>
-        <div className={`lg:block ${view === "solves" || view === "stats" ? "" : "hidden"}`}>
-          <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
-        </div>
-        <div className={`lg:block ${view === "stats" ? "" : "hidden"}`}>
-          <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} />
-        </div>
-        <div role="tablist" className="tabs tabs-box tabs-sm hidden lg:flex">
-          <button type="button" role="tab" className={`tab grow ${tab === "solves" ? "tab-active" : ""}`} aria-selected={tab === "solves"} onClick={() => setTab("solves")}>Solves</button>
-          <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>
-        </div>
-        {/* On phones the bottom tabs pick the list; on wide screens the tabs above do. */}
-        <div className={`min-h-0 flex-1 overflow-hidden ${view === "solves" ? "block" : "hidden"} ${tab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
-          <SolveList eventId={activeEventId} solves={viewSolves} rolling={rolling} rollingLabel={event.format === "mo3" ? "mo3" : "ao5"} sotdSolveIds={sotdSolveIds} branchNames={branchNames} precision={settings.precision} onOpen={(s) => setOpenSolveId(s.id)} />
-        </div>
-        <div className={`min-h-0 flex-1 overflow-y-auto ${view === "sotd" ? "block" : "hidden"} ${tab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
-          <SotdList precision={settings.precision} onOpen={openFromSotd} />
-        </div>
-      </aside>
+          <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-3 text-center lg:max-h-none" aria-label="Scramble">
+            {event.kind === "multi-blind" ? (
+              <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} />
+            ) : (
+              <>
+                <p className={`timer-digits mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
+                  {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
+                </p>
+                <div className="mt-1 flex justify-center gap-1">
+                  <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble"><FaArrowLeft aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => scramble.scramble && void navigator.clipboard.writeText(scramble.scramble)} aria-label="Copy scramble"><FaRegCopy aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-xs" onClick={scramble.next} aria-label="Next scramble"><FaArrowRight aria-hidden /></button>
+                </div>
+              </>
+            )}
+          </section>
+
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-4 py-4">
+            {event.kind === "fewest-moves" ? (
+              <FmcPanel scramble={scramble.scramble} onSave={saveFmc} disabled={!writable} />
+            ) : settings.entry === "typing" ? (
+              <>
+                <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
+                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByDate={sotdMap} /></div>
+              </>
+            ) : (
+              <>
+                <TimeDisplay
+                  phase={timer.phase}
+                  startedAt={timer.startedAt}
+                  inspectionStartedAt={timer.inspectionStartedAt}
+                  memoMs={timer.memoMs}
+                  lastResult={lastResult}
+                  precision={settings.precision}
+                  hideRunningTime={settings.hideRunningTime}
+                />
+                <p className="focus-fade h-6 text-sm">
+                  {timer.phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
+                    : newBest ? <span className="font-medium text-accent">New best single</span>
+                    : event.kind === "multi-blind" && !mbldScrambles ? <span className="text-muted">Make scrambles to start</span>
+                    : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space or tap to inspect" : "Hold space or the timer, then let go"}</span>}
+                </p>
+                <div className={`focus-fade ${timer.phase === "idle" ? "" : "invisible"}`}>
+                  <LastSolveActions solve={actionSolve} sotdByDate={sotdMap} />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* The key stats along the bottom, and the scramble picture beside them. */}
+          <div className="focus-fade flex shrink-0 items-end gap-3 px-3 pb-3">
+            {scrambleImage && <div className="hidden w-56 shrink-0 lg:block" aria-hidden />}
+            <div className="mx-auto min-w-0 max-w-3xl flex-1">
+              <ScreenStats eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
+            </div>
+            {scrambleImage && <div className="pointer-events-none h-20 w-28 shrink-0 lg:h-40 lg:w-56">{scrambleImage}</div>}
+          </div>
+        </main>
+
+        <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${view === "timer" ? "hidden" : "flex"}`}>
+          <div className={`lg:block ${view === "solves" || view === "stats" ? "" : "hidden"}`}>
+            <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
+          </div>
+          <div className={`lg:block ${view === "stats" ? "" : "hidden"}`}>
+            <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} />
+          </div>
+          <div role="tablist" className="tabs tabs-box tabs-sm hidden lg:flex">
+            <button type="button" role="tab" className={`tab grow ${tab === "solves" ? "tab-active" : ""}`} aria-selected={tab === "solves"} onClick={() => setTab("solves")}>Solves</button>
+            <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>
+          </div>
+          {/* On phones the bottom tabs pick the list; on wide screens the tabs above do. */}
+          <div className={`min-h-0 flex-1 overflow-hidden ${view === "solves" ? "block" : "hidden"} ${tab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+            <SolveList
+              eventId={activeEventId}
+              solves={viewSolves}
+              rolling={rolling}
+              rollingLabel={event.format === "mo3" ? "mo3" : "ao5"}
+              sotdSolveIds={sotdSolveIds}
+              branchNames={branchNames}
+              precision={settings.precision}
+              onOpen={(s) => setOpenSolveId(s.id)}
+              onOpenAverage={(end) => openAverage(rollingSpec, end)}
+            />
+          </div>
+          <div className={`min-h-0 flex-1 overflow-y-auto ${view === "sotd" ? "block" : "hidden"} ${tab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+            <SotdList precision={settings.precision} onOpen={openFromSotd} />
+          </div>
+        </aside>
+      </div>
 
       <nav className="focus-fade grid shrink-0 grid-cols-4 border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Screens">
         {MOBILE_TABS.map((item) => (
@@ -410,6 +429,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           <UnsyncedSolvesDialog />
         </>
       )}
+      <AverageDialog view={averageView} onClose={() => setAverageView(null)} eventId={activeEventId} solves={viewSolves} precision={settings.precision} onOpenSolve={(s) => setOpenSolveId(s.id)} />
       <SolveDialog solve={openSolve} onClose={() => setOpenSolveId(null)} precision={settings.precision} sotdByDate={sotdMap} sotdDetails={sotdDetails} readOnly={openSolveReadOnly} />
       <Modal open={pendingMulti !== null} onClose={() => setPendingMulti(null)} title="How many did you solve?">
         <MultiResultForm attempted={mbldScrambles?.length ?? 0} onSave={saveMulti} />

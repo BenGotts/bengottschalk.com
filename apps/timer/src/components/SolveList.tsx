@@ -18,6 +18,8 @@ interface Props {
   branchNames: Map<string, string>;
   precision: Precision;
   onOpen: (solve: Solve) => void;
+  /** Opens the solves in the rolling average ending at index `end`. */
+  onOpenAverage: (end: number) => void;
 }
 
 /** Every row is this tall, so only the rows on screen need drawing. */
@@ -25,7 +27,7 @@ const ROW_HEIGHT = 28;
 /** Extra rows drawn above and below the visible ones, so fast scrolling doesn't show gaps. */
 const OVERSCAN = 20;
 
-export default function SolveList({ eventId, solves, rolling, rollingLabel, sotdSolveIds, branchNames, precision, onOpen }: Props) {
+export default function SolveList({ eventId, solves, rolling, rollingLabel, sotdSolveIds, branchNames, precision, onOpen, onOpenAverage }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ top: 0, height: 800 });
 
@@ -74,7 +76,13 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                     {formatSolve(solve, precision)}
                   </button>
                 </td>
-                <td className="text-muted">{formatMean(eventId, rolling[i], precision)}</td>
+                <td className="text-muted">
+                  {rolling[i] === null ? formatMean(eventId, null, precision) : (
+                    <button type="button" className="link-hover" onClick={() => onOpenAverage(i)} aria-label={`${rollingLabel} ending at solve ${i + 1}`}>
+                      {formatMean(eventId, rolling[i], precision)}
+                    </button>
+                  )}
+                </td>
                 <td>
                   <div className="flex items-center justify-end gap-1.5">
                   {solve.competition && (
