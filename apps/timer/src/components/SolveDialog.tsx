@@ -39,6 +39,7 @@ export default function SolveDialog({ solve, onClose, precision, sotdByDate, sot
 }
 
 const TIME_ESTIMATE: Record<CompetitionAttempt["timeEstimate"], string> = {
+  entered: "about when, from your group and when your result was entered",
   group: "about when, from your group's slot",
   round: "about when, from the round's slot",
   day: "time not known",
@@ -112,7 +113,7 @@ function SolveDetails({ solve, onClose, precision, sotdByDate, sotdDetails, read
         <dt className="text-muted">Event</dt><dd>{event.name}</dd>
         <dt className="text-muted">When</dt>
         <dd>
-          {solve.competition && solve.competition.timeEstimate !== "group" ? formatDay(localDate(solve.startedAt)) : formatDateTime(solve.startedAt)}
+          {solve.competition && (solve.competition.timeEstimate === "round" || solve.competition.timeEstimate === "day") ? formatDay(localDate(solve.startedAt)) : formatDateTime(solve.startedAt)}
           {solve.competition && <span className="text-muted"> ({TIME_ESTIMATE[solve.competition.timeEstimate]})</span>}
         </dd>
         {solve.penalty !== "none" && event.kind === "time" && (

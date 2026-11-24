@@ -12,13 +12,21 @@
 //   a person's official results daily while a competition from the last 30
 //                               days has no official results yet, otherwise
 //                               weekly (or on request, at most every 5 minutes)
-//   a competition's schedule    once; every 30 minutes while it's on
+//   a competition's WCIF        only when WCA Live doesn't have the
+//                               competition: once, and once more after it ends
 //   a competition's scrambles   once they're published
-// WCA Live is polled by the browser during a competition, as before.
+// Schedules, groups and result entry times come from WCA Live first (see
+// wca-live.ts), which isn't the WCA API. The browser follows WCA Live for
+// live results during a competition.
+//
+// Calendar dates ("has this competition ended?") are worked out in the
+// person's time zone (their browser's, kept on the user row), never the
+// server's, which runs in UTC.
 
 import { and, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { z } from "zod";
-import { competitionInfo, competitionSolveChanged, groupByCompetition, officialSolves } from "@bengottschalk/timer-core/competition";
+import { competitionInfo, competitionSolveChanged, groupByCompetition, liveCompetitionInfo, officialSolves, type WcaLiveCapture } from "@bengottschalk/timer-core/competition";
+import { addDays, endOfDay, localDate } from "@bengottschalk/timer-core/zone";
 import { createMainSession } from "@bengottschalk/timer-core/sessions";
 import type { Solve } from "@bengottschalk/timer-core/solve";
 import { fetchWca, WcaRequestError } from "@/lib/wca/client";
@@ -26,6 +34,7 @@ import { PersonResultSchema, ScramblesSchema, UserCompetitionsSchema, WcifSchema
 import type { TimerDb } from "./db";
 import { solve, sotdMark, timerSession, wcaCompetition, wcaPerson, wcaScrambles } from "./schema";
 import { updateFromExcluded } from "./sync";
+import { captureFresh, liveCapture, storedCaptures, withinLiveRetention } from "./wca-live";
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -35,7 +44,6 @@ const RESULTS_MAX_AGE_MS = 7 * DAY_MS;
 const FORCED_REFRESH_MIN_MS = 5 * MINUTE_MS;
 /** How long after a competition its results are checked for daily (they're usually posted within a week or two). */
 const AWAITING_RESULTS_DAYS = 30;
-const LIVE_SCHEDULE_MAX_AGE_MS = 30 * MINUTE_MS;
 /** A competition the WCA had no schedule for is asked about again after this long. */
 const MISSING_SCHEDULE_MAX_AGE_MS = 7 * DAY_MS;
 const MISSING_SCRAMBLES_MAX_AGE_MS = DAY_MS;
@@ -49,7 +57,8 @@ export interface KnownCompetition {
 }
 const KnownCompetitionsSchema = z.array(z.object({ id: z.string(), start_date: z.string(), end_date: z.string() }));
 
-const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** Today's date for the person; without their zone, the last place on Earth where it's still that day (so "ended" is never early). */
+const today = (now: number, timeZone: string | null | undefined) => localDate(now, timeZone || "Etc/GMT+12");
 const time = (date: Date | null | undefined) => date?.getTime() ?? 0;
 
 // ---------------------------------------------------------------------------
@@ -63,10 +72,10 @@ function reduceWcif(wcif: Wcif): Wcif {
 /** A schedule reduced to one competitor (what the browser needs). */
 export const wcifForPerson = (wcif: Wcif, wcaId: string): Wcif => ({ ...wcif, persons: wcif.persons.filter((p) => p.wcaId === wcaId) });
 
-/** Whether the competition is over (a day's slack for time zones), so its schedule won't change. */
-function scheduleSettled(wcif: Wcif, now: number): boolean {
-  const end = Date.parse(`${wcif.schedule.startDate}T00:00:00Z`) + (wcif.schedule.numberOfDays ?? 1) * DAY_MS;
-  return now > end + DAY_MS;
+/** When the competition's schedule stops changing: a day after its last day ends, in the venue's time zone. */
+function scheduleSettlesAt(wcif: Wcif): number {
+  const lastDay = addDays(wcif.schedule.startDate, (wcif.schedule.numberOfDays ?? 1) - 1);
+  return endOfDay(lastDay, wcif.schedule.venues[0]?.timezone ?? null) + DAY_MS;
 }
 
 async function fetchSchedule(db: TimerDb, competitionId: string, now: number): Promise<Wcif | null> {
@@ -85,16 +94,17 @@ async function fetchSchedule(db: TimerDb, competitionId: string, now: number): P
 const parseWcif = (value: unknown): Wcif | null => WcifSchema.nullable().catch(null).parse(value);
 
 /**
- * A competition's schedule (null when the WCA has none). Stored schedules are
- * used as they are, except while the competition is on (fetched again every
- * 30 minutes, as groups move around on the day).
+ * A competition's WCIF (null when the WCA has none), the fallback when WCA
+ * Live doesn't have the competition. Fetched once; a copy fetched before the
+ * competition ended is fetched once more afterwards, as groups move on the day.
  */
 export async function competitionSchedule(db: TimerDb, competitionId: string, now = Date.now()): Promise<Wcif | null> {
   const [row] = await db.select().from(wcaCompetition).where(eq(wcaCompetition.id, competitionId));
   if (row) {
     const wcif = parseWcif(row.wcif);
-    const age = now - row.fetchedAt.getTime();
-    const fresh = wcif ? scheduleSettled(wcif, now) || age < LIVE_SCHEDULE_MAX_AGE_MS : age < MISSING_SCHEDULE_MAX_AGE_MS;
+    const fresh = wcif
+      ? now <= scheduleSettlesAt(wcif) || row.fetchedAt.getTime() > scheduleSettlesAt(wcif)
+      : now - row.fetchedAt.getTime() < MISSING_SCHEDULE_MAX_AGE_MS;
     if (fresh) return wcif;
   }
   try {
@@ -113,13 +123,13 @@ export async function competitionSchedule(db: TimerDb, competitionId: string, no
  * day. Finished ones are kept for 30 days after they drop off the WCA's list,
  * so their results are checked for until they're posted.
  */
-export async function personCompetitions(db: TimerDb, wcaId: string, now = Date.now()): Promise<KnownCompetition[]> {
+export async function personCompetitions(db: TimerDb, wcaId: string, now = Date.now(), timeZone: string | null = null): Promise<KnownCompetition[]> {
   const [row] = await db.select().from(wcaPerson).where(eq(wcaPerson.wcaId, wcaId));
   const saved = KnownCompetitionsSchema.catch([]).parse(row?.competitions ?? []);
   if (row && now - time(row.competitionsFetchedAt) < COMPETITIONS_MAX_AGE_MS) return saved;
   const data = await fetchWca(`/v0/users/${encodeURIComponent(wcaId)}?ongoing_competitions=true&upcoming_competitions=true`, UserCompetitionsSchema);
   const fresh = [...data.ongoing_competitions, ...data.upcoming_competitions].map(({ id, start_date, end_date }) => ({ id, start_date, end_date }));
-  const cutoff = isoDate(now - AWAITING_RESULTS_DAYS * DAY_MS);
+  const cutoff = addDays(today(now, timeZone), -AWAITING_RESULTS_DAYS);
   const competitions = [...fresh, ...saved.filter((c) => !fresh.some((f) => f.id === c.id) && c.end_date >= cutoff)];
   const fetchedAt = new Date(now);
   await db.insert(wcaPerson).values({ wcaId, competitions, competitionsFetchedAt: fetchedAt })
@@ -159,13 +169,13 @@ async function hasOfficialResults(db: TimerDb, userId: string, competitionId: st
  * Whether official results are due to be fetched again: daily while a
  * competition that ended in the last 30 days has none here yet, otherwise weekly.
  */
-async function resultsDue(db: TimerDb, userId: string, wcaId: string, fetchedAt: number, now: number): Promise<boolean> {
+async function resultsDue(db: TimerDb, userId: string, wcaId: string, fetchedAt: number, now: number, timeZone: string | null): Promise<boolean> {
   const age = now - fetchedAt;
   if (age > RESULTS_MAX_AGE_MS) return true;
   if (age < DAY_MS) return false;
-  const today = isoDate(now);
-  for (const competition of await personCompetitions(db, wcaId, now)) {
-    if (competition.end_date < today && !(await hasOfficialResults(db, userId, competition.id))) return true;
+  const date = today(now, timeZone);
+  for (const competition of await personCompetitions(db, wcaId, now, timeZone)) {
+    if (competition.end_date < date && !(await hasOfficialResults(db, userId, competition.id))) return true;
   }
   return false;
 }
@@ -225,7 +235,7 @@ export interface ImportResult {
   /** Competitions with their attempts in the account. */
   done: number;
   total: number;
-  /** Competitions still waiting for their schedule; call again to continue. */
+  /** Competitions still waiting for a schedule (WCA Live or WCIF); call again to continue. */
   remaining: number;
   /** When official results were last fetched (ms), or 0. */
   refreshedAt: number;
@@ -238,25 +248,29 @@ export interface ImportOptions {
   force?: boolean;
   /** Stop fetching schedules after about this long; the rest wait for the next call. */
   budgetMs?: number;
+  /** The person's IANA time zone, for calendar dates. */
+  timeZone?: string | null;
   now?: number;
 }
 
 /**
  * Brings the user's official results into their account. Results are fetched
- * when due; each competition's schedule (used to place attempts in time) is
- * fetched once, newest competition first, until the time budget runs out.
- * Competitions still without a schedule come in on later calls.
+ * when due. Each competition's schedule comes from WCA Live while it still
+ * has the competition (captured and kept; see wca-live.ts), otherwise from
+ * the WCIF, fetched once; newest competition first, until the time budget
+ * runs out. Competitions still without a schedule come in on later calls.
  */
 export async function importCompetitionResults(db: TimerDb, userId: string, wcaId: string, options: ImportOptions = {}): Promise<ImportResult> {
   const started = Date.now();
   const now = options.now ?? started;
   const budgetMs = options.budgetMs ?? 45_000;
+  const timeZone = options.timeZone ?? null;
   const [person] = await db.select().from(wcaPerson).where(eq(wcaPerson.wcaId, wcaId));
   const lastFetched = time(person?.resultsFetchedAt);
 
   const fetchResults = options.force
     ? now - lastFetched >= FORCED_REFRESH_MIN_MS
-    : await resultsDue(db, userId, wcaId, lastFetched, now);
+    : await resultsDue(db, userId, wcaId, lastFetched, now, timeZone);
   const results = fetchResults
     ? await fetchWca(`/v1/persons/${encodeURIComponent(wcaId)}/results`, z.array(PersonResultSchema))
     : z.array(PersonResultSchema).catch([]).parse(person?.results ?? []);
@@ -264,21 +278,35 @@ export async function importCompetitionResults(db: TimerDb, userId: string, wcaI
   const competitions = [...groupByCompetition(results)]
     .toSorted(([, a], [, b]) => b[0].competition_start_date.localeCompare(a[0].competition_start_date));
   const ids = competitions.map(([id]) => id);
-  const scheduled = new Map<string, Wcif | null>();
+  const wcifs = new Map<string, Wcif | null>();
   for (let i = 0; i < ids.length; i += 500) {
     for (const row of await db.select().from(wcaCompetition).where(inArray(wcaCompetition.id, ids.slice(i, i + 500)))) {
-      scheduled.set(row.id, parseWcif(row.wcif));
+      wcifs.set(row.id, parseWcif(row.wcif));
     }
   }
+  const stored = await storedCaptures(db, ids);
+  const lives = new Map<string, WcaLiveCapture>();
+  for (const [id, { capture }] of stored) if (capture) lives.set(id, capture);
+  const hasSchedule = (id: string) => lives.has(id) || wcifs.has(id);
 
   // With fresh results, every competition is written again (only changed rows are);
-  // otherwise only competitions whose schedule arrives now.
-  const toSave = new Set(fetchResults ? ids.filter((id) => scheduled.has(id)) : []);
-  for (const id of ids) {
-    if (scheduled.has(id)) continue;
+  // otherwise only competitions whose schedule arrives or changes now.
+  const toSave = new Set(fetchResults ? ids.filter(hasSchedule) : []);
+  for (const [id, rows] of competitions) {
     if (Date.now() - started > budgetMs) break;
+    // WCA Live first, while it may still have the competition (it isn't the WCA API).
+    if (withinLiveRetention(rows[0].competition_start_date, now) && !captureFresh(stored.get(id)?.row, now)) {
+      // WCA Live sets competitions up before they start: missing days after the start, it won't appear.
+      const capture = await liveCapture(db, id, now, { endDate: rows[0].competition_start_date });
+      if (capture) {
+        lives.set(id, capture);
+        toSave.add(id);
+        continue;
+      }
+    }
+    if (hasSchedule(id)) continue;
     try {
-      scheduled.set(id, await fetchSchedule(db, id, now));
+      wcifs.set(id, await fetchSchedule(db, id, now));
       toSave.add(id);
     } catch {
       break; // The WCA is busy or unreachable: carry on next time.
@@ -288,7 +316,10 @@ export async function importCompetitionResults(db: TimerDb, userId: string, wcaI
   let saved = 0;
   for (const [id, rows] of competitions) {
     if (!toSave.has(id)) continue;
-    const info = competitionInfo(scheduled.get(id) ?? null, wcaId, { name: rows[0].competition_short_name, startDate: rows[0].competition_start_date });
+    const capture = lives.get(id);
+    const info = capture
+      ? liveCompetitionInfo(capture, wcaId, timeZone)
+      : competitionInfo(wcifs.get(id) ?? null, wcaId, { name: rows[0].competition_short_name, startDate: rows[0].competition_start_date, timeZone });
     saved += await saveCompetition(db, userId, id, officialSolves(rows, info, now), now);
   }
 
@@ -299,6 +330,25 @@ export async function importCompetitionResults(db: TimerDb, userId: string, wcaI
     await db.insert(wcaPerson).values({ wcaId, results, resultsFetchedAt: new Date(now) })
       .onConflictDoUpdate({ target: wcaPerson.wcaId, set: { results, resultsFetchedAt: new Date(now) } });
   }
-  const remaining = ids.filter((id) => !scheduled.has(id)).length;
+  const remaining = ids.filter((id) => !hasSchedule(id)).length;
   return { done: ids.length - remaining, total: ids.length, remaining, refreshedAt, saved };
+}
+
+/**
+ * Captures from WCA Live the person's competitions that have ended (or are
+ * on) and that WCA Live may still have, including ones whose official results
+ * aren't posted yet, so they're kept before WCA Live drops them (about three
+ * months on). Run by the daily job.
+ */
+export async function captureRecentCompetitions(db: TimerDb, wcaId: string, now = Date.now(), timeZone: string | null = null): Promise<number> {
+  const date = today(now, timeZone);
+  const recent = (await personCompetitions(db, wcaId, now, timeZone))
+    .filter((c) => c.start_date <= date && withinLiveRetention(c.start_date, now));
+  const stored = await storedCaptures(db, recent.map((c) => c.id));
+  let captured = 0;
+  for (const competition of recent) {
+    if (captureFresh(stored.get(competition.id)?.row, now)) continue;
+    if (await liveCapture(db, competition.id, now, { endDate: competition.end_date })) captured++;
+  }
+  return captured;
 }

@@ -16,7 +16,12 @@ export interface CompetitionAttempt {
   /** "live" from WCA Live during the competition; "official" once results are posted (replacing the live one). */
   status: "live" | "official";
   /** How `startedAt` was worked out: the competitor's group slot, the round's slot, or just the day. */
-  timeEstimate: "group" | "round" | "day";
+  /**
+   * How `startedAt` was worked out: "entered" from when WCA Live recorded the
+   * result (within the person's group), "group" from their group's slot,
+   * "round" from the round's slot, "day" with only the date known.
+   */
+  timeEstimate: "entered" | "group" | "round" | "day";
   /** The round's number at the competition (1, 2, …), when the schedule says. */
   roundNumber: number | null;
   /** How the competitor placed in the round, when known. */

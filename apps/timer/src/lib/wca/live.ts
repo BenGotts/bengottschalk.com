@@ -11,6 +11,8 @@ const PersonResponseSchema = z.object({
 });
 
 const LiveResultSchema: z.ZodType<WcaLiveResult> = z.object({
+  /** UTC, like "2026-11-21T18:45:40Z". */
+  enteredAt: z.string().nullable(),
   ranking: z.number().nullable(),
   average: z.number().nullable(),
   singleRecordTag: z.string().nullable(),
@@ -31,7 +33,7 @@ const ResultsResponseSchema = z.object({
 const PERSON_RESULTS_QUERY = `query PersonResults($id: ID!) {
   person(id: $id) {
     results {
-      ranking average singleRecordTag averageRecordTag
+      enteredAt ranking average singleRecordTag averageRecordTag
       attempts { result }
       round { number name competitionEvent { event { id } } format { numberOfAttempts } }
     }

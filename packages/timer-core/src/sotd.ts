@@ -6,6 +6,7 @@ import type { Solve } from "./solve";
 import { formatAverage, formatTime, type Precision } from "./time";
 import { timerEvent } from "./events";
 import { formatRoundAverage, ordinal, roundName } from "./competition";
+import { localDate } from "./zone";
 
 export interface SotdMark {
   /** The local calendar day, `YYYY-MM-DD`: the day the solve was done. */
@@ -16,11 +17,8 @@ export interface SotdMark {
   deletedAt: number | null;
 }
 
-/** The local calendar day of a moment, `YYYY-MM-DD`. */
-export function localDate(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+/** The calendar day of a moment, `YYYY-MM-DD`, in the given zone or this runtime's own (the person's, in a browser). */
+export { localDate } from "./zone";
 
 /** The Solve of the Day for each day, from the marks that are still set. */
 export function sotdByDate(marks: readonly SotdMark[]): Map<string, string> {

@@ -24,6 +24,8 @@ export const user = pgTable("user", {
   image: text("image"),
   /** The person's WCA ID, like 2016GOTT01; null until they've competed. */
   wcaId: text("wca_id"),
+  /** The person's IANA time zone, as their browser last reported it; used for calendar dates when no browser is asking (the daily job). */
+  timeZone: text("time_zone"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
@@ -153,4 +155,23 @@ export const wcaScrambles = pgTable("wca_scrambles", {
   fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
 }).enableRLS();
 
-export const schema = { user, session, account, verification, timerSession, solve, sotdMark, syncSeq, wcaCompetition, wcaPerson, wcaScrambles };
+/**
+ * A competition as captured from WCA Live (the main source for schedules,
+ * groups and when results were entered). WCA Live keeps competitions for only
+ * about three months, so each is captured while it's on and once more after
+ * it ends (`final`), then kept. `liveId` is null when WCA Live doesn't have it.
+ */
+export const wcaLiveCompetition = pgTable("wca_live_competition", {
+  competitionId: text("competition_id").primaryKey(),
+  liveId: text("live_id"),
+  /** WcaLiveSchedule (timer-core): times in milliseconds since 1970. */
+  schedule: jsonb("schedule").$type<unknown>(),
+  /** Competitors' groups, by WCA ID. */
+  assignments: jsonb("assignments").$type<unknown>(),
+  /** When each competitor's results were entered, by WCA ID and round. */
+  enteredAt: jsonb("entered_at").$type<unknown>(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+  final: boolean("final").notNull().default(false),
+}).enableRLS();
+
+export const schema = { user, session, account, verification, timerSession, solve, sotdMark, syncSeq, wcaCompetition, wcaPerson, wcaScrambles, wcaLiveCompetition };

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Settings } from "@/lib/settings";
+import { localDate } from "@bengottschalk/timer-core/zone";
 import { exportBackup, importBackup } from "@/lib/db";
 import { AccountSettings } from "./Account";
 import Modal from "./Modal";
@@ -23,7 +24,7 @@ async function download() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `cube-timer-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `cube-timer-backup-${localDate(Date.now())}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

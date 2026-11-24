@@ -6,10 +6,15 @@
 // so refreshing updates the same solve and official results replace live ones.
 //
 // The WCA doesn't record when an attempt happened, so `startedAt` is worked
-// out from the competition's schedule (public WCIF): the attempts are spread
-// through the competitor's group slot, or the round's slot, or else placed at
-// midday on the competition's first day. That puts them among home solves at
-// about the right moment.
+// out, best source first:
+//   1. WCA Live (see `liveCompetitionInfo`): when the person's result was
+//      entered, within their group's slot ("entered");
+//   2. the person's group slot ("group"), from WCA Live or the public WCIF;
+//   3. the round's slot ("round");
+//   4. midday on the competition's first day, in the venue's time zone or
+//      else the person's ("day").
+// That puts them among home solves at about the right moment. Every time
+// from the WCA is UTC and is read as such (see zone.ts).
 
 import { decodeMultiResult } from "@wca/helpers";
 import { CURRENT_EVENT_IDS } from "@bengottschalk/wca/events";
@@ -17,6 +22,9 @@ import { isTimerEvent, timerEvent } from "./events";
 import { mainSessionId } from "./sessions";
 import { competitionSolveId, type CompetitionAttempt, type Solve } from "./solve";
 import { formatAverage } from "./time";
+import { parseInstant, zonedTime } from "./zone";
+
+export { zonedTime } from "./zone";
 
 /** A result row from `v1/persons/{id}/results` (the fields used here). */
 export interface WcaPersonResult {
@@ -55,6 +63,8 @@ export interface WcifForPlacement {
 
 /** A result from WCA Live (the fields used here). */
 export interface WcaLiveResult {
+  /** When the result was entered on WCA Live (UTC ISO), if it says. */
+  enteredAt?: string | null;
   ranking: number | null;
   average: number | null;
   singleRecordTag: string | null;
@@ -84,27 +94,16 @@ export function roundNumberFor(roundTypeId: string, roundCount: number | null): 
   return rank === undefined || rank === 0 || rank > 3 ? null : rank;
 }
 
-/** Milliseconds since 1970 for a wall-clock time in a time zone. */
-export function zonedTime(date: string, hour: number, timeZone: string | null): number {
-  const [y, m, d] = date.split("-").map(Number);
-  const utcGuess = Date.UTC(y, m - 1, d, hour);
-  if (!timeZone) return utcGuess;
-  try {
-    // The zone's offset at that moment: format the UTC guess in the zone and compare.
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
-    }).formatToParts(new Date(utcGuess));
-    const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-    const asIfUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
-    return utcGuess - (asIfUtc - utcGuess);
-  } catch {
-    return utcGuess;
-  }
-}
-
 export interface Placement {
   times: number[];
   estimate: CompetitionAttempt["timeEstimate"];
+}
+
+/** A scheduled slot (a round, a group or one attempt), as milliseconds since 1970. */
+export interface Slot {
+  code: string;
+  start: number;
+  end: number;
 }
 
 /** Spreads `count` attempts evenly through a slot: each one in the middle of its share. */
@@ -129,36 +128,140 @@ function allActivities(wcif: WcifForPlacement): WcifActivity[] {
  * number, attempt count) to attempt times, or null when the schedule doesn't
  * cover that round.
  */
-export function schedulePlacer(wcif: WcifForPlacement, wcaId: string): (eventId: string, roundNumber: number | null, count: number) => Placement | null {
-  const activities = allActivities(wcif);
-  const byId = new Map(activities.map((a) => [a.id, a]));
+/** A WCIF activity as a slot; null if its times don't say their offset. */
+function asSlot(activity: WcifActivity): Slot | null {
+  const start = parseInstant(activity.startTime);
+  const end = parseInstant(activity.endTime);
+  return start === null || end === null ? null : { code: activity.activityCode, start, end };
+}
+
+/** Results are usually entered within minutes of the group; later than this after it, the entry time says nothing about the attempts. */
+const ENTRY_SLACK_MS = 30 * 60_000;
+/** With no slot at all, attempts entered together are placed this far apart, ending at the entry. */
+const ATTEMPT_GAP_MS = 2 * 60_000;
+
+/**
+ * Places one round's attempts from the schedule slots and, when known, the
+ * moment the result was entered. Shared by the WCIF and WCA Live paths.
+ */
+function placeRound(
+  { activities, groups, round, count, enteredAt }: { activities: Slot[]; groups: Slot[]; round: string; count: number; enteredAt: number | null },
+): Placement | null {
+  // FMC and Multi-Blind schedule each attempt (`333fm-r1-a2`): one attempt per slot.
+  const attemptSlots = Array.from({ length: count }, (_, i) => activities.find((a) => a.code === `${round}-a${i + 1}`));
+  if (attemptSlots.every((a) => a !== undefined)) {
+    return { times: attemptSlots.map((a) => spread(a!.start, a!.end, 1)[0]), estimate: "group" };
+  }
+
+  const group = groups.find((a) => a.code.startsWith(`${round}-g`));
+  const roundSlots = activities.filter((a) => a.code === round);
+  const slot = group ?? (roundSlots.length > 0
+    ? { code: round, start: Math.min(...roundSlots.map((a) => a.start)), end: Math.max(...roundSlots.map((a) => a.end)) }
+    : null);
+
+  if (enteredAt !== null) {
+    if (slot && enteredAt > slot.start && enteredAt <= slot.end + ENTRY_SLACK_MS) {
+      // The attempts were done in the slot, and before the result was entered.
+      return { times: spread(slot.start, Math.min(slot.end, enteredAt), count), estimate: "entered" };
+    }
+    if (!slot) {
+      return { times: Array.from({ length: count }, (_, i) => enteredAt - (count - i) * ATTEMPT_GAP_MS), estimate: "entered" };
+    }
+  }
+  if (slot) return { times: spread(slot.start, slot.end, count), estimate: group ? "group" : "round" };
+  return null;
+}
+
+type Placer = (eventId: string, roundNumber: number | null, count: number) => Placement | null;
+
+export function schedulePlacer(wcif: WcifForPlacement, wcaId: string): Placer {
+  const all = allActivities(wcif);
+  const activities = all.map(asSlot).filter((a): a is Slot => a !== null);
+  const byId = new Map(all.map((a) => [a.id, a]));
   const person = wcif.persons.find((p) => p.wcaId === wcaId);
-  const competing = (person?.assignments ?? [])
+  const groups = (person?.assignments ?? [])
     .filter((a) => a.assignmentCode === "competitor")
     .map((a) => byId.get(a.activityId))
-    .filter((a): a is WcifActivity => a !== undefined);
+    .map((a) => (a ? asSlot(a) : null))
+    .filter((a): a is Slot => a !== null);
 
   return (eventId, roundNumber, count) => {
     if (roundNumber === null || count === 0) return null;
-    const round = `${eventId}-r${roundNumber}`;
-
-    // FMC and Multi-Blind schedule each attempt (`333fm-r1-a2`): one attempt per slot.
-    const attemptSlots = Array.from({ length: count }, (_, i) => activities.find((a) => a.activityCode === `${round}-a${i + 1}`));
-    if (attemptSlots.every((a) => a !== undefined)) {
-      return { times: attemptSlots.map((a) => spread(Date.parse(a!.startTime), Date.parse(a!.endTime), 1)[0]), estimate: "group" };
-    }
-
-    const group = competing.find((a) => a.activityCode.startsWith(`${round}-g`));
-    if (group) return { times: spread(Date.parse(group.startTime), Date.parse(group.endTime), count), estimate: "group" };
-
-    const slots = activities.filter((a) => a.activityCode === round);
-    if (slots.length > 0) {
-      const start = Math.min(...slots.map((a) => Date.parse(a.startTime)));
-      const end = Math.max(...slots.map((a) => Date.parse(a.endTime)));
-      return { times: spread(start, end, count), estimate: "round" };
-    }
-    return null;
+    return placeRound({ activities, groups, round: `${eventId}-r${roundNumber}`, count, enteredAt: null });
   };
+}
+
+// ---------------------------------------------------------------------------
+// WCA Live
+
+/** A competition's schedule as captured from WCA Live (all times in milliseconds since 1970). */
+export interface WcaLiveSchedule {
+  /** WCA Live's own id for the competition. */
+  liveId: string;
+  name: string;
+  /** First and last day, in the venue's time zone. */
+  startDate: string;
+  endDate: string;
+  /** The (first) venue's IANA time zone. */
+  timeZone: string | null;
+  /** When the first activity starts and the last one ends. */
+  start: number | null;
+  end: number | null;
+  /** Rounds per event. */
+  roundCounts: Record<string, number>;
+  /** Every scheduled activity: rounds, groups (`333-r1-g2`) and single attempts (`333fm-r1-a1`). */
+  activities: Slot[];
+}
+
+/** What's kept from WCA Live for a competition: the schedule, and per WCA ID their groups and when their results were entered. */
+export interface WcaLiveCapture {
+  schedule: WcaLiveSchedule;
+  /** Each competitor's groups (competing assignments only). */
+  assignments: Record<string, Slot[]>;
+  /** Each competitor's result entry times, by round (`333-r1`). */
+  enteredAt: Record<string, Record<string, number>>;
+}
+
+/** The round key used in `WcaLiveCapture.enteredAt`. */
+export const liveRoundKey = (eventId: string, roundNumber: number) => `${eventId}-r${roundNumber}`;
+
+/** Places a person's attempts from a WCA Live capture: entry time within their group, then group, then round. */
+export function livePlacer(capture: WcaLiveCapture, wcaId: string): Placer {
+  const groups = capture.assignments[wcaId] ?? [];
+  const entered = capture.enteredAt[wcaId] ?? {};
+  return (eventId, roundNumber, count) => {
+    if (roundNumber === null || count === 0) return null;
+    const round = liveRoundKey(eventId, roundNumber);
+    return placeRound({ activities: capture.schedule.activities, groups, round, count, enteredAt: entered[round] ?? null });
+  };
+}
+
+/** What placement needs, from a WCA Live capture. */
+export function liveCompetitionInfo(capture: WcaLiveCapture, wcaId: string, fallbackTimeZone: string | null = null): CompetitionInfo {
+  return {
+    name: capture.schedule.name,
+    startDate: capture.schedule.startDate,
+    timeZone: capture.schedule.timeZone ?? fallbackTimeZone,
+    roundCounts: new Map(Object.entries(capture.schedule.roundCounts)),
+    place: livePlacer(capture, wcaId),
+  };
+}
+
+/** A capture reduced to one competitor (what their browser needs). */
+export const liveCaptureFor = (capture: WcaLiveCapture, wcaId: string): WcaLiveCapture => ({
+  schedule: capture.schedule,
+  assignments: capture.assignments[wcaId] ? { [wcaId]: capture.assignments[wcaId] } : {},
+  enteredAt: capture.enteredAt[wcaId] ? { [wcaId]: capture.enteredAt[wcaId] } : {},
+});
+
+/** Adds result entry times from fresh WCA Live results (newer than the capture's) for one competitor. */
+export function withEnteredAt(capture: WcaLiveCapture, wcaId: string, results: WcaLiveResult[]): WcaLiveCapture {
+  const entered = { ...capture.enteredAt[wcaId] };
+  for (const result of results) {
+    const at = result.enteredAt ? parseInstant(result.enteredAt) : null;
+    if (at !== null) entered[liveRoundKey(result.round.competitionEvent.event.id, result.round.number)] = at;
+  }
+  return { ...capture, enteredAt: { ...capture.enteredAt, [wcaId]: entered } };
 }
 
 /** Midday on the competition's first day, keeping events and rounds in order (a minute per attempt, 15 per round). */
@@ -202,13 +305,17 @@ export interface CompetitionInfo {
   place: ReturnType<typeof schedulePlacer> | null;
 }
 
-/** What placement needs from a competition's WCIF, or the bare minimum without one. */
-export function competitionInfo(wcif: WcifForPlacement | null, wcaId: string, fallback: { name: string; startDate: string }): CompetitionInfo {
-  if (!wcif) return { name: fallback.name, startDate: fallback.startDate, timeZone: null, roundCounts: new Map(), place: null };
+/**
+ * What placement needs from a competition's WCIF, or the bare minimum without
+ * one. `fallback.timeZone` (the person's) is used for "day" placement when the
+ * venue's zone isn't known.
+ */
+export function competitionInfo(wcif: WcifForPlacement | null, wcaId: string, fallback: { name: string; startDate: string; timeZone?: string | null }): CompetitionInfo {
+  if (!wcif) return { name: fallback.name, startDate: fallback.startDate, timeZone: fallback.timeZone ?? null, roundCounts: new Map(), place: null };
   return {
     name: wcif.name,
     startDate: wcif.schedule.startDate,
-    timeZone: wcif.schedule.venues[0]?.timezone ?? null,
+    timeZone: wcif.schedule.venues[0]?.timezone ?? fallback.timeZone ?? null,
     roundCounts: new Map((wcif.events ?? []).map((e) => [e.id, e.rounds.length])),
     place: schedulePlacer(wcif, wcaId),
   };

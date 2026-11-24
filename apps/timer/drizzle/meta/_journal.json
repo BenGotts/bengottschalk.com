@@ -15,6 +15,13 @@
       "when": 1795500812169,
       "tag": "0001_wca_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795503980365,
+      "tag": "0002_wca_live",
+      "breakpoints": true
     }
   ]
 }

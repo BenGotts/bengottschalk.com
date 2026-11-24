@@ -53,7 +53,7 @@ const solveRecord = z.object({
     roundNumber: z.number().int().nullable().optional(),
     attempt: z.number().int(),
     status: z.enum(["live", "official"]),
-    timeEstimate: z.enum(["group", "round", "day"]),
+    timeEstimate: z.enum(["entered", "group", "round", "day"]),
     position: z.number().int().nullable().optional(),
     roundAverage: z.number().int().nullable().optional(),
     singleRecord: z.string().max(10).nullable().optional(),
