@@ -50,7 +50,8 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
   const rows = [];
   for (let r = first; r < last; r++) rows.push(solves.length - 1 - r);
 
-  // The latest five stand out: their ao5's dropped best and worst in brackets (green and red), and a line under them.
+  // On desktop the latest five stand out: their ao5's dropped best and worst in brackets (green and red), and a
+  // thick line under them. Phones already show the last five on the timer screen, so the list stays plain there.
   const recentFrom = solves.length - 5;
   const recentDropped = solves.length >= 5 ? averageBreakdown(solves.slice(recentFrom).map(solveValue), "average").dropped : [];
 
@@ -71,7 +72,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
           {rows.map((i) => {
             const solve = solves[i];
             return (
-              <tr key={solve.id} style={{ height: ROW_HEIGHT }} className={`${solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"} ${i === recentFrom ? "border-b-2 border-b-base-content/25" : ""}`}>
+              <tr key={solve.id} style={{ height: ROW_HEIGHT }} className={`${solve.competition ? "bg-ink-gold/8 hover:bg-ink-gold/15" : "hover:bg-base-300"} ${i === recentFrom ? "lg:[&>td]:border-b-4 lg:[&>td]:border-b-primary/70" : ""}`}>
                 <td className="text-muted">{i + 1}</td>
                 <td>
                   {(() => {
@@ -80,10 +81,10 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                     return (
                       <button
                         type="button"
-                        className={`link-hover text-left ${dropped === "best" ? "text-success" : dropped === "worst" ? "text-error" : solve.competition ? "text-ink-gold" : ""}`}
+                        className={`link-hover text-left ${solve.competition ? "text-ink-gold" : ""} ${dropped === "best" ? "lg:text-success" : dropped === "worst" ? "lg:text-error" : ""}`}
                         onClick={() => onOpen(solve)}
                       >
-                        {dropped ? `(${time})` : time}
+                        {dropped ? <><span className="hidden lg:inline">(</span>{time}<span className="hidden lg:inline">)</span></> : time}
                       </button>
                     );
                   })()}
