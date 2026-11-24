@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaArrowLeft, FaArrowRight, FaCodeBranch, FaGear, FaRegCopy, FaTrophy } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaGear, FaListUl, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve } from "@bengottschalk/timer-core/solve";
@@ -12,7 +12,7 @@ import type { ParsedTime } from "@bengottschalk/timer-core/time";
 import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
-import { formatSolve } from "@/lib/format";
+import { formatMean, formatSolve, formatValue } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
@@ -34,6 +34,15 @@ import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
 type Dialog = "sessions" | "settings" | "import" | null;
+/** Which screen a phone shows (wide screens show the timer and the side panel together). */
+type MobileView = "timer" | "solves" | "stats" | "sotd";
+
+const MOBILE_TABS: { view: MobileView; label: string; icon: React.ReactNode }[] = [
+  { view: "timer", label: "Timer", icon: <FaStopwatch aria-hidden /> },
+  { view: "solves", label: "Solves", icon: <FaListUl aria-hidden /> },
+  { view: "stats", label: "Stats", icon: <FaChartSimple aria-hidden /> },
+  { view: "sotd", label: "Solve of the Day", icon: <FaStar aria-hidden /> },
+];
 
 // Stable fallbacks while live queries load, so memos don't recompute every render.
 const NO_SESSIONS: TimerSession[] = [];
@@ -48,6 +57,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [openSolveId, setOpenSolveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"solves" | "sotd">("solves");
+  const [view, setView] = useState<MobileView>("timer");
   const [mbldCubes, setMbldCubes] = useState(2);
   const [mbldScrambles, setMbldScrambles] = useState<string[] | null>(null);
   const [mbldGenerating, setMbldGenerating] = useState(false);
@@ -231,6 +241,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   const openFromSotd = (solve: Solve) => {
     if (solve.eventId !== activeEventId) setEventId(solve.eventId);
+    setView("solves");
     setOpenSolveId(solve.id);
   };
 
@@ -239,12 +250,22 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const goalReached = current && !isMainSession(current) && current.status === "active" && current.goal !== null && ownCount >= current.goal;
 
+  const quickStats = [
+    { label: "solves", value: String(stats.count) },
+    ...(event.format === "best"
+      ? [{ label: "best", value: formatValue(activeEventId, stats.best, settings.precision) }, { label: "mean", value: formatMean(activeEventId, stats.mean, settings.precision) }]
+      : (event.format === "mo3" ? ["mo3", "ao12"] : ["ao5", "ao12"]).map((label) => ({
+          label,
+          value: formatMean(activeEventId, stats.averages.find((a) => a.label === label)?.current ?? null, settings.precision),
+        }))),
+  ];
+
   if (eventId === null) return <div className="min-h-dvh" />;
 
   return (
-    <div data-solving={solving} className="flex min-h-dvh flex-col lg:h-dvh lg:flex-row">
+    <div data-solving={solving} className="flex h-dvh flex-col lg:flex-row">
       <main
-        className={`relative flex min-h-[75dvh] flex-1 flex-col lg:order-2 lg:min-h-0 ${usesTimer && writable ? "touch-surface" : ""}`}
+        className={`relative min-h-0 flex-1 flex-col lg:order-2 lg:flex ${view === "timer" ? "flex" : "hidden"} ${usesTimer && writable ? "touch-surface" : ""}`}
         {...(usesTimer ? timer.surfaceHandlers : {})}
       >
         <header className="focus-fade flex flex-wrap items-center gap-2 p-3">
@@ -271,7 +292,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           </div>
         )}
 
-        <section className="focus-fade px-4 pt-2 text-center" aria-label="Scramble">
+        <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-2 text-center lg:max-h-none" aria-label="Scramble">
           {event.kind === "multi-blind" ? (
             <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} />
           ) : (
@@ -288,7 +309,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           )}
         </section>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-4 py-6">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-6">
           {event.kind === "fewest-moves" ? (
             <FmcPanel scramble={scramble.scramble} onSave={saveFmc} disabled={!writable} />
           ) : settings.entry === "typing" ? (
@@ -315,29 +336,67 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         </div>
 
         {settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && (
-          <div className="focus-fade pointer-events-none absolute bottom-3 right-3 hidden h-40 w-56 sm:block">
+          <div className="focus-fade pointer-events-none absolute bottom-3 right-3 hidden h-40 w-56 lg:block">
             <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
           </div>
         )}
+
+        {/* Phones: the key numbers under the timer, and the scramble picture beside them. */}
+        <div className="focus-fade flex shrink-0 items-end gap-3 px-3 pb-2 lg:hidden">
+          <button type="button" className="grid flex-1 grid-cols-3 gap-2 rounded-box bg-base-200 p-2 text-left text-sm" onClick={() => setView("stats")} aria-label="Show all stats">
+            {quickStats.map((item) => (
+              <span key={item.label}>
+                <span className="block text-xs text-muted">{item.label}</span>
+                <span className="timer-digits">{item.value}</span>
+              </span>
+            ))}
+          </button>
+          {settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && (
+            <div className="pointer-events-none h-20 w-28 shrink-0">
+              <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} />
+            </div>
+          )}
+        </div>
       </main>
 
-      <aside className="focus-fade flex flex-col gap-3 border-base-300 p-3 lg:order-1 lg:h-dvh lg:w-80 lg:border-r">
+      <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${view === "timer" ? "hidden" : "flex"}`}>
         <div className="flex items-baseline justify-between">
           <h1 className="font-semibold">Cube Timer</h1>
           <span className="text-xs text-muted">{event.shortName} · {current && !isMainSession(current) ? current.name : "Main"}</span>
         </div>
-        <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
-        <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} />
-        <div role="tablist" className="tabs tabs-box tabs-sm">
+        <div className={`lg:block ${view === "solves" || view === "stats" ? "" : "hidden"}`}>
+          <SourceFilter value={sourceFilter} onChange={setSourceFilter} results={competitionResults} />
+        </div>
+        <div className={`lg:block ${view === "stats" ? "" : "hidden"}`}>
+          <StatsPanel eventId={activeEventId} format={event.format} stats={stats} precision={settings.precision} />
+        </div>
+        <div role="tablist" className="tabs tabs-box tabs-sm hidden lg:flex">
           <button type="button" role="tab" className={`tab grow ${tab === "solves" ? "tab-active" : ""}`} aria-selected={tab === "solves"} onClick={() => setTab("solves")}>Solves</button>
           <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto" role="tabpanel">
-          {tab === "solves"
-            ? <SolveList eventId={activeEventId} solves={viewSolves} rolling={rolling} rollingLabel={event.format === "mo3" ? "mo3" : "ao5"} sotdSolveIds={sotdSolveIds} branchNames={branchNames} precision={settings.precision} onOpen={(s) => setOpenSolveId(s.id)} />
-            : <SotdList precision={settings.precision} onOpen={openFromSotd} />}
+        {/* On phones the bottom tabs pick the list; on wide screens the tabs above do. */}
+        <div className={`min-h-0 flex-1 overflow-y-auto ${view === "solves" ? "block" : "hidden"} ${tab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+          <SolveList eventId={activeEventId} solves={viewSolves} rolling={rolling} rollingLabel={event.format === "mo3" ? "mo3" : "ao5"} sotdSolveIds={sotdSolveIds} branchNames={branchNames} precision={settings.precision} onOpen={(s) => setOpenSolveId(s.id)} />
+        </div>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${view === "sotd" ? "block" : "hidden"} ${tab === "sotd" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
+          <SotdList precision={settings.precision} onOpen={openFromSotd} />
         </div>
       </aside>
+
+      <nav className="focus-fade grid shrink-0 grid-cols-4 border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Screens">
+        {MOBILE_TABS.map((item) => (
+          <button
+            key={item.view}
+            type="button"
+            className={`flex flex-col items-center gap-0.5 py-2 text-xs ${view === item.view ? "text-primary" : "text-muted"}`}
+            aria-current={view === item.view ? "page" : undefined}
+            onClick={() => setView(item.view)}
+          >
+            <span className="text-base">{item.icon}</span>
+            {item.view === "sotd" ? "SOTD" : item.label}
+          </button>
+        ))}
+      </nav>
 
       {main && current && (
         <SessionsDialog open={dialog === "sessions"} onClose={() => setDialog(null)} main={main} sessions={sessions} solves={allSolves} currentId={current.id} onSelect={selectSession} precision={settings.precision} />

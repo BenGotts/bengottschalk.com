@@ -32,7 +32,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
 
   return (
     <div>
-      <table className="table table-xs">
+      <table className="table table-xs w-full">
         <thead>
           <tr>
             <th scope="col">#</th>
@@ -54,7 +54,8 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                   </button>
                 </td>
                 <td className="text-muted">{formatMean(eventId, rolling[i], precision)}</td>
-                <td className="flex items-center justify-end gap-1.5">
+                <td>
+                  <div className="flex items-center justify-end gap-1.5">
                   {solve.competition && (
                     <FaTrophy
                       className="text-ink-gold"
@@ -65,6 +66,7 @@ export default function SolveList({ eventId, solves, rolling, rollingLabel, sotd
                   {branch && <span className="badge badge-ghost badge-xs font-sans" title={`Done in branch “${branch}”`}>{branch}</span>}
                   {solve.comment && <span className="text-muted" title={solve.comment} aria-label="Has a comment">“</span>}
                   {sotdSolveIds.has(solve.id) && <FaStar className="text-accent" title="Solve of the Day" aria-label="Solve of the Day" />}
+                  </div>
                 </td>
               </tr>
             );
