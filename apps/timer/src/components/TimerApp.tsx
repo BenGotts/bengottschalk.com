@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaPen, FaXmark, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaMobileScreen, FaPen, FaXmark, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve, type TimingMethod } from "@bengottschalk/timer-core/solve";
@@ -18,6 +18,8 @@ import { generateMultiBlindScrambles } from "@/lib/scrambles";
 import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
+import { usePhonePad } from "@/lib/pad/usePhonePad";
+import { usePadInvite, useTouchDevice } from "@/lib/pad/account";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
 import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
 import AverageDialog, { type AverageView } from "./AverageDialog";
@@ -32,6 +34,7 @@ import LastSolveActions from "./LastSolveActions";
 import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
 import NumberField from "./NumberField";
+import PhonePadDialog from "./pad/PhonePadDialog";
 import ScrambleImage from "./ScrambleImage";
 import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
@@ -46,7 +49,7 @@ import StatsPanel from "./StatsPanel";
 import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
-type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | null;
+type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | "phone" | null;
 /** Which screen a phone shows (wide screens show the timer and the side panel together). */
 type MobileView = "timer" | "solves" | "stats" | "sotd";
 
@@ -182,15 +185,41 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     void save({ eventId: activeEventId, sessionId: current.id, ...finished, scramble: scrambleText, fmc: null, multi: null, entry: "timer" });
   }, [activeEventId, current, event.kind, save, scrambleText]);
 
+  const timerReady = usesTimer && writable && scrambleText !== null && pendingMulti === null;
+  // A phone used as stackmat pads: it times the solve and its result is saved like any other.
+  const pad = usePhonePad({
+    state: {
+      eventId: activeEventId,
+      eventName: event.name,
+      inspection: settings.inspection && event.inspection,
+      holdMs: settings.holdMs,
+      memoSplit: settings.bldMemoSplit && event.blindfolded,
+      precision: settings.precision,
+      scramble: scrambleText,
+      puzzleId: event.kind === "multi-blind" ? null : event.puzzleId ?? null,
+      scheme: settings.scheme,
+      canStart: timerReady,
+    },
+    onFinish,
+  });
+  // On a phone signed in to the same account: a computer waiting for a phone offers to use this one.
+  const touchDevice = useTouchDevice();
+  const { invite } = usePadInvite(authEnabled && touchDevice && pad.available);
+  const [declinedInvite, setDeclinedInvite] = useState<string | null>(null);
+  const shownInvite = invite && invite.code !== declinedInvite ? invite : null;
   const timer = useTimer({
-    enabled: usesTimer && writable && scrambleText !== null && dialog === null && openSolveId === null && averageView === null && pendingMulti === null,
+    enabled: timerReady && !pad.busy && dialog === null && openSolveId === null && averageView === null,
     inspection: settings.inspection && event.inspection,
     holdMs: settings.holdMs,
     memoSplit: settings.bldMemoSplit && event.blindfolded,
     voice: settings.inspectionVoice,
     onFinish,
   });
-  const solving = timer.phase === "running" || timer.phase === "inspecting" || timer.phase === "holding" || timer.phase === "ready";
+  // While the phone is mid-solve, the screen shows its phase and time instead of the space bar's.
+  const shown = pad.busy ? pad.view : timer;
+  const phase = shown.phase;
+  const solving = phase === "running" || phase === "inspecting" || phase === "holding" || phase === "ready";
+  const cancelSolve = pad.busy ? pad.cancel : timer.cancel;
 
   const saveTyped = (time: ParsedTime) => {
     if (!current || !scrambleText) return;
@@ -228,10 +257,16 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     }
   };
 
-  // Keyboard shortcuts for the last solve, when the timer is idle.
+  // Keyboard shortcuts for the last solve, when the timer is idle (and Escape stops the phone's solve, like the space bar's).
+  const { busy: padBusy, cancel: padCancel } = pad;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!e.altKey || e.ctrlKey || e.metaKey || timer.phase !== "idle" || document.querySelector("dialog[open]")) return;
+      if (padBusy && e.code === "Escape") {
+        e.preventDefault();
+        padCancel();
+        return;
+      }
+      if (!e.altKey || e.ctrlKey || e.metaKey || phase !== "idle" || document.querySelector("dialog[open]")) return;
       if (e.target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
       const last = lastHomeSolve;
       const actions: Record<string, () => void> = {
@@ -261,7 +296,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [timer.phase, lastHomeSolve, sotdMap, sotdEnabled, scramble, settings.precision]);
+  }, [phase, padBusy, padCancel, lastHomeSolve, sotdMap, sotdEnabled, scramble, settings.precision]);
 
   const openSolve = allSolves.find((s) => s.id === openSolveId) ?? null;
   const openSolveReadOnly = openSolve ? !sessions.some((s) => s.id === openSolve.sessionId && acceptsSolves(s)) : true;
@@ -296,11 +331,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const actionSolve = lastSolve && lastSolve.id === lastHomeSolve?.id && writable ? lastSolve : null;
 
   const lastResult = lastSolve ? formatSolve(lastSolve, settings.precision) : null;
-  const newBest = timer.phase === "idle" && isNewBest(values);
+  const newBest = phase === "idle" && isNewBest(values);
   const goalReached = current && !isMainSession(current) && current.status === "active" && current.goal !== null && ownCount >= current.goal;
   const temporary = current && !isMainSession(current) ? current : null;
   // Never in the middle of a solve: it waits until the timer is idle again.
-  const endOpen = temporary !== null && endFor === temporary.id && temporary.status === "active" && timer.phase === "idle";
+  const endOpen = temporary !== null && endFor === temporary.id && temporary.status === "active" && phase === "idle";
   const backToMain = () => {
     setEndFor(null);
     if (main) selectSession(main.id);
@@ -359,6 +394,12 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         {/* Phones have no sidebar, so the event and session stay in the header. */}
         <div className="order-3 flex w-full min-w-0 items-center gap-2 lg:hidden">{eventControls}</div>
         <div className="order-2 ml-auto flex items-center gap-1 lg:order-3">
+          {pad.available && (
+            <button type="button" className="btn btn-ghost btn-sm gap-1.5" onClick={() => setDialog("phone")} aria-label={pad.connected ? "Phone timer: connected" : "Use phone as timer"} title="Use phone as timer">
+              <FaMobileScreen className="size-4" aria-hidden />
+              {pad.code && <span className={`size-2 rounded-full ${pad.connected ? "bg-success" : "bg-warning"}`} aria-hidden />}
+            </button>
+          )}
           {authEnabled && <AccountButton />}
           <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
         </div>
@@ -375,6 +416,16 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               <div className="flex gap-2">
                 <button type="button" className="btn btn-sm" onClick={() => setDialog("summary")}>Summary</button>
                 {main && <button type="button" className="btn btn-sm" onClick={() => selectSession(main.id)}>Back to Main</button>}
+              </div>
+            </div>
+          )}
+          {shownInvite && (
+            <div className="focus-fade mx-3 mt-3 alert alert-info alert-soft" data-timer-ignore data-testid="pad-invite">
+              <FaMobileScreen className="size-5 shrink-0" aria-hidden />
+              <span>Your computer ({shownInvite.computer}) is waiting to use this phone as stackmat pads.</span>
+              <div className="flex gap-2">
+                <Link href={`/pad?code=${shownInvite.code}`} className="btn btn-primary btn-sm">Connect</Link>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDeclinedInvite(shownInvite.code)}>Not now</button>
               </div>
             </div>
           )}
@@ -408,12 +459,12 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
           {/* During inspection or a solve: a way out of an accidental start without saving anything (Escape does the same).
               It sits at the top, over the faded scramble, away from where thumbs land to stop the timer. */}
-          {usesTimer && (timer.phase === "inspecting" || timer.phase === "running") && (
+          {usesTimer && (phase === "inspecting" || phase === "running") && (
             <button
               type="button"
               data-timer-cancel
               className="btn btn-outline btn-lg absolute top-4 left-1/2 z-10 h-14 min-w-56 -translate-x-1/2 gap-3 border-2 bg-base-100 text-lg lg:top-8"
-              onClick={timer.cancel}
+              onClick={cancelSolve}
             >
               <FaXmark className="size-5" aria-hidden /> Cancel solve <kbd className="kbd kbd-xs hidden lg:inline-flex">Esc</kbd>
             </button>
@@ -431,21 +482,21 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             ) : (
               <>
                 <TimeDisplay
-                  phase={timer.phase}
-                  startedAt={timer.startedAt}
-                  inspectionStartedAt={timer.inspectionStartedAt}
-                  memoMs={timer.memoMs}
+                  phase={phase}
+                  startedAt={shown.startedAt}
+                  inspectionStartedAt={shown.inspectionStartedAt}
+                  memoMs={shown.memoMs}
                   lastResult={lastResult}
                   precision={settings.precision}
                   hideRunningTime={settings.hideRunningTime}
                 />
                 <p className="focus-fade h-6 text-sm">
-                  {timer.phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
+                  {phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
                     : newBest ? <span className="font-medium text-accent">New best single</span>
                     : event.kind === "multi-blind" && !mbldScrambles ? <span className="text-muted">Make scrambles to start</span>
-                    : timer.phase === "idle" && !actionSolve && <span className="text-muted">{settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
+                    : phase === "idle" && !actionSolve && <span className="text-muted">{pad.connected ? "Both hands on your phone’s pads (or use the space bar)" : settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
                 </p>
-                <div className={`focus-fade ${timer.phase === "idle" ? "" : "invisible"}`}>
+                <div className={`focus-fade ${phase === "idle" ? "" : "invisible"}`}>
                   <LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} />
                 </div>
               </>
@@ -563,6 +614,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       )}
       <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} stored={storedSettings} eventId={activeEventId} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
       <ImportDialog open={dialog === "import"} onClose={() => setDialog(null)} />
+      <PhonePadDialog open={dialog === "phone"} onClose={() => setDialog(null)} pad={pad} />
       {authEnabled && (
         <>
           <AccountSession />

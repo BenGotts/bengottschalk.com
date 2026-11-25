@@ -35,3 +35,12 @@ twisty-player {
   width: 100%;
   height: 100%;
 }
+
+/* The phone's stackmat pads: held with both hands, so no scrolling, selection, callouts or zoom anywhere. */
+.pad-surface {
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
