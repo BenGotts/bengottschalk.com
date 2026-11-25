@@ -57,6 +57,9 @@ export default function PhonePadDialog({ open, onClose, pad }: { open: boolean; 
               </p>
             </div>
           </div>
+          {pad.signedIn && !connected && (
+            <p className="alert alert-info alert-soft text-sm">Signed in on your phone too? Open the timer there and tap Connect: no code needed.</p>
+          )}
           <p className="text-sm text-muted">Lay the phone flat, sideways if you can. Keep this tab open: the phone’s solves are saved here, to the event and session you have open. The space bar still works too.</p>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" className="btn btn-ghost btn-sm" onClick={pad.newCode}>New code</button>

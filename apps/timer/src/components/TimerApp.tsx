@@ -19,6 +19,7 @@ import { formatSolve } from "@/lib/format";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { usePhonePad } from "@/lib/pad/usePhonePad";
+import { usePadInvite, useTouchDevice } from "@/lib/pad/account";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
 import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
 import AverageDialog, { type AverageView } from "./AverageDialog";
@@ -201,6 +202,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     },
     onFinish,
   });
+  // On a phone signed in to the same account: a computer waiting for a phone offers to use this one.
+  const touchDevice = useTouchDevice();
+  const { invite } = usePadInvite(authEnabled && touchDevice && pad.available);
+  const [declinedInvite, setDeclinedInvite] = useState<string | null>(null);
+  const shownInvite = invite && invite.code !== declinedInvite ? invite : null;
   const timer = useTimer({
     enabled: timerReady && !pad.busy && dialog === null && openSolveId === null && averageView === null,
     inspection: settings.inspection && event.inspection,
@@ -410,6 +416,16 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               <div className="flex gap-2">
                 <button type="button" className="btn btn-sm" onClick={() => setDialog("summary")}>Summary</button>
                 {main && <button type="button" className="btn btn-sm" onClick={() => selectSession(main.id)}>Back to Main</button>}
+              </div>
+            </div>
+          )}
+          {shownInvite && (
+            <div className="focus-fade mx-3 mt-3 alert alert-info alert-soft" data-timer-ignore data-testid="pad-invite">
+              <FaMobileScreen className="size-5 shrink-0" aria-hidden />
+              <span>Your computer ({shownInvite.computer}) is waiting to use this phone as stackmat pads.</span>
+              <div className="flex gap-2">
+                <Link href={`/pad?code=${shownInvite.code}`} className="btn btn-primary btn-sm">Connect</Link>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDeclinedInvite(shownInvite.code)}>Not now</button>
               </div>
             </div>
           )}

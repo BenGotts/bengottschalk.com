@@ -13,7 +13,8 @@ import { FaCube, FaHand, FaRightFromBracket } from "react-icons/fa6";
 import { initialPadState, inspectionPenalty, padReduce, type PadAction, type PadConfig, type PadSide, type PadState } from "@bengottschalk/timer-core/pad";
 import { formatRunning, formatTime, type Precision } from "@bengottschalk/timer-core/time";
 import { TIMER_NAME } from "@bengottschalk/content/site";
-import { openLink, padTransport, type LinkStatus, type PadLink } from "@/lib/pad/link";
+import { usePadInvite } from "@/lib/pad/account";
+import { openLink, padTopic, padTransport, type LinkStatus, type PadLink } from "@/lib/pad/link";
 import { CODE_LENGTH, deviceId, GONE_AFTER_MS, HEARTBEAT_MS, normalizeCode, RESEND_MS, type ComputerState, type Envelope, type PhoneMessage, type PhoneResult } from "@/lib/pad/protocol";
 import Modal from "../Modal";
 import ScrambleImage from "../ScrambleImage";
@@ -36,13 +37,16 @@ export default function PadApp() {
     setChosen(next);
   };
   const leave = () => {
+    // Don't connect straight back to the computer just left (it keeps asking until a phone connects).
+    if (code) setLeft(code);
     window.history.replaceState(null, "", "/pad");
     setChosen(null);
   };
+  const [left, setLeft] = useState<string | null>(null);
 
   if (code === undefined) return <div className="min-h-dvh bg-base-100" />;
   if (padTransport() === null) return <Unavailable />;
-  if (code === null) return <JoinForm onJoin={join} />;
+  if (code === null) return <JoinForm onJoin={join} left={left} />;
   return <Pads key={code} code={code} onLeave={leave} />;
 }
 
@@ -56,9 +60,15 @@ function Unavailable() {
   );
 }
 
-function JoinForm({ onJoin }: { onJoin: (code: string) => void }) {
+function JoinForm({ onJoin, left }: { onJoin: (code: string) => void; left: string | null }) {
   const [text, setText] = useState("");
   const code = normalizeCode(text);
+  // Signed in here and on the computer: its code arrives by itself.
+  const { channel, invite } = usePadInvite(true);
+  const autoJoin = invite && invite.code !== left ? invite.code : null;
+  useEffect(() => {
+    if (autoJoin) onJoin(autoJoin);
+  }, [autoJoin, onJoin]);
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-5 p-6">
       <div>
@@ -67,6 +77,12 @@ function JoinForm({ onJoin }: { onJoin: (code: string) => void }) {
           On your computer, open {TIMER_NAME}, choose <span className="font-medium text-base-content">Use phone as timer</span>, then scan the code it shows, or type the code here.
         </p>
       </div>
+      {invite && invite.code === left && (
+        <button type="button" className="btn btn-primary btn-lg" onClick={() => onJoin(invite.code)}>Connect to {invite.computer}</button>
+      )}
+      {channel && !invite && (
+        <p className="alert alert-info alert-soft text-sm">You’re signed in: choose Use phone as timer on your computer and this phone connects by itself.</p>
+      )}
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (code) onJoin(code); }}>
         <input
           className="input input-lg timer-digits flex-1 uppercase tracking-[0.3em]"
@@ -169,7 +185,7 @@ function Pads({ code, onLeave }: { code: string; onLeave: () => void }) {
   const [scrambleOpen, setScrambleOpen] = useState(false);
 
   const selfRef = useRef("");
-  const linkRef = useRef<PadLink | null>(null);
+  const linkRef = useRef<PadLink<Envelope> | null>(null);
   const machineRef = useRef<PadState>(initialPadState);
   const configRef = useRef<PadConfig>(DEFAULT_CONFIG);
   const pendingRef = useRef<PhoneResult[]>(savedPending);
@@ -266,7 +282,7 @@ function Pads({ code, onLeave }: { code: string; onLeave: () => void }) {
 
   useEffect(() => {
     selfRef.current = deviceId("phone");
-    const link = openLink(code, (envelope) => receiveRef.current(envelope), (status) => {
+    const link = openLink<Envelope>(padTopic(code), (envelope) => receiveRef.current(envelope), (status) => {
       setLinkStatus(status);
       // Say hello as soon as the channel is open, so the computer knows we're here.
       if (status === "open") sendPhase();

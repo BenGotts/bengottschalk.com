@@ -12,7 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PadPhase } from "@bengottschalk/timer-core/pad";
 import type { FinishedSolve } from "@/lib/useTimer";
-import { openLink, padTransport, type LinkStatus, type PadLink } from "./link";
+import { useAccountChannel, useAnnounceCode } from "./account";
+import { openLink, padTopic, padTransport, type LinkStatus, type PadLink } from "./link";
 import { deviceId, generateCode, GONE_AFTER_MS, HEARTBEAT_MS, type ComputerMessage, type ComputerState, type Envelope } from "./protocol";
 
 const PAIRING_KEY = "pad.computer";
@@ -65,7 +66,7 @@ export function usePhonePad({ state, onFinish }: { state: Omit<ComputerState, "t
   const [connected, setConnected] = useState(false);
   const [view, setView] = useState<PhoneView>(IDLE_VIEW);
 
-  const linkRef = useRef<PadLink | null>(null);
+  const linkRef = useRef<PadLink<Envelope> | null>(null);
   const pairingRef = useRef<Pairing | null>(null);
   const lastHeardRef = useRef(0);
   const viewRef = useRef<PhoneView>(IDLE_VIEW);
@@ -166,7 +167,7 @@ export function usePhonePad({ state, onFinish }: { state: Omit<ComputerState, "t
   useEffect(() => {
     if (!code) return undefined;
     setLinkStatus("connecting");
-    const link = openLink(code, (envelope) => receiveRef.current(envelope), setLinkStatus);
+    const link = openLink<Envelope>(padTopic(code), (envelope) => receiveRef.current(envelope), setLinkStatus);
     linkRef.current = link;
     return () => {
       link.close();
@@ -194,6 +195,11 @@ export function usePhonePad({ state, onFinish }: { state: Omit<ComputerState, "t
     }, HEARTBEAT_MS);
     return () => clearInterval(beat);
   }, [code, sendState, setPhoneView]);
+
+  // Signed in: the code is also announced to the person's own phone until one connects.
+  const accountChannel = useAccountChannel(available && code !== null);
+  const self = useCallback(() => selfRef.current, []);
+  useAnnounceCode(connected ? null : accountChannel, code, self);
 
   /** Shows a code for a phone to join (keeps the one in use, if any). */
   const enable = useCallback(() => {
@@ -228,6 +234,8 @@ export function usePhonePad({ state, onFinish }: { state: Omit<ComputerState, "t
     code,
     linkStatus,
     connected: connected && code !== null,
+    /** Whether the person is signed in, so their phone can connect without the code. */
+    signedIn: accountChannel !== null,
     view,
     /** Whether the phone is mid-solve (or inspecting, or holding the pads). */
     busy: view.phase !== "idle" && view.phase !== "stopped",
