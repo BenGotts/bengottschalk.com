@@ -49,17 +49,19 @@ export const competitionSolveId = (competitionId: string, eventId: string, round
  *
  * - keyboard: the space bar
  * - touch: holding the screen
+ * - phone-pads: a phone paired with the timer, played like a stackmat's two pads
  * - typed: typed in (also Fewest Moves results)
  * - stackmat: a Stackmat timer plugged in (to come)
  * - bluetooth: a Bluetooth timer or smart cube (to come)
  * - imported: brought in from csTimer
  * - competition: an official or WCA Live attempt (timed by the judges)
  */
-export type TimingMethod = "keyboard" | "touch" | "typed" | "stackmat" | "bluetooth" | "imported" | "competition";
+export type TimingMethod = "keyboard" | "touch" | "phone-pads" | "typed" | "stackmat" | "bluetooth" | "imported" | "competition";
 
 export const TIMING_LABELS: Record<TimingMethod | "unknown", string> = {
   keyboard: "Space bar",
   touch: "Touch screen",
+  "phone-pads": "Phone as stackmat pads",
   typed: "Typed",
   stackmat: "Stackmat",
   bluetooth: "Bluetooth",

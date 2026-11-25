@@ -14,6 +14,7 @@
 // menu has focus, unless the person is typing in a text field.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { inspectionPenalty } from "@bengottschalk/timer-core/pad";
 import type { Penalty, TimingMethod } from "@bengottschalk/timer-core/solve";
 
 export type TimerPhase = "idle" | "inspecting" | "holding" | "ready" | "running" | "stopped";
@@ -28,8 +29,8 @@ export interface FinishedSolve {
   timing: StartMethod;
 }
 
-/** The ways this hook can start a solve (hardware timers will add their own). */
-export type StartMethod = Extract<TimingMethod, "keyboard" | "touch">;
+/** The ways a solve timed on this screen, or by a paired phone, can start (hardware timers will add their own). */
+export type StartMethod = Extract<TimingMethod, "keyboard" | "touch" | "phone-pads">;
 
 interface Options {
   enabled: boolean;
@@ -40,14 +41,7 @@ interface Options {
   onFinish: (solve: FinishedSolve) => void;
 }
 
-const INSPECTION_MS = 15_000;
-const DNF_AFTER_MS = 17_000;
-
-export function inspectionPenalty(elapsedMs: number): Penalty {
-  if (elapsedMs > DNF_AFTER_MS) return "dnf";
-  if (elapsedMs > INSPECTION_MS) return "+2";
-  return "none";
-}
+export { inspectionPenalty };
 
 /** Wall-clock time of a performance.now() timestamp. */
 const wallClock = (perfTime: number) => Math.round(performance.timeOrigin + perfTime);
