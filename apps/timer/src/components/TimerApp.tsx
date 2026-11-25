@@ -406,12 +406,13 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             )}
           </section>}
 
-          {/* During inspection or a solve: a way out of an accidental start without saving anything (Escape does the same). */}
+          {/* During inspection or a solve: a way out of an accidental start without saving anything (Escape does the same).
+              It sits at the top, over the faded scramble, away from where thumbs land to stop the timer. */}
           {usesTimer && (timer.phase === "inspecting" || timer.phase === "running") && (
             <button
               type="button"
               data-timer-cancel
-              className="btn btn-outline btn-lg absolute bottom-6 left-1/2 z-10 h-14 min-w-56 -translate-x-1/2 gap-3 border-2 bg-base-100 text-lg lg:bottom-8"
+              className="btn btn-outline btn-lg absolute top-4 left-1/2 z-10 h-14 min-w-56 -translate-x-1/2 gap-3 border-2 bg-base-100 text-lg lg:top-8"
               onClick={timer.cancel}
             >
               <FaXmark className="size-5" aria-hidden /> Cancel solve <kbd className="kbd kbd-xs hidden lg:inline-flex">Esc</kbd>
