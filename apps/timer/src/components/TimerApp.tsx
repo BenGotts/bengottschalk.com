@@ -385,8 +385,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             </div>
           )}
 
-          {/* FMC keeps its scramble hidden until the attempt starts, then shows it in its own panel. */}
-          {event.kind !== "fewest-moves" && <section className="focus-fade max-h-[30dvh] shrink-0 overflow-y-auto px-4 pt-3 text-center lg:max-h-none" aria-label="Scramble">
+          {/* FMC keeps its scramble hidden until the attempt starts, then shows it in its own panel.
+              On short phones a long scramble scrolls in its box rather than pushing the stats under the tabs. */}
+          {event.kind !== "fewest-moves" && <section className="focus-fade max-h-[30dvh] min-h-20 shrink overflow-y-auto px-4 pt-3 text-center lg:max-h-none lg:shrink-0" aria-label="Scramble">
             {event.kind === "multi-blind" ? (
               <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} scheme={colorsFor(activeEventId)} />
             ) : (
@@ -453,9 +454,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             <div className="focus-fade mt-3" data-timer-ignore><CurrentAverages eventId={activeEventId} format={event.format} specs={screenSpecs} stats={stats} solves={viewSolves} precision={settings.precision} onOpenAverage={openAverage} onOpenSolve={openSolveAt} /></div>
           </div>
 
-          {/* Phones: the scramble picture centred in the space between the time and the stats. */}
+          {/* Phones: the scramble picture centred in the space between the time and the stats.
+              It takes only the space left over, so the stats never run under the tabs, and hides when that's too little to see. */}
           {scrambleImage && (
-            <div className="focus-fade flex min-h-16 flex-1 items-center justify-center px-3 pb-2 lg:hidden">
+            <div className="scramble-picture-slot focus-fade flex min-h-0 flex-1 items-center justify-center px-3 pb-2 lg:hidden">
               {enlargeButton("h-full max-h-40 w-full max-w-56")}
             </div>
           )}

@@ -1,6 +1,15 @@
 @import 'tailwindcss';
 @import '@bengottschalk/theme/theme.css';
 
+/* The timer is one screen that fills the viewport: the page itself never scrolls,
+   bounces or pulls to refresh. Lists and dialogs scroll inside themselves. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* Times and numbers: Inter, with every digit the same width so a running time doesn't shift. */
 .timer-digits {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -34,4 +43,15 @@
 twisty-player {
   width: 100%;
   height: 100%;
+}
+
+/* Phones: the scramble picture fills what's left between the time and the stats,
+   and leaves when that's too little room for a picture worth looking at. */
+.scramble-picture-slot {
+  container-type: size;
+}
+@container (max-height: 4rem) {
+  .scramble-picture-slot > * {
+    display: none;
+  }
 }
