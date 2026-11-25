@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @import '@bengottschalk/theme/theme.css';
 
+/* Phones too short to stack the scramble, time, scramble picture and stats (the phone layout ends at lg). */
+@custom-variant short-phone (@media (width < 64rem) and (height <= 600px));
+
 /* The timer is one screen that fills the viewport: the page itself never scrolls,
    bounces or pulls to refresh. Lists and dialogs scroll inside themselves. */
 html,
@@ -43,15 +46,4 @@ body {
 twisty-player {
   width: 100%;
   height: 100%;
-}
-
-/* Phones: the scramble picture fills what's left between the time and the stats,
-   and leaves when that's too little room for a picture worth looking at. */
-.scramble-picture-slot {
-  container-type: size;
-}
-@container (max-height: 4rem) {
-  .scramble-picture-slot > * {
-    display: none;
-  }
 }
