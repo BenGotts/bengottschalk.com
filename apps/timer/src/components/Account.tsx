@@ -1,0 +1,262 @@
+"use client";
+
+// Signing in with WCA, the account menu, the sync status, and the choice
+// about solves made before signing in. Only rendered when sign-in is set up.
+
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { LuCloud, LuCloudAlert, LuCloudOff, LuLogOut, LuRefreshCw, LuTrophy } from "react-icons/lu";
+import { useCompetitionResultsState } from "@/lib/wca/competitionResultsContext";
+import { authClient, signInWithWca } from "@/lib/auth-client";
+import { askAboutUnsyncedSolves, finishSignOut, prepareSignOut, signedInWcaId, resolveUnsyncedSolves, startSync, stopSync, syncNow, syncStore, type SyncState } from "@/lib/sync";
+import Modal from "./Modal";
+
+export function useSyncState(): SyncState {
+  return useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot, syncStore.getSnapshot);
+}
+
+/** The signed-in person's WCA ID (null when signed out or not yet competed), updating on sign-in and sign-out. */
+export function useSignedInWcaId(): string | null {
+  return useSyncExternalStore(syncStore.subscribe, signedInWcaId, signedInWcaId);
+}
+
+/** Watches the signed-in session and starts or stops syncing to match. Renders nothing. */
+export function AccountSession() {
+  const { data, isPending } = authClient.useSession();
+  const user = data?.user ?? null;
+  const id = user?.id ?? null;
+  const name = user?.name ?? "";
+  const image = user?.image ?? null;
+  const wcaId = user?.wcaId ?? null;
+
+  useEffect(() => {
+    if (isPending) return;
+    if (id) void startSync({ id, name, image, wcaId });
+    else stopSync();
+  }, [isPending, id, name, image, wcaId]);
+
+  return null;
+}
+
+const STATUS_TEXT: Record<SyncState["status"], string> = {
+  off: "Not syncing",
+  synced: "Synced",
+  syncing: "Syncing…",
+  offline: "Offline: changes will sync when you're back online",
+  error: "Couldn't sync",
+  waiting: "Waiting for you to choose what to do with this device's solves",
+};
+
+/** "12,000 of 200,000" while a big download is under way. */
+const progressText = ({ done, total }: { done: number; total: number }) =>
+  `${done.toLocaleString()} of ${total.toLocaleString()}`;
+
+function StatusIcon({ status }: { status: SyncState["status"] }) {
+  const className = "size-4";
+  if (status === "syncing") return <LuRefreshCw className={`${className} animate-spin`} aria-hidden />;
+  if (status === "offline") return <LuCloudOff className={`${className} text-muted`} aria-hidden />;
+  if (status === "error" || status === "waiting") return <LuCloudAlert className={`${className} text-warning`} aria-hidden />;
+  return <LuCloud className={`${className} text-success`} aria-hidden />;
+}
+
+async function signOut() {
+  const unsynced = await prepareSignOut();
+  const message = unsynced > 0
+    ? `${unsynced} ${unsynced === 1 ? "change hasn't" : "changes haven't"} reached your account yet and will be lost. Sign out anyway?`
+    : "Sign out? Your solves stay in your account, and this device is cleared.";
+  if (!confirm(message)) return;
+  await authClient.signOut();
+  await finishSignOut();
+}
+
+function Avatar({ name, image }: { name: string; image: string | null }) {
+  if (image) {
+    // A small remote avatar from the WCA; next/image would need its domain configured for no gain here.
+    // oxlint-disable-next-line nextjs/no-img-element
+    return <img src={image} alt="" className="size-6 rounded-full object-cover" />;
+  }
+  return <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-content" aria-hidden>{name.slice(0, 1)}</span>;
+}
+
+/** The header's account control: a sign-in button, or the account menu with the sync status. */
+export function AccountButton() {
+  const results = useCompetitionResultsState();
+  const sync = useSyncState();
+  const [busy, setBusy] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const menu = useRef<HTMLDetailsElement>(null);
+
+  // The menu closes on a click outside it or Escape.
+  useEffect(() => {
+    const close = (e: Event) => {
+      const details = menu.current;
+      if (!details?.open) return;
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target instanceof Node && details.contains(e.target))) details.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
+
+  if (!sync.user) {
+    return (
+      <span className="flex items-center gap-2">
+        {signInError && <output className="text-xs text-error">{signInError}</output>}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setSignInError(null);
+            void (async () => {
+              setSignInError(await signInWithWca());
+              setBusy(false);
+            })();
+          }}
+        >
+          Sign in with WCA
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <details ref={menu} className="dropdown dropdown-end">
+      <summary className="btn btn-sm btn-ghost gap-2" aria-label={`Account: ${sync.user.name}. ${STATUS_TEXT[sync.status]}`}>
+        <StatusIcon status={sync.status} />
+        {results?.loading && <LuTrophy className="size-4 animate-pulse text-ink-gold" aria-label="Loading WCA results" />}
+        {/* A big download (a new device) shows how far along it is, without opening the menu. */}
+        {sync.status === "syncing" && sync.progress && sync.progress.total > 0 && (
+          <span className="text-xs tabular-nums text-muted">{Math.floor((sync.progress.done / sync.progress.total) * 100)}%</span>
+        )}
+        <Avatar name={sync.user.name} image={sync.user.image} />
+      </summary>
+      <div className="dropdown-content z-10 mt-2 w-72 rounded-box border border-base-300 bg-base-200 p-3 shadow-lg">
+        <p className="font-medium">{sync.user.name}</p>
+        {sync.user.wcaId && <p className="text-sm text-muted">{sync.user.wcaId}</p>}
+        <p className="mt-3 flex items-start gap-2 text-sm">
+          <StatusIcon status={sync.status} />
+          <span>
+            {STATUS_TEXT[sync.status]}
+            {sync.status === "syncing" && sync.progress && <span className="text-muted"> {progressText(sync.progress)}</span>}
+            {sync.status === "synced" && sync.lastSyncedAt && <span className="text-muted"> · {new Date(sync.lastSyncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
+            {sync.error && <span className="block text-muted">{sync.error}</span>}
+          </span>
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {sync.status === "waiting" && (
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => askAboutUnsyncedSolves(true)}>Choose</button>
+          )}
+          <button type="button" className="btn btn-sm" onClick={() => void syncNow()} disabled={sync.status === "syncing" || sync.status === "waiting"}>
+            <LuRefreshCw aria-hidden /> Sync now
+          </button>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => void signOut()}>
+            <LuLogOut aria-hidden /> Sign out
+          </button>
+        </div>
+        <WcaResultsStatus className="mt-3 border-t border-base-300 pt-3" />
+      </div>
+    </details>
+  );
+}
+
+/** The account part of Settings → Your data. */
+export function AccountSettings() {
+  const sync = useSyncState();
+  const [signInError, setSignInError] = useState<string | null>(null);
+  if (!sync.user) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted">Sign in with your WCA account to keep your solves in sync across devices.</p>
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => void signInWithWca().then(setSignInError)}>Sign in with WCA</button>
+        {signInError && <output className="w-full text-xs text-error">{signInError}</output>}
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="flex items-center gap-2 text-xs text-muted">
+        <StatusIcon status={sync.status} /> Signed in as {sync.user.name}. {STATUS_TEXT[sync.status]}
+        {sync.status === "syncing" && sync.progress ? ` ${progressText(sync.progress)}.` : "."}
+      </p>
+      <button type="button" className="btn btn-sm btn-ghost" onClick={() => void signOut()}>Sign out</button>
+      <WcaResultsStatus className="w-full" />
+    </div>
+  );
+}
+
+const timeAgo = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+function ago(ms: number): string {
+  const minutes = Math.round((ms - Date.now()) / 60_000);
+  if (minutes > -60) return timeAgo.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  return hours > -48 ? timeAgo.format(hours, "hour") : timeAgo.format(Math.round(hours / 24), "day");
+}
+
+/**
+ * The WCA results, next to cloud sync but separate from it: when they were
+ * last brought in (or how far a first download has got), and a button to
+ * fetch them now. Only for accounts with a WCA ID.
+ */
+function WcaResultsStatus({ className = "" }: { className?: string }) {
+  const results = useCompetitionResultsState();
+  if (!results?.wcaId) return null;
+  const status = results.loading
+    ? `Loading${results.progress ? ` (${results.progress.done}/${results.progress.total} competitions)` : "…"}`
+    : results.error ?? (results.liveCompetitionIds.length > 0 ? "Following WCA Live" : results.refreshedAt ? `Updated ${ago(results.refreshedAt)}` : "Not loaded yet");
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-2 text-sm ${className}`}>
+      <p className="flex items-start gap-2">
+        <LuTrophy className="mt-0.5 shrink-0 text-ink-gold" aria-hidden />
+        <span>
+          WCA results
+          <output className={`block text-xs ${results.error ? "text-warning" : "text-muted"}`}>{status}</output>
+        </span>
+      </p>
+      <button type="button" className="btn btn-sm" onClick={results.refresh} disabled={results.loading}>
+        <LuRefreshCw aria-hidden className={results.loading ? "animate-spin" : ""} /> Refresh results
+      </button>
+    </div>
+  );
+}
+
+/** Asks what to do with solves this device had before signing in. */
+export function UnsyncedSolvesDialog() {
+  const sync = useSyncState();
+  const [busy, setBusy] = useState(false);
+  const open = sync.status === "waiting" && sync.askingAboutUnsynced;
+  const choose = (choice: "add" | "remove") => {
+    setBusy(true);
+    void resolveUnsyncedSolves(choice).finally(() => setBusy(false));
+  };
+  const count = sync.unsyncedSolves;
+
+  return (
+    <Modal open={open} onClose={() => askAboutUnsyncedSolves(false)} title="Solves on this device">
+      <div className="space-y-4">
+        <p>
+          This device has {count} {count === 1 ? "solve" : "solves"} that {count === 1 ? "isn't" : "aren't"} in your account yet.
+          Add {count === 1 ? "it" : "them"} to your account so {count === 1 ? "it syncs" : "they sync"} across your devices?
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => choose("add")}>Add to my account</button>
+          <button
+            type="button"
+            className="btn btn-ghost text-error"
+            disabled={busy}
+            onClick={() => {
+              if (confirm(`Remove ${count} ${count === 1 ? "solve" : "solves"} from this device? This can't be undone.`)) choose("remove");
+            }}
+          >
+            Remove from this device
+          </button>
+        </div>
+        <p className="text-xs text-muted">Until you choose, nothing syncs. If you close this, you can choose later from the account menu.</p>
+      </div>
+    </Modal>
+  );
+}
