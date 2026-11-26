@@ -2,16 +2,20 @@
 //
 // The WCA's OAuth isn't one of better-auth's built-in providers, so it's
 // added with the Generic OAuth plugin. WCA sends people back to
-// `/api/auth/callback/wca`; register that URL on the WCA OAuth application.
+// `/api/auth/callback/wca` on the deployment they signed in from; register
+// that URL on the WCA OAuth application for production, local development,
+// and each preview branch to sign in on (see `previewBaseURL`).
+//
+// There's no OAuth proxy (sending previews' sign-ins through production):
+// better-auth's proxy packs its state into the OAuth `state` parameter, over
+// 2,000 characters, and WCA answers any `state` past about 1,700 with an error.
 
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { TIMER_URL } from "@bengottschalk/content/site";
 import { getDb, type TimerDb } from "@/server/db";
 import { schema } from "@/server/schema";
 import { serverEnv } from "@/server/env";
@@ -81,11 +85,6 @@ export interface AuthConfig {
 }
 
 export function createAuth({ db, secret, baseURL, wca, plugins = [] }: AuthConfig) {
-  // Preview deployments can't each be registered with WCA, so on Vercel, WCA
-  // always returns to production and the OAuth proxy hands the sign-in back
-  // to the preview. (Previews must share production's database and secret.)
-  // Anywhere else (local development), sign-in returns to this app's own URL.
-  const proxyProductionURL = process.env.VERCEL_ENV ? TIMER_URL : baseURL;
   return betterAuth({
     secret,
     baseURL,
@@ -126,7 +125,6 @@ export function createAuth({ db, secret, baseURL, wca, plugins = [] }: AuthConfi
           },
         ],
       }),
-      oAuthProxy({ productionURL: proxyProductionURL }),
       ...plugins,
       // Must be last: lets server actions set cookies.
       nextCookies(),
@@ -141,6 +139,17 @@ export function isAuthConfigured(): boolean {
   return ["DATABASE_URL", "BETTER_AUTH_SECRET", "WCA_CLIENT_ID", "WCA_CLIENT_SECRET"].every((name) => serverEnv(name) !== undefined);
 }
 
+/**
+ * On a Vercel preview, the branch's own URL (like
+ * `timerbengottschalkcom-git-<branch>-<team>.vercel.app`), which stays the
+ * same for every deployment of the branch, so it can be registered with WCA
+ * once: `https://<that host>/api/auth/callback/wca`. Sign in from that URL,
+ * not a single deployment's. Null anywhere else.
+ */
+export function previewBaseURL(env: Record<string, string | undefined> = process.env): string | null {
+  return env.VERCEL_ENV === "preview" && env.VERCEL_BRANCH_URL ? `https://${env.VERCEL_BRANCH_URL}` : null;
+}
+
 let cached: Auth | null = null;
 
 /** The app's auth, or null when sign-in isn't set up (the timer then stays local-only). */
@@ -153,7 +162,7 @@ export function getAuth(): Auth | null {
   cached = createAuth({
     db,
     secret: BETTER_AUTH_SECRET,
-    baseURL: BETTER_AUTH_URL,
+    baseURL: previewBaseURL() ?? BETTER_AUTH_URL,
     wca: { clientId: WCA_CLIENT_ID, clientSecret: WCA_CLIENT_SECRET },
   });
   return cached;

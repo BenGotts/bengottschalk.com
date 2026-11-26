@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createAuth } from "@/lib/auth";
+import { createAuth, previewBaseURL } from "@/lib/auth";
 import type { TimerDb } from "./db";
 import { schema } from "./schema";
 
@@ -96,5 +96,13 @@ describe("signing in with WCA", () => {
     }));
     expect(update.status).toBe(400);
     expect((await userByEmail("someone@example.com"))?.wcaId).toBe("2020SOME01");
+  });
+});
+
+describe("previewBaseURL", () => {
+  it("is the branch URL on a Vercel preview, and nothing elsewhere", () => {
+    expect(previewBaseURL({ VERCEL_ENV: "preview", VERCEL_BRANCH_URL: "timer-git-x-team.vercel.app" })).toBe("https://timer-git-x-team.vercel.app");
+    expect(previewBaseURL({ VERCEL_ENV: "production", VERCEL_BRANCH_URL: "timer-git-main-team.vercel.app" })).toBeNull();
+    expect(previewBaseURL({})).toBeNull();
   });
 });

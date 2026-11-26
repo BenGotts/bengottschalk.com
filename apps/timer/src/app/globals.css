@@ -14,6 +14,22 @@
   letter-spacing: -0.02em;
 }
 
+/* A new best single, with the "Glow" celebration: the time shines in the accent color, then settles. */
+@keyframes pb-glow {
+  0% { color: var(--color-accent); text-shadow: 0 0 0.35em color-mix(in oklab, var(--color-accent) 70%, transparent); transform: scale(1.06); }
+  60% { color: var(--color-accent); text-shadow: 0 0 0.2em color-mix(in oklab, var(--color-accent) 40%, transparent); transform: scale(1); }
+  100% { text-shadow: none; }
+}
+.pb-glow {
+  animation: pb-glow 1.8s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pb-glow {
+    animation: none;
+    color: var(--color-accent);
+  }
+}
+
 /* While a solve runs, everything but the time fades out. */
 .focus-fade {
   transition: opacity 150ms ease-out;
