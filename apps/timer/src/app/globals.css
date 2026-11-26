@@ -52,3 +52,17 @@ twisty-player {
   width: 100%;
   height: 100%;
 }
+
+/* ScrollFade: the edge with text hidden past it fades out. A mask, so it works on any background. */
+.scroll-fade {
+  --fade: 1.75rem;
+}
+.scroll-fade[data-fade-below] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade)), transparent);
+}
+.scroll-fade[data-fade-above] {
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade));
+}
+.scroll-fade[data-fade-above][data-fade-below] {
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
+}
