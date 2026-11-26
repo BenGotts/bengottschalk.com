@@ -34,7 +34,7 @@ import Modal from "./Modal";
 import MultiBlindSetup from "./MultiBlindSetup";
 import NumberField from "./NumberField";
 import ScrambleImage from "./ScrambleImage";
-import ScrollFade from "./ScrollFade";
+import ClippedScramble from "./ClippedScramble";
 import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
 import { SessionSummaryDialog } from "./SessionSummary";
@@ -393,13 +393,13 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           <div className="contents short-phone:flex short-phone:h-[calc(var(--spacing-scramble-picture)+--spacing(3))] short-phone:shrink-0">
           {/* FMC keeps its scramble hidden until the attempt starts, then shows it in its own panel.
               When space is short (phones, or a long scramble on a low window) the scramble gives way: what doesn't fit
-              scrolls in its box, under buttons that stay put. */}
+              is cut off, and tapping it opens the full scramble. */}
           {event.kind !== "fewest-moves" && <section className={`focus-fade flex max-h-[30dvh] min-h-20 min-w-0 shrink flex-col px-4 pt-3 text-center short-phone:max-h-none short-phone:flex-1 short-phone:pr-2 lg:max-h-none ${event.kind === "multi-blind" ? "overflow-y-auto" : ""}`} aria-label="Scramble">
             {event.kind === "multi-blind" ? (
               <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} scheme={colorsFor(activeEventId)} />
             ) : (
               <>
-                {/* The buttons sit above the scramble, outside its scrolling box, so they stay put whatever its length. */}
+                {/* The buttons sit above the scramble, so they stay put whatever its length. */}
                 <div className="mb-1 flex shrink-0 items-center justify-center gap-1">
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble" title="Previous scramble"><FaArrowLeft aria-hidden /></button>
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => scramble.scramble && void navigator.clipboard.writeText(scramble.scramble)} aria-label="Copy scramble" title="Copy scramble"><FaRegCopy aria-hidden /></button>
@@ -407,12 +407,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.next} aria-label="Next scramble" title="Next scramble (N)"><FaArrowRight aria-hidden /></button>
                   {scramble.custom && <span className="badge badge-soft badge-sm">Entered</span>}
                 </div>
-                {/* Keyed by the scramble, so a new one starts scrolled to its top. */}
-                <ScrollFade key={scramble.scramble ?? ""}>
+                <ClippedScramble onShowAll={() => setDialog("scramble")}>
                   <p className={`scramble-text mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
                     {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} eventId={event.id} /> : <span className="text-muted">Making a scramble…</span>)}
                   </p>
-                </ScrollFade>
+                </ClippedScramble>
               </>
             )}
           </section>}
@@ -596,12 +595,15 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         }}
       />
       <Modal open={dialog === "scramble"} onClose={() => setDialog(null)} title="Scramble" wide>
-        {event.puzzleId && scramble.scramble && event.kind !== "fewest-moves" && (
+        {/* The full scramble, then its picture: opened from a cut-off scramble or from the picture. */}
+        {scramble.scramble && event.kind !== "fewest-moves" && (
           <div className="space-y-3">
-            <div className="h-[min(60dvh,28rem)] w-full">
-              <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
-            </div>
             <p className="scramble-text text-center text-sm"><ScrambleText scramble={scramble.scramble} eventId={event.id} /></p>
+            {scrambleImage && event.puzzleId && (
+              <div className="h-[min(60dvh,28rem)] w-full">
+                <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
+              </div>
+            )}
           </div>
         )}
       </Modal>
