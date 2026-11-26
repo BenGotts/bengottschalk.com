@@ -166,9 +166,11 @@ Every table has row-level security on with no policies, so nothing is reachable 
 timer's server (connecting as the database owner) reads and writes them. better-auth's tables hold OAuth tokens, which is
 another reason to keep it that way.
 
-**Previews:** WCA only redirects to registered URLs, so on Vercel, sign-in always goes through production and better-auth's
-OAuth proxy plugin hands it back to the preview. That only works if previews use production's `DATABASE_URL` and
-`BETTER_AUTH_SECRET`. Locally, sign-in returns to `BETTER_AUTH_URL` directly.
+**Previews:** WCA only redirects to registered URLs, and better-auth's OAuth proxy (sending previews through production)
+can't be used: its `state` parameter is over 2,000 characters, and WCA answers one past about 1,700 with an error. So a
+preview signs in on its branch URL (`https://<project>-git-<branch>-<team>.vercel.app`, the same for every deployment of
+the branch): add `https://<that host>/api/auth/callback/wca` to the WCA application's redirect URIs for each branch you
+want to sign in on, and open the preview at that URL. Locally, sign-in returns to `BETTER_AUTH_URL`.
 
 **How sync works** (`src/lib/sync.ts`, `src/server/sync.ts`): every local write to a solve, session or Solve of the Day mark
 sets `pendingSync` on it (Dexie hooks, so every writer is covered). A sync posts those records with the cursor from the last
