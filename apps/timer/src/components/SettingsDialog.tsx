@@ -16,9 +16,7 @@ import Modal from "./Modal";
 import ScrambleImage from "./ScrambleImage";
 import ThemeToggle from "./ThemeToggle";
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
+interface PanelProps {
   stored: StoredSettings;
   /** The event on screen, whose own settings "This event" changes. */
   eventId: string;
@@ -26,6 +24,11 @@ interface Props {
   onImportCsTimer: () => void;
   /** Whether signing in with WCA is set up on this server. */
   authEnabled: boolean;
+}
+
+interface Props extends PanelProps {
+  open: boolean;
+  onClose: () => void;
 }
 
 /** Saves everything on this device as a JSON file. */
@@ -44,12 +47,22 @@ const isPrecision = (value: string): value is Settings["precision"] => value ===
 
 type Scope = "all" | "event";
 
+/** The settings in a dialog: how wide screens open them (phones have a Settings tab with the same panel). */
+export default function SettingsDialog({ open, onClose, onImportCsTimer, ...panel }: Props) {
+  return (
+    <Modal open={open} onClose={onClose} title="Settings">
+      {/* The import has its own dialog, so this one closes first. */}
+      <SettingsPanel {...panel} onImportCsTimer={() => { onClose(); onImportCsTimer(); }} />
+    </Modal>
+  );
+}
+
 /**
  * Settings for all events, or for the event on screen. In "This event", each
  * setting an event can have for itself shows whether it's the event's own
  * value (with a reset back to the one for all events) or the shared one.
  */
-export default function SettingsDialog({ open, onClose, stored, eventId, onChange, onImportCsTimer, authEnabled }: Props) {
+export function SettingsPanel({ stored, eventId, onChange, onImportCsTimer, authEnabled }: PanelProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope>("all");
   const event = timerEvent(eventId);
@@ -76,98 +89,96 @@ export default function SettingsDialog({ open, onClose, stored, eventId, onChang
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Settings">
-      <div className="space-y-5">
-        <fieldset className="join w-full">
-          <legend className="sr-only">Which settings</legend>
-          <button type="button" className={`btn join-item btn-sm grow ${scope === "all" ? "btn-primary" : ""}`} aria-pressed={scope === "all"} onClick={() => setScope("all")}>
-            All events
-          </button>
-          <button type="button" className={`btn join-item btn-sm grow ${scope === "event" ? "btn-primary" : ""}`} aria-pressed={scope === "event"} onClick={() => setScope("event")}>
-            {event.name} only{eventOwnCount > 0 && <span className="badge badge-xs badge-accent">{eventOwnCount}</span>}
-          </button>
-        </fieldset>
-        {scope === "event" && (
-          <div className="flex items-start justify-between gap-3 text-xs text-muted">
-            <p>Changes here apply to {event.name} only. Settings marked “all events” follow the settings for all events.</p>
-            {eventOwnCount > 0 && (
-              <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={() => onChange(resetEvent(stored, eventId))}>
-                <FaArrowRotateLeft aria-hidden /> Reset all
-              </button>
-            )}
-          </div>
+    <div className="space-y-5">
+      <fieldset className="join w-full">
+        <legend className="sr-only">Which settings</legend>
+        <button type="button" className={`btn join-item btn-sm grow ${scope === "all" ? "btn-primary" : ""}`} aria-pressed={scope === "all"} onClick={() => setScope("all")}>
+          All events
+        </button>
+        <button type="button" className={`btn join-item btn-sm grow ${scope === "event" ? "btn-primary" : ""}`} aria-pressed={scope === "event"} onClick={() => setScope("event")}>
+          {event.name} only{eventOwnCount > 0 && <span className="badge badge-xs badge-accent">{eventOwnCount}</span>}
+        </button>
+      </fieldset>
+      {scope === "event" && (
+        <div className="flex items-start justify-between gap-3 text-xs text-muted">
+          <p>Changes here apply to {event.name} only. Settings marked “all events” follow the settings for all events.</p>
+          {eventOwnCount > 0 && (
+            <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={() => onChange(resetEvent(stored, eventId))}>
+              <FaArrowRotateLeft aria-hidden /> Reset all
+            </button>
+          )}
+        </div>
+      )}
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-muted">Timing</h3>
+        {(scope === "all" || event.inspection) && (
+          <Toggle label="WCA inspection (15 seconds)" checked={shown.inspection} onChange={(v) => setPerEvent("inspection", v)} own={own("inspection")} />
         )}
-
-        <section className="space-y-3">
-          <h3 className="text-sm font-medium text-muted">Timing</h3>
-          {(scope === "all" || event.inspection) && (
-            <Toggle label="WCA inspection (15 seconds)" checked={shown.inspection} onChange={(v) => setPerEvent("inspection", v)} own={own("inspection")} />
-          )}
-          {scope === "all" && (
-            <Toggle label="Say “8 seconds” and “12 seconds”" checked={shown.inspectionVoice} onChange={(v) => setGlobalOnly("inspectionVoice", v)} disabled={!shown.inspection} />
-          )}
-          <Toggle label="Hide the time while solving" checked={shown.hideRunningTime} onChange={(v) => setPerEvent("hideRunningTime", v)} own={own("hideRunningTime")} />
-          {(scope === "all" || event.blindfolded) && (
-            <Toggle label="Blindfolded: split memo with the first press" checked={shown.bldMemoSplit} onChange={(v) => setPerEvent("bldMemoSplit", v)} own={own("bldMemoSplit")} />
-          )}
-          <Row label="Hold before starting" own={own("holdMs")}>
-            <select className="select select-sm w-32" value={shown.holdMs} onChange={(e) => setPerEvent("holdMs", Number(e.target.value))}>
-              {[0, 100, 300, 550, 1000].map((ms) => <option key={ms} value={ms}>{ms === 0 ? "No hold" : `${ms / 1000} s`}</option>)}
-            </select>
-          </Row>
-          <Row label="Enter times" own={own("entry")}>
-            <select className="select select-sm w-32" value={shown.entry} onChange={(e) => isEntry(e.target.value) && setPerEvent("entry", e.target.value)}>
-              <option value="timer">With the timer</option>
-              <option value="typing">By typing</option>
-            </select>
-          </Row>
-        </section>
-
-        <section className="space-y-3">
-          <h3 className="text-sm font-medium text-muted">Display</h3>
-          {scope === "all" && (
-            <>
-              <Row label="Show times to the">
-                <select className="select select-sm w-32" value={shown.precision} onChange={(e) => isPrecision(e.target.value) && setGlobalOnly("precision", e.target.value)}>
-                  <option value="hundredths">Hundredth</option>
-                  <option value="thousandths">Thousandth</option>
-                </select>
-              </Row>
-              <p className="text-xs text-muted">Times are always saved to the thousandth. Singles are cut off and averages rounded, the way the WCA shows them.</p>
-            </>
-          )}
-          <ScreenAverages
-            value={shown.screenAverages}
-            format={event.format}
-            scope={scope}
-            eventName={event.name}
-            onChange={(v) => setPerEvent("screenAverages", v)}
-            own={own("screenAverages")}
-          />
-          <Toggle label="Scramble picture" checked={shown.showScrambleImage} onChange={(v) => setPerEvent("showScrambleImage", v)} own={own("showScrambleImage")} />
-          {scope === "all" && <div className="flex items-center justify-between gap-4"><span>Theme</span><ThemeToggle /></div>}
-        </section>
-
-        <ColorSettings stored={stored} eventId={eventId} scope={scope} onChange={onChange} />
-
         {scope === "all" && (
-          <section className="space-y-2">
-            <h3 className="text-sm font-medium text-muted">Your data</h3>
-            <p className="text-xs text-muted">Solves are saved in this browser, so the timer works offline.</p>
-            {authEnabled && <AccountSettings />}
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-sm" onClick={() => { onClose(); onImportCsTimer(); }}>Import from csTimer</button>
-              <button type="button" className="btn btn-sm" onClick={() => void download()}>Download a backup</button>
-              <label className="btn btn-sm">
-                Restore a backup
-                <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => void restore(e.target.files?.[0])} />
-              </label>
-            </div>
-            {message && <output className="block text-sm">{message}</output>}
-          </section>
+          <Toggle label="Say “8 seconds” and “12 seconds”" checked={shown.inspectionVoice} onChange={(v) => setGlobalOnly("inspectionVoice", v)} disabled={!shown.inspection} />
         )}
-      </div>
-    </Modal>
+        <Toggle label="Hide the time while solving" checked={shown.hideRunningTime} onChange={(v) => setPerEvent("hideRunningTime", v)} own={own("hideRunningTime")} />
+        {(scope === "all" || event.blindfolded) && (
+          <Toggle label="Blindfolded: split memo with the first press" checked={shown.bldMemoSplit} onChange={(v) => setPerEvent("bldMemoSplit", v)} own={own("bldMemoSplit")} />
+        )}
+        <Row label="Hold before starting" own={own("holdMs")}>
+          <select className="select select-sm w-32" value={shown.holdMs} onChange={(e) => setPerEvent("holdMs", Number(e.target.value))}>
+            {[0, 100, 300, 550, 1000].map((ms) => <option key={ms} value={ms}>{ms === 0 ? "No hold" : `${ms / 1000} s`}</option>)}
+          </select>
+        </Row>
+        <Row label="Enter times" own={own("entry")}>
+          <select className="select select-sm w-32" value={shown.entry} onChange={(e) => isEntry(e.target.value) && setPerEvent("entry", e.target.value)}>
+            <option value="timer">With the timer</option>
+            <option value="typing">By typing</option>
+          </select>
+        </Row>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-muted">Display</h3>
+        {scope === "all" && (
+          <>
+            <Row label="Show times to the">
+              <select className="select select-sm w-32" value={shown.precision} onChange={(e) => isPrecision(e.target.value) && setGlobalOnly("precision", e.target.value)}>
+                <option value="hundredths">Hundredth</option>
+                <option value="thousandths">Thousandth</option>
+              </select>
+            </Row>
+            <p className="text-xs text-muted">Times are always saved to the thousandth. Singles are cut off and averages rounded, the way the WCA shows them.</p>
+          </>
+        )}
+        <ScreenAverages
+          value={shown.screenAverages}
+          format={event.format}
+          scope={scope}
+          eventName={event.name}
+          onChange={(v) => setPerEvent("screenAverages", v)}
+          own={own("screenAverages")}
+        />
+        <Toggle label="Scramble picture" checked={shown.showScrambleImage} onChange={(v) => setPerEvent("showScrambleImage", v)} own={own("showScrambleImage")} />
+        {scope === "all" && <div className="flex items-center justify-between gap-4"><span>Theme</span><ThemeToggle /></div>}
+      </section>
+
+      <ColorSettings stored={stored} eventId={eventId} scope={scope} onChange={onChange} />
+
+      {scope === "all" && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-medium text-muted">Your data</h3>
+          <p className="text-xs text-muted">Solves are saved in this browser, so the timer works offline.</p>
+          {authEnabled && <AccountSettings />}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-sm" onClick={onImportCsTimer}>Import from csTimer</button>
+            <button type="button" className="btn btn-sm" onClick={() => void download()}>Download a backup</button>
+            <label className="btn btn-sm">
+              Restore a backup
+              <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => void restore(e.target.files?.[0])} />
+            </label>
+          </div>
+          {message && <output className="block text-sm">{message}</output>}
+        </section>
+      )}
+    </div>
   );
 }
 

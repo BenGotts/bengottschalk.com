@@ -39,7 +39,7 @@ import ScreenStats from "./ScreenStats";
 import SessionsDialog from "./SessionsDialog";
 import { SessionSummaryDialog } from "./SessionSummary";
 import { EndSessionDialog, StartSessionDialog } from "./TemporarySession";
-import SettingsDialog from "./SettingsDialog";
+import SettingsDialog, { SettingsPanel } from "./SettingsDialog";
 import { AccountButton, useSignedInWcaId, AccountSession, UnsyncedSolvesDialog } from "./Account";
 import SolveDialog from "./SolveDialog";
 import SolveList from "./SolveList";
@@ -49,14 +49,15 @@ import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
 type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | null;
-/** Which screen a phone shows (wide screens show the timer and the side panel together). */
-type MobileView = "timer" | "solves" | "stats" | "sotd";
+/** Which screen a phone shows (wide screens show the timer and the side panel together, and settings in a dialog). */
+type MobileView = "timer" | "solves" | "stats" | "sotd" | "settings";
 
 const MOBILE_TABS: { view: MobileView; label: string; icon: React.ReactNode }[] = [
   { view: "timer", label: "Timer", icon: <FaStopwatch aria-hidden /> },
   { view: "solves", label: "Solves", icon: <FaListUl aria-hidden /> },
   { view: "stats", label: "Stats", icon: <FaChartSimple aria-hidden /> },
   { view: "sotd", label: "Solve of the Day", icon: <FaStar aria-hidden /> },
+  { view: "settings", label: "Settings", icon: <FaGear aria-hidden /> },
 ];
 
 // Stable fallbacks while live queries load, so memos don't recompute every render.
@@ -362,7 +363,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
         <div className="order-3 flex w-full min-w-0 items-center gap-2 lg:hidden">{eventControls}</div>
         <div className="order-2 ml-auto flex items-center gap-1 lg:order-3">
           {authEnabled && <AccountButton />}
-          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
+          {/* Wide screens only: phones have a Settings tab. */}
+          <button type="button" className="btn btn-ghost btn-sm btn-square hidden lg:inline-flex" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
         </div>
       </header>
 
@@ -480,7 +482,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           </div>
         </main>
 
-        <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${shownView === "timer" ? "hidden" : "flex"}`}>
+        <aside className={`focus-fade min-h-0 flex-1 flex-col gap-3 border-base-300 p-3 lg:order-1 lg:flex lg:w-80 lg:flex-none lg:border-r ${shownView === "timer" || shownView === "settings" ? "hidden" : "flex"}`}>
           <div className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">{eventControls}</div>
           <div className={`lg:block ${shownView === "solves" || shownView === "stats" ? "" : "hidden"}`}>
             <SourceFilter value={sourceFilter} onChange={setSourceFilter} wcaId={competitionResults.wcaId} />
@@ -510,9 +512,18 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             <SotdList eventId={activeEventId} precision={settings.precision} onOpen={openFromSotd} />
           </div>
         </aside>
+
+        {/* Phones: settings as a screen of their own that scrolls by itself (the page never does).
+            `relative` keeps their screen-reader-only labels inside it, so they can't stretch the page. */}
+        {shownView === "settings" && (
+          <section className="focus-fade relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 lg:hidden" aria-labelledby="settings-heading">
+            <h2 id="settings-heading" className="mb-4 text-lg font-semibold">Settings</h2>
+            <SettingsPanel stored={storedSettings} eventId={activeEventId} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
+          </section>
+        )}
       </div>
 
-      <nav className={`focus-fade grid shrink-0 ${mobileTabs.length === 4 ? "grid-cols-4" : "grid-cols-3"} border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] lg:hidden`} aria-label="Screens">
+      <nav className={`focus-fade grid shrink-0 ${mobileTabs.length === 5 ? "grid-cols-5" : "grid-cols-4"} border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] lg:hidden`} aria-label="Screens">
         {mobileTabs.map((item) => (
           <button
             key={item.view}
