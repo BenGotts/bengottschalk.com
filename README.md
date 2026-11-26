@@ -17,7 +17,7 @@ and shared packages:
 | `packages/cube` | The self-solving cube (`TwistyCube`) and Square-1 (`SquareOne`, on the links page), their turn models, and the solves they play |
 | `packages/theme` | The "Midnight Cube" DaisyUI themes and Tailwind tokens (`theme.css`), and theme names |
 | `packages/wca` | WCA event names and result formatting |
-| `packages/timer-core` | The timer's logic with no UI: times, averages, events, sessions and branches, Solve of the Day, csTimer import |
+| `packages/timer-core` | The timer's logic with no UI: times, averages, events, sessions and branches, Solve of the Day, achievements, csTimer import |
 
 Packages ship TypeScript source; each app lists them in `transpilePackages` in its `next.config.ts`.
 

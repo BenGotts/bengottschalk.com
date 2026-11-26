@@ -6,6 +6,7 @@ import type { Precision } from "@bengottschalk/timer-core/time";
 import { timerEvent, type EventFormat } from "@bengottschalk/timer-core/events";
 import { averageLabel, parseAverageLabel, uniqueSpecs, type AverageSpec } from "@bengottschalk/timer-core/stats";
 import { colorFamilyFor, type ColorScheme } from "./colorSchemes";
+import { DEFAULT_CELEBRATION, DEFAULT_PHASE_COLORS } from "./rewards";
 
 export interface Settings {
   /** How times are shown. They're always saved to the thousandth. */
@@ -31,6 +32,12 @@ export interface Settings {
    * format (see `DEFAULT_SCREEN_AVERAGES`).
    */
   screenAverages: string[] | null;
+  /** The colors of the time while holding, ready and inspecting: a reward id (see rewards.ts). */
+  phaseColors: string;
+  /** What a new best single does: a reward id (see rewards.ts). */
+  celebration: string;
+  /** Announce achievements as they're earned. */
+  achievementToasts: boolean;
 }
 
 /** The averages the timer screen shows by default, by event format. Single-result events (Multi-Blind) have none. */
@@ -72,6 +79,9 @@ export const DEFAULT_SETTINGS: Settings = {
   showScrambleImage: true,
   colors: {},
   screenAverages: null,
+  phaseColors: DEFAULT_PHASE_COLORS,
+  celebration: DEFAULT_CELEBRATION,
+  achievementToasts: true,
 };
 
 /** Settings an event can set for itself; the rest apply to every event. */

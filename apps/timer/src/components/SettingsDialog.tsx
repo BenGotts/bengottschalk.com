@@ -12,6 +12,7 @@ import {
   type EventSettingKey, type Settings, type StoredSettings,
 } from "@/lib/settings";
 import { AccountSettings } from "./Account";
+import { Rewards } from "./AchievementsDialog";
 import Modal from "./Modal";
 import ScrambleImage from "./ScrambleImage";
 import ThemeToggle from "./ThemeToggle";
@@ -26,6 +27,8 @@ interface Props {
   onImportCsTimer: () => void;
   /** Whether signing in with WCA is set up on this server. */
   authEnabled: boolean;
+  /** Achievements earned, which unlock the timer's looks. */
+  earned: ReadonlySet<string>;
 }
 
 /** Saves everything on this device as a JSON file. */
@@ -49,7 +52,7 @@ type Scope = "all" | "event";
  * setting an event can have for itself shows whether it's the event's own
  * value (with a reset back to the one for all events) or the shared one.
  */
-export default function SettingsDialog({ open, onClose, stored, eventId, onChange, onImportCsTimer, authEnabled }: Props) {
+export default function SettingsDialog({ open, onClose, stored, eventId, onChange, onImportCsTimer, authEnabled, earned }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope>("all");
   const event = timerEvent(eventId);
@@ -149,6 +152,15 @@ export default function SettingsDialog({ open, onClose, stored, eventId, onChang
         </section>
 
         <ColorSettings stored={stored} eventId={eventId} scope={scope} onChange={onChange} />
+
+        {scope === "all" && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-medium text-muted">Achievements and rewards</h3>
+            <Toggle label="Announce achievements as you earn them" checked={stored.global.achievementToasts} onChange={(v) => setGlobalOnly("achievementToasts", v)} />
+            <p className="text-xs text-muted">Achievements unlock more looks for the timer. Announcements only show between solves.</p>
+            <Rewards earned={earned} stored={stored} onChange={onChange} />
+          </section>
+        )}
 
         {scope === "all" && (
           <section className="space-y-2">

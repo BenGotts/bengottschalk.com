@@ -21,6 +21,11 @@ import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { usePhonePad } from "@/lib/pad/usePhonePad";
 import { usePadInvite, useTouchDevice } from "@/lib/pad/account";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
+import { useAchievements } from "@/lib/useAchievements";
+import { celebrationFor, phaseColorsFor } from "@/lib/rewards";
+import AchievementsDialog from "./AchievementsDialog";
+import AchievementToast from "./AchievementToast";
+import Celebration from "./Celebration";
 import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
 import AverageDialog, { type AverageView } from "./AverageDialog";
 import CurrentAverages from "./CurrentAverages";
@@ -49,7 +54,7 @@ import StatsPanel from "./StatsPanel";
 import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
-type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | "phone" | null;
+type Dialog = "achievements" | "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | "phone" | null;
 /** Which screen a phone shows (wide screens show the timer and the side panel together). */
 type MobileView = "timer" | "solves" | "stats" | "sotd";
 
@@ -88,6 +93,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const [pendingMulti, setPendingMulti] = useState<(Omit<FinishedSolve, "timing" | "endedAt"> & { endedAt: number | null; timing: TimingMethod }) | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>("all");
   const competitionResults = useCompetitionResults();
+  // When this page opened: only solves done since then are celebrated (not a best from before a reload).
+  const [openedAt] = useState(() => Date.now());
 
   // Restore settings and the last event and sessions used on this device.
   useEffect(() => {
@@ -160,6 +167,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   // Signing out (or into another account) while on the SOTD screen goes back to the solves.
   const shownView: MobileView = view === "sotd" && !sotdEnabled ? "solves" : view;
   const shownTab = tab === "sotd" && !sotdEnabled ? "solves" : tab;
+  // Achievements over every solve on this device, and the looks they unlock.
+  const achievements = useAchievements({ sotdEnabled });
+  const phaseColors = phaseColorsFor(storedSettings.global.phaseColors, achievements.earned);
+  const celebration = celebrationFor(storedSettings.global.celebration, achievements.earned);
 
   const ownCount = current ? allSolves.filter((s) => s.sessionId === current.id && s.deletedAt === null).length : 0;
   const writable = current !== null && acceptsSolves(current);
@@ -332,6 +343,13 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   const lastResult = lastSolve ? formatSolve(lastSolve, settings.precision) : null;
   const newBest = phase === "idle" && isNewBest(values);
+  // A best single just done here: what the celebration plays for (once per solve).
+  const celebrateId = newBest && lastSolve?.source === "home" && lastSolve.createdAt >= openedAt ? lastSolve.id : null;
+  const { markSeen, fresh } = achievements;
+  // With announcements off, new achievements are taken as seen, so turning them back on doesn't bring a pile.
+  useEffect(() => {
+    if (!settings.achievementToasts && fresh.length > 0) markSeen();
+  }, [settings.achievementToasts, fresh.length, markSeen]);
   const goalReached = current && !isMainSession(current) && current.status === "active" && current.goal !== null && ownCount >= current.goal;
   const temporary = current && !isMainSession(current) ? current : null;
   // Never in the middle of a solve: it waits until the timer is idle again.
@@ -400,6 +418,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               {pad.code && <span className={`size-2 rounded-full ${pad.connected ? "bg-success" : "bg-warning"}`} aria-hidden />}
             </button>
           )}
+          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("achievements")} aria-label="Achievements" title="Achievements"><FaTrophy className="size-4" aria-hidden /></button>
           {authEnabled && <AccountButton />}
           <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
         </div>
@@ -489,6 +508,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                   lastResult={lastResult}
                   precision={settings.precision}
                   hideRunningTime={settings.hideRunningTime}
+                  colors={phaseColors}
+                  glow={celebration.id === "glow" ? celebrateId : null}
                 />
                 <p className="focus-fade h-6 text-sm">
                   {phase === "idle" && lastSolve?.competition ? <span className="text-ink-gold"><FaTrophy className="inline align-[-2px]" aria-hidden /> {lastSolve.competition.competitionName}</span>
@@ -612,7 +633,19 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           onOpenSolve={(s) => setOpenSolveId(s.id)}
         />
       )}
-      <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} stored={storedSettings} eventId={activeEventId} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
+      <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} stored={storedSettings} eventId={activeEventId} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} earned={achievements.earned} />
+      <AchievementsDialog open={dialog === "achievements"} onClose={() => setDialog(null)} report={achievements.report} earned={achievements.earned} sotdEnabled={sotdEnabled} stored={storedSettings} onChange={setSettings} />
+      <Celebration style={celebration.id} trigger={celebrateId} />
+      <AchievementToast
+        fresh={fresh}
+        backfilled={achievements.backfilled}
+        show={settings.achievementToasts && phase === "idle" && dialog === null && openSolveId === null && averageView === null}
+        onDismiss={markSeen}
+        onOpen={() => {
+          markSeen();
+          setDialog("achievements");
+        }}
+      />
       <ImportDialog open={dialog === "import"} onClose={() => setDialog(null)} />
       <PhonePadDialog open={dialog === "phone"} onClose={() => setDialog(null)} pad={pad} />
       {authEnabled && (

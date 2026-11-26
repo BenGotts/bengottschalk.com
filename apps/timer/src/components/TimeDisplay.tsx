@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatRunning, formatTime, type Precision } from "@bengottschalk/timer-core/time";
 import type { TimerPhase } from "@/lib/useTimer";
 import { inspectionPenalty } from "@/lib/useTimer";
+import type { PhaseColors } from "@/lib/rewards";
 
 interface Props {
   phase: TimerPhase;
@@ -14,6 +15,10 @@ interface Props {
   lastResult: string | null;
   precision: Precision;
   hideRunningTime: boolean;
+  /** The time's colors while holding, ready and inspecting (a reward). */
+  colors: Pick<PhaseColors, "holding" | "ready" | "inspecting">;
+  /** Set to a new value (the solve's id) to make the time glow, for a new best. */
+  glow?: string | null;
 }
 
 /** Re-renders every frame while `active`, returning performance.now(). */
@@ -32,7 +37,7 @@ function useFrameClock(active: boolean) {
   return now;
 }
 
-export default function TimeDisplay({ phase, startedAt, inspectionStartedAt, memoMs, lastResult, precision, hideRunningTime }: Props) {
+export default function TimeDisplay({ phase, startedAt, inspectionStartedAt, memoMs, lastResult, precision, hideRunningTime, colors, glow = null }: Props) {
   const inspecting = inspectionStartedAt !== null && (phase === "inspecting" || phase === "holding" || phase === "ready");
   const now = useFrameClock(phase === "running" || inspecting);
 
@@ -51,12 +56,13 @@ export default function TimeDisplay({ phase, startedAt, inspectionStartedAt, mem
     text = lastResult ?? formatRunning(0, precision);
   }
 
-  const color = phase === "ready" ? "text-success" : phase === "holding" ? "text-error" : inspecting ? "text-warning" : "";
+  const color = phase === "ready" ? colors.ready : phase === "holding" ? colors.holding : inspecting ? colors.inspecting : "";
 
   return (
     <div className="flex flex-col items-center" aria-live={phase === "idle" || phase === "stopped" ? "polite" : "off"}>
       {/* Long results (Multi-Blind's "6/7 54:12.34" or "DNF (2/7 58:01.20)") get smaller so they stay on one line. */}
-      <div className={`timer-digits whitespace-nowrap font-medium leading-none ${text.length > 12 ? "text-[clamp(1.75rem,7.5vw,5.5rem)]" : text.length > 8 ? "text-[clamp(2.5rem,10.5vw,7.5rem)]" : "text-[clamp(4rem,18vw,11rem)]"} ${color}`}>{text}</div>
+      {/* Keyed by the glow, so each new best plays it from the start. */}
+      <div key={glow ?? "steady"} className={`timer-digits whitespace-nowrap ${glow ? "pb-glow" : ""} font-medium leading-none ${text.length > 12 ? "text-[clamp(1.75rem,7.5vw,5.5rem)]" : text.length > 8 ? "text-[clamp(2.5rem,10.5vw,7.5rem)]" : "text-[clamp(4rem,18vw,11rem)]"} ${color}`}>{text}</div>
       <div className="mt-3 h-6 text-sm text-muted">{note}</div>
     </div>
   );
