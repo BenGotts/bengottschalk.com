@@ -16,6 +16,7 @@ import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd
 import { colorsForEvent, DEFAULT_STORED, migrateSettings, screenAverageSpecs, settingsForEvent, type StoredSettings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
 import { formatSolve } from "@/lib/format";
+import { megaminxLines } from "@/lib/scrambleLines";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
@@ -405,7 +406,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                   {scramble.custom && <span className="badge badge-soft badge-sm">Entered</span>}
                 </div>
                 <p className={`scramble-text mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
-                  {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
+                  {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} eventId={event.id} /> : <span className="text-muted">Making a scramble…</span>)}
                 </p>
               </>
             )}
@@ -595,7 +596,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             <div className="h-[min(60dvh,28rem)] w-full">
               <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
             </div>
-            <p className="scramble-text text-center text-sm">{scramble.scramble}</p>
+            <p className="scramble-text text-center text-sm"><ScrambleText scramble={scramble.scramble} eventId={event.id} /></p>
           </div>
         )}
       </Modal>
@@ -610,8 +611,27 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   );
 }
 
-/** The scramble, never breaking a line inside a Square-1 move like "(1, -3) /". */
-function ScrambleText({ scramble }: { scramble: string }) {
+/**
+ * The scramble. Megaminx gets a line per WCA line, each ending with its U or U' move.
+ * Square-1 never breaks a line inside a move like "(1, -3) /".
+ */
+function ScrambleText({ scramble, eventId }: { scramble: string; eventId: string }) {
+  if (eventId === "minx") {
+    // Index keys are fine: the lines of one scramble never reorder.
+    // Each line's text shrinks to fit the box (`cqw`), down to 11px; a box too narrow even for that (short phones) wraps.
+    return (
+      <span className="@container block">
+        {/* oxlint-disable-next-line react/no-array-index-key */}
+        {megaminxLines(scramble).map((line, i) => (
+          <span key={i} className="block text-[clamp(0.6875rem,3.8cqw,0.875rem)]">
+            {/* Never break inside a move: browsers would after the hyphens in "D--". */}
+            {/* oxlint-disable-next-line react/no-array-index-key */}
+            {line.split(" ").map((move, j) => <Fragment key={j}>{j > 0 && " "}<span className="whitespace-nowrap">{move}</span></Fragment>)}
+          </span>
+        ))}
+      </span>
+    );
+  }
   if (!scramble.includes("(")) return scramble;
   return (scramble.match(/[^/]+\/?|\//g) ?? [scramble]).map((part, i) => (
     // Index keys are fine: the parts of one scramble never reorder.
