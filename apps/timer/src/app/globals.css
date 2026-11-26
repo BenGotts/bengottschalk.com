@@ -4,6 +4,11 @@
 /* Phones too short to stack the scramble, time, scramble picture and stats (the phone layout ends at lg). */
 @custom-variant short-phone (@media (width < 64rem) and (height <= 600px));
 
+/* The scramble picture's size on phones (h-scramble-picture): set by the screen's height, never by the scramble's length. */
+@theme {
+  --spacing-scramble-picture: clamp(5rem, 18dvh, 10rem);
+}
+
 /* The timer is one screen that fills the viewport: the page itself never scrolls,
    bounces or pulls to refresh. Lists and dialogs scroll inside themselves. */
 html,

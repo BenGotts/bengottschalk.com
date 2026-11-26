@@ -387,10 +387,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
           {/* The scramble and, on phones, its picture. Usually this wrapper steps aside (`contents`): the picture
               goes between the time and the stats (its `order`). Short phones have no room for that, so the
-              picture sits beside the scramble instead. */}
-          <div className="contents short-phone:flex short-phone:max-h-[30dvh] short-phone:min-h-20 short-phone:shrink">
+              picture sits beside the scramble instead, in a row as tall as the picture. */}
+          <div className="contents short-phone:flex short-phone:h-[calc(var(--spacing-scramble-picture)+--spacing(3))] short-phone:shrink-0">
           {/* FMC keeps its scramble hidden until the attempt starts, then shows it in its own panel.
-              On phones a long scramble scrolls in its box rather than pushing the stats under the tabs. */}
+              On phones the scramble gives way to the picture: what doesn't fit scrolls in its box. */}
           {event.kind !== "fewest-moves" && <section className="focus-fade max-h-[30dvh] min-h-20 min-w-0 shrink overflow-y-auto px-4 pt-3 text-center short-phone:max-h-none short-phone:flex-1 short-phone:pr-2 lg:max-h-none lg:shrink-0" aria-label="Scramble">
             {event.kind === "multi-blind" ? (
               <MultiBlindSetup cubes={mbldCubes} onCubesChange={setMbldCubes} scrambles={mbldScrambles} generating={mbldGenerating} onGenerate={() => void makeMultiScrambles()} scheme={colorsFor(activeEventId)} />
@@ -412,9 +412,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           </section>}
 
           {/* Phones: the scramble picture, centred in the space between the time and the stats, or beside the
-              scramble on short phones. It always shows, and grows into any space left over. */}
+              scramble on short phones. Its size follows the screen's height, never the scramble's length. */}
           {scrambleImage && (
-            <div className="focus-fade order-1 flex min-h-20 flex-1 items-center justify-center px-3 pb-2 short-phone:h-24 short-phone:w-28 short-phone:flex-none short-phone:self-start short-phone:pt-3 short-phone:pb-0 short-phone:pl-0 lg:hidden">
+            <div className="focus-fade order-1 box-content flex h-scramble-picture shrink-0 items-center justify-center px-3 pb-2 short-phone:w-[calc(var(--spacing-scramble-picture)*1.4)] short-phone:pt-3 short-phone:pb-0 short-phone:pl-0 lg:hidden">
               {enlargeButton("h-full max-h-40 w-full max-w-56")}
             </div>
           )}
@@ -433,8 +433,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             </button>
           )}
 
-          {/* On phones with a scramble picture below, the time sits under the scramble and the picture fills the space below; otherwise the time is centred. */}
-          <div className={`flex min-h-0 flex-col items-center justify-center gap-1 px-4 py-4 lg:flex-1 [@media(max-height:700px)]:py-1 ${scrambleImage ? "flex-none short-phone:min-h-auto short-phone:flex-1" : "flex-1"}`}>
+          {/* The time, centred in the space the scramble and picture leave. With a picture it never shrinks below
+              its content (the scramble gives way instead), so it can't spill over the scramble. */}
+          <div className={`flex flex-1 flex-col items-center justify-center gap-1 px-4 py-4 [@media(max-height:700px)]:py-1 ${scrambleImage ? "max-lg:min-h-auto lg:min-h-0" : "min-h-0"}`}>
             {event.kind === "fewest-moves" ? (
               <FmcPanel scramble={scramble.scramble} error={scramble.error} puzzleId={event.puzzleId} scheme={settings.scheme} showImage={settings.showScrambleImage} onSave={saveFmc} disabled={!writable} />
             ) : settings.entry === "typing" ? (
