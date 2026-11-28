@@ -18,6 +18,7 @@ import { openLink, padTopic, padTransport, type LinkStatus, type PadLink } from 
 import { CODE_LENGTH, deviceId, GONE_AFTER_MS, HEARTBEAT_MS, normalizeCode, RESEND_MS, type ComputerState, type Envelope, type PhoneMessage, type PhoneResult } from "@/lib/pad/protocol";
 import Modal from "../Modal";
 import ScrambleImage from "../ScrambleImage";
+import { ScrambleText } from "../ScrambleText";
 
 const DEFAULT_CONFIG: PadConfig = { inspection: false, holdMs: 550, memoSplit: false };
 
@@ -409,7 +410,7 @@ function Pads({ code, onLeave }: { code: string; onLeave: () => void }) {
                 <ScrambleImage puzzleId={computer.puzzleId} scramble={computer.scramble} scheme={computer.scheme} />
               </div>
             )}
-            <p className="scramble-text whitespace-pre-line text-center text-lg">{computer.scramble}</p>
+            <p className="scramble-text whitespace-pre-line text-center text-lg"><ScrambleText scramble={computer.scramble} /></p>
           </div>
         )}
       </Modal>

@@ -15,6 +15,7 @@ import { formatDateTime, formatDay, formatSolveWithPoints, multiPointsText } fro
 import Modal from "./Modal";
 import type { ColorScheme } from "@/lib/colorSchemes";
 import ScrambleImage from "./ScrambleImage";
+import { ScrambleText } from "./ScrambleText";
 
 interface Props {
   solve: Solve | null;
@@ -157,7 +158,7 @@ function SolveDetails({ solve, onClose, precision, sotdByEventDay, sotdEnabled, 
       <div>
         <div className="mb-1 text-xs text-muted">Scramble</div>
         <p className="scramble-text whitespace-pre-wrap rounded-field bg-base-200 p-2 text-sm">
-          {solve.scramble || (solve.competition ? <span className="font-sans text-muted">Not known: the WCA posts each round's scramble sets, but not which set a competitor had.</span> : "—")}
+          {solve.scramble ? <ScrambleText scramble={solve.scramble} /> : (solve.competition ? <span className="font-sans text-muted">Not known: the WCA posts each round's scramble sets, but not which set a competitor had.</span> : "—")}
         </p>
         {/* Multi-Blind has several scrambles, so no single picture. */}
         {solve.scramble && event.puzzleId && event.kind !== "multi-blind" && (

@@ -8,6 +8,7 @@ import type { Precision } from "@bengottschalk/timer-core/time";
 import { averageClipboardText } from "@/lib/averageText";
 import { formatDateTime, formatMean, formatSolve } from "@/lib/format";
 import Modal from "./Modal";
+import { ScrambleText } from "./ScrambleText";
 
 /** An average to show: its kind and size, and which solves it covers. */
 export interface AverageView {
@@ -86,7 +87,7 @@ export default function AverageDialog({ view, onClose, eventId, solves, precisio
                       )}
                     </span>
                     <span className="scramble-text col-start-2 col-end-4 text-sm break-words whitespace-pre-wrap">
-                      {solve.scramble || <span className="font-sans text-muted">Scramble not known</span>}
+                      {solve.scramble ? <ScrambleText scramble={solve.scramble} /> : <span className="font-sans text-muted">Scramble not known</span>}
                     </span>
                     {solve.comment && <span className="col-start-2 col-end-4 text-sm text-muted">“{solve.comment}”</span>}
                   </button>

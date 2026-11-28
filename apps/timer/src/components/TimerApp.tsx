@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaKeyboard, FaListUl, FaMobileScreen, FaPen, FaXmark, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
@@ -19,6 +19,7 @@ import { useShortcuts, withShortcut, type ShortcutHandlers, type ShortcutId } fr
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { usePhonePad } from "@/lib/pad/usePhonePad";
+import { ScrambleText } from "./ScrambleText";
 import { usePadInvite, useTouchDevice } from "@/lib/pad/account";
 import { useCompetitionResults } from "@/lib/wca/useCompetitionResults";
 import { CompetitionResultsContext } from "@/lib/wca/competitionResultsContext";
@@ -671,17 +672,6 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     </div>
     </CompetitionResultsContext.Provider>
   );
-}
-
-/** The scramble, never breaking a line inside a move: a Square-1 move like "(1, -3) /", or a Megaminx "D--" after its first hyphen. */
-function ScrambleText({ scramble }: { scramble: string }) {
-  const parts = scramble.includes("(") ? scramble.match(/[^/]+\/?|\//g) : scramble.includes("-") ? scramble.split(/\s+/) : null;
-  if (!parts) return scramble;
-  return parts.map((part, i) => (
-    // Index keys are fine: the parts of one scramble never reorder.
-    // oxlint-disable-next-line react/no-array-index-key
-    <Fragment key={i}><span className="whitespace-nowrap">{part.trim()}</span>{" "}</Fragment>
-  ));
 }
 
 function MultiResultForm({ attempted, onSave }: { attempted: number; onSave: (solved: number) => void }) {
