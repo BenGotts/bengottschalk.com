@@ -169,9 +169,14 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const scrambleText = event.kind === "multi-blind" ? (mbldScrambles ? mbldScrambles.join("\n") : null) : scramble.scramble;
 
   const save = useCallback(async (input: Parameters<typeof addSolve>[0]) => {
+    // A timed or typed solve moves on the moment it's finished rather than once it's
+    // written, since the next scramble is usually made already (and is still kept for
+    // Previous if the write fails). FMC and Multi-Blind keep moving on once it's saved.
+    const advanceNow = event.kind === "time";
+    if (advanceNow) scramble.next();
     await addSolve(input);
     if (event.kind === "multi-blind") setMbldScrambles(null);
-    else scramble.next();
+    else if (!advanceNow) scramble.next();
     // The solve that completes a temporary session brings up its end (once the timer is idle).
     if (current && reachesGoal(current, ownCount + 1)) setEndFor(current.id);
   }, [event.kind, scramble, current, ownCount]);
