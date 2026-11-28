@@ -8,6 +8,7 @@ import { localDate, sotdKey, sotdReplaceQuestion } from "@bengottschalk/timer-co
 import type { Precision } from "@bengottschalk/timer-core/time";
 import { confirmSolveDeletion } from "@/lib/confirm";
 import { deleteSolve, restoreSolve, setSotd, updateSolve } from "@/lib/db";
+import { useShortcuts, withShortcut, type ShortcutId } from "@/lib/shortcuts";
 import Modal from "./Modal";
 
 interface Props {
@@ -18,12 +19,14 @@ interface Props {
   /** Solve of the Day is only for the site owner's account. */
   sotdEnabled: boolean;
   precision: Precision;
+  /** Whether the keyboard shortcuts for these buttons work (only while the timer is idle). */
+  shortcuts: boolean;
 }
 
-const PENALTIES: { value: Penalty; label: string }[] = [
-  { value: "none", label: "OK" },
-  { value: "+2", label: "+2" },
-  { value: "dnf", label: "DNF" },
+const PENALTIES: { value: Penalty; label: string; shortcut: ShortcutId }[] = [
+  { value: "none", label: "OK", shortcut: "ok" },
+  { value: "+2", label: "+2", shortcut: "plus2" },
+  { value: "dnf", label: "DNF", shortcut: "dnf" },
 ];
 
 const UNDO_MS = 6000;
@@ -33,16 +36,50 @@ const blur = (e: React.MouseEvent<HTMLButtonElement>) => e.currentTarget.blur();
 
 /**
  * Buttons under the time for the solve just done, like csTimer's: OK, +2 or
- * DNF, delete (asks first, then offers undo), a comment, and Solve of the Day. Alt+1/2/3, Alt+Z
- * and Alt+S still do the same from the keyboard.
+ * DNF, delete (asks first, then offers undo), a comment, and Solve of the Day.
+ * Their keyboard shortcuts (see lib/shortcuts.ts) are handled here too, so a
+ * shortcut does exactly what its button does, undo included.
  */
-export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, precision }: Props) {
+export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, precision, shortcuts }: Props) {
   const [deleted, setDeleted] = useState<{ solve: Solve; wasSotd: boolean } | null>(null);
   const [commenting, setCommenting] = useState(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
   }, []);
+
+  // Worked out before the early returns below, so the shortcut hook always runs.
+  const day = solve ? localDate(solve.startedAt) : null;
+  const sotdId = solve && day ? sotdByEventDay.get(sotdKey(solve.eventId, day)) : undefined;
+  const isSotd = solve !== null && sotdId === solve.id;
+  const timed = solve !== null && timerEvent(solve.eventId).kind === "time";
+
+  const setPenalty = (penalty: Penalty) => {
+    if (solve && solve.penalty !== penalty) void updateSolve(solve.id, { penalty });
+  };
+
+  const toggleSotd = async () => {
+    if (!solve || !day) return;
+    if (isSotd) return setSotd(solve.eventId, day, null);
+    if (sotdId && !confirm(sotdReplaceQuestion(solve.eventId, "today"))) return;
+    await setSotd(solve.eventId, day, solve.id);
+  };
+
+  const remove = async () => {
+    if (!solve || !(await confirmSolveDeletion(solve, precision))) return;
+    await deleteSolve(solve.id);
+    setDeleted({ solve, wasSotd: isSotd });
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setDeleted(null), UNDO_MS);
+  };
+
+  // Only while the buttons are there to press: not while "Solve deleted. Undo" shows, or with no solve.
+  useShortcuts(shortcuts && solve !== null && !deleted, {
+    ...(timed ? { ok: () => setPenalty("none"), plus2: () => setPenalty("+2"), dnf: () => setPenalty("dnf") } : {}),
+    delete: () => void remove(),
+    comment: () => setCommenting(true),
+    ...(sotdEnabled ? { sotd: () => void toggleSotd() } : {}),
+  });
 
   if (deleted) {
     return (
@@ -65,25 +102,6 @@ export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, p
   }
   if (!solve) return <div className="h-10" />;
 
-  const day = localDate(solve.startedAt);
-  const sotdId = sotdByEventDay.get(sotdKey(solve.eventId, day));
-  const isSotd = sotdId === solve.id;
-  const timed = timerEvent(solve.eventId).kind === "time";
-
-  const toggleSotd = async () => {
-    if (isSotd) return setSotd(solve.eventId, day, null);
-    if (sotdId && !confirm(sotdReplaceQuestion(solve.eventId, "today"))) return;
-    await setSotd(solve.eventId, day, solve.id);
-  };
-
-  const remove = async () => {
-    if (!(await confirmSolveDeletion(solve, precision))) return;
-    await deleteSolve(solve.id);
-    setDeleted({ solve, wasSotd: isSotd });
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    undoTimer.current = setTimeout(() => setDeleted(null), UNDO_MS);
-  };
-
   return (
     <div className="flex h-10 flex-wrap items-center justify-center gap-2">
       {timed && (
@@ -95,9 +113,10 @@ export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, p
               type="button"
               className={`btn join-item min-w-12 ${solve.penalty === p.value ? "btn-primary" : ""}`}
               aria-pressed={solve.penalty === p.value}
+              title={withShortcut(p.label, p.shortcut)}
               onClick={(e) => {
                 blur(e);
-                if (solve.penalty !== p.value) void updateSolve(solve.id, { penalty: p.value });
+                setPenalty(p.value);
               }}
             >
               {p.label}
@@ -106,14 +125,14 @@ export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, p
         </fieldset>
       )}
       <div className="join">
-        <button type="button" className="btn join-item btn-square" aria-label="Delete the last solve" title="Delete (Alt+Z)" onClick={(e) => { blur(e); void remove(); }}>
+        <button type="button" className="btn join-item btn-square" aria-label="Delete the last solve" title={withShortcut("Delete", "delete")} onClick={(e) => { blur(e); void remove(); }}>
           <FaTrash aria-hidden />
         </button>
         <button
           type="button"
           className={`btn join-item btn-square ${solve.comment ? "text-primary" : ""}`}
           aria-label={solve.comment ? "Edit the comment" : "Add a comment"}
-          title={solve.comment || "Comment"}
+          title={solve.comment || withShortcut("Comment", "comment")}
           onClick={(e) => { blur(e); setCommenting(true); }}
         >
           <FaRegComment aria-hidden />
@@ -124,7 +143,7 @@ export default function LastSolveActions({ solve, sotdByEventDay, sotdEnabled, p
             className={`btn join-item btn-square ${isSotd ? "btn-accent" : ""}`}
             aria-pressed={isSotd}
             aria-label="Solve of the Day"
-            title="Solve of the Day (Alt+S)"
+            title={withShortcut("Solve of the Day", "sotd")}
             onClick={(e) => { blur(e); void toggleSotd(); }}
           >
             {isSotd ? <FaStar aria-hidden /> : <FaRegStar aria-hidden />}

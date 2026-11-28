@@ -3,19 +3,19 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaListUl, FaMobileScreen, FaPen, FaXmark, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaChartSimple, FaCodeBranch, FaFlagCheckered, FaGear, FaKeyboard, FaListUl, FaMobileScreen, FaPen, FaXmark, FaPlus, FaRegCopy, FaStar, FaStopwatch, FaTrophy } from "react-icons/fa6";
 import { timerEvent } from "@bengottschalk/timer-core/events";
 import { acceptsSolves, isMainSession, mainSessionId, reachesGoal, sessionSolves, type TimerSession } from "@bengottschalk/timer-core/sessions";
 import { solveValue, type Solve, type TimingMethod } from "@bengottschalk/timer-core/solve";
 import { DEFAULT_AVERAGES, isNewBest, rollingAverages, sessionStats, uniqueSpecs, type AverageSpec } from "@bengottschalk/timer-core/stats";
-import { localDate, sotdByEventDay, sotdKey, sotdReplaceQuestion, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
+import { sotdByEventDay, type SotdDetails, type SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { ParsedTime } from "@bengottschalk/timer-core/time";
 import { TIMER_NAME, WCA_ID as OWNER_WCA_ID } from "@bengottschalk/content/site";
-import { confirmSolveDeletion } from "@/lib/confirm";
-import { addSolve, db, deleteSolve, ensureMainSession, getMeta, setMeta, setSotd, updateSolve } from "@/lib/db";
+import { addSolve, db, ensureMainSession, getMeta, setMeta } from "@/lib/db";
 import { colorsForEvent, DEFAULT_STORED, migrateSettings, screenAverageSpecs, settingsForEvent, type StoredSettings } from "@/lib/settings";
 import { generateMultiBlindScrambles } from "@/lib/scrambles";
 import { formatSolve } from "@/lib/format";
+import { useShortcuts, withShortcut, type ShortcutHandlers, type ShortcutId } from "@/lib/shortcuts";
 import { useScramble } from "@/lib/useScramble";
 import { useTimer, type FinishedSolve } from "@/lib/useTimer";
 import { usePhonePad } from "@/lib/pad/usePhonePad";
@@ -41,6 +41,7 @@ import SessionsDialog from "./SessionsDialog";
 import { SessionSummaryDialog } from "./SessionSummary";
 import { EndSessionDialog, StartSessionDialog } from "./TemporarySession";
 import SettingsDialog from "./SettingsDialog";
+import ShortcutsDialog from "./ShortcutsDialog";
 import { AccountButton, useSignedInWcaId, AccountSession, UnsyncedSolvesDialog } from "./Account";
 import SolveDialog from "./SolveDialog";
 import SolveList from "./SolveList";
@@ -49,16 +50,31 @@ import StatsPanel from "./StatsPanel";
 import TimeDisplay from "./TimeDisplay";
 import TypingEntry from "./TypingEntry";
 
-type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | "phone" | null;
+type Dialog = "sessions" | "settings" | "import" | "start-temporary" | "summary" | "scramble" | "custom-scramble" | "shortcuts" | "phone" | null;
 /** Which screen a phone shows (wide screens show the timer and the side panel together). */
 type MobileView = "timer" | "solves" | "stats" | "sotd";
 
-const MOBILE_TABS: { view: MobileView; label: string; icon: React.ReactNode }[] = [
-  { view: "timer", label: "Timer", icon: <FaStopwatch aria-hidden /> },
-  { view: "solves", label: "Solves", icon: <FaListUl aria-hidden /> },
-  { view: "stats", label: "Stats", icon: <FaChartSimple aria-hidden /> },
-  { view: "sotd", label: "Solve of the Day", icon: <FaStar aria-hidden /> },
+const MOBILE_TABS: { view: MobileView; label: string; icon: React.ReactNode; shortcut: ShortcutId }[] = [
+  { view: "timer", label: "Timer", icon: <FaStopwatch aria-hidden />, shortcut: "timer" },
+  { view: "solves", label: "Solves", icon: <FaListUl aria-hidden />, shortcut: "solves" },
+  { view: "stats", label: "Stats", icon: <FaChartSimple aria-hidden />, shortcut: "stats" },
+  { view: "sotd", label: "Solve of the Day", icon: <FaStar aria-hidden />, shortcut: "sotdList" },
 ];
+
+/**
+ * Opens the event menu from the keyboard. There's one in the header (phones)
+ * and one in the sidebar (wide screens), so it picks the one on screen.
+ */
+function openEventPicker() {
+  const picker = [...document.querySelectorAll<HTMLSelectElement>("select[data-event-picker]")].find((el) => el.offsetParent !== null);
+  if (!picker) return;
+  picker.focus();
+  try {
+    picker.showPicker();
+  } catch {
+    // Not every browser opens a menu from code; once focused, the arrow keys still change the event.
+  }
+}
 
 // Stable fallbacks while live queries load, so memos don't recompute every render.
 const NO_SESSIONS: TimerSession[] = [];
@@ -262,46 +278,18 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
     }
   };
 
-  // Keyboard shortcuts for the last solve, when the timer is idle (and Escape stops the phone's solve, like the space bar's).
+  // Escape stops the phone's solve, like the space bar's does for the keyboard's.
   const { busy: padBusy, cancel: padCancel } = pad;
   useEffect(() => {
+    if (!padBusy) return undefined;
     const onKey = (e: KeyboardEvent) => {
-      if (padBusy && e.code === "Escape") {
-        e.preventDefault();
-        padCancel();
-        return;
-      }
-      if (!e.altKey || e.ctrlKey || e.metaKey || phase !== "idle" || document.querySelector("dialog[open]")) return;
-      if (e.target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
-      const last = lastHomeSolve;
-      const actions: Record<string, () => void> = {
-        Digit1: () => last && void updateSolve(last.id, { penalty: "none" }),
-        Digit2: () => last && void updateSolve(last.id, { penalty: "+2" }),
-        Digit3: () => last && void updateSolve(last.id, { penalty: "dnf" }),
-        KeyS: () => {
-          if (!last || !sotdEnabled) return;
-          const day = localDate(last.startedAt);
-          const marked = sotdMap.get(sotdKey(last.eventId, day));
-          if (marked === last.id) void setSotd(last.eventId, day, null);
-          else if (!marked || confirm(sotdReplaceQuestion(last.eventId, "today"))) void setSotd(last.eventId, day, last.id);
-        },
-        KeyZ: () => {
-          if (!last) return;
-          void (async () => {
-            if (await confirmSolveDeletion(last, settings.precision)) await deleteSolve(last.id);
-          })();
-        },
-        KeyN: () => scramble.next(),
-      };
-      const action = actions[e.code];
-      if (action) {
-        e.preventDefault();
-        action();
-      }
+      if (e.code !== "Escape") return;
+      e.preventDefault();
+      padCancel();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, padBusy, padCancel, lastHomeSolve, sotdMap, sotdEnabled, scramble, settings.precision]);
+  }, [padBusy, padCancel]);
 
   const openSolve = allSolves.find((s) => s.id === openSolveId) ?? null;
   const openSolveReadOnly = openSolve ? !sessions.some((s) => s.id === openSolve.sessionId && acceptsSolves(s)) : true;
@@ -334,6 +322,24 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   };
   // The buttons under the time act on the solve the time shows, when it was done here.
   const actionSolve = lastSolve && lastSolve.id === lastHomeSolve?.id && writable ? lastSolve : null;
+
+  // The keyboard shortcuts for moving around (the buttons under the time handle the last-solve ones).
+  // Each is only there when its button or screen is, so a key never does something hidden.
+  const showsScrambleButtons = event.kind !== "fewest-moves" && event.kind !== "multi-blind";
+  const shortcutHandlers: ShortcutHandlers = {
+    ...(showsScrambleButtons ? { nextScramble: scramble.next } : {}),
+    ...(showsScrambleButtons && scramble.canGoBack ? { previousScramble: scramble.previous } : {}),
+    event: openEventPicker,
+    ...(main && current ? { sessions: () => setDialog("sessions") } : {}),
+    solves: () => { setView("solves"); setTab("solves"); },
+    stats: () => setView("stats"),
+    ...(sotdEnabled ? { sotdList: () => { setView("sotd"); setTab("sotd"); } } : {}),
+    settings: () => setDialog("settings"),
+    // Escape only means something away from the timer screen (a phone's lists); elsewhere it's left alone.
+    ...(shownView === "timer" ? {} : { timer: () => setView("timer") }),
+    help: () => setDialog("shortcuts"),
+  };
+  useShortcuts(phase === "idle", shortcutHandlers);
 
   const lastResult = lastSolve ? formatSolve(lastSolve, settings.precision) : null;
   const newBest = phase === "idle" && isNewBest(values);
@@ -371,7 +377,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   const eventControls = (
     <>
       <EventPicker eventId={activeEventId} onChange={setEventId} />
-      <button type="button" className="btn btn-sm min-w-0" onClick={() => setDialog("sessions")}>
+      <button type="button" className="btn btn-sm min-w-0" onClick={() => setDialog("sessions")} title={withShortcut("Sessions", "sessions")}>
         <FaCodeBranch aria-hidden /> <span className="truncate">{temporary ? temporary.name : "Main"}</span>
         {temporary && <span className="timer-digits text-muted">{temporary.goal === null ? ownCount : `${ownCount} / ${temporary.goal}`}</span>}
       </button>
@@ -408,7 +414,9 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             </button>
           )}
           {authEnabled && <AccountButton />}
-          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings"><FaGear className="size-4" aria-hidden /></button>
+          {/* Phones rarely have a keyboard, so the shortcuts button is for wide screens. */}
+          <button type="button" className="btn btn-ghost btn-sm btn-square hidden lg:inline-flex" onClick={() => setDialog("shortcuts")} aria-label="Keyboard shortcuts" title={withShortcut("Keyboard shortcuts", "help")}><FaKeyboard className="size-4" aria-hidden /></button>
+          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("settings")} aria-label="Settings" title={withShortcut("Settings", "settings")}><FaGear className="size-4" aria-hidden /></button>
         </div>
       </header>
 
@@ -451,10 +459,10 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
               <>
                 {/* The buttons sit above the scramble, so they stay put whatever its length. */}
                 <div className="mb-1 flex items-center justify-center gap-1">
-                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble" title="Previous scramble"><FaArrowLeft aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.previous} disabled={!scramble.canGoBack} aria-label="Previous scramble" title={withShortcut("Previous scramble", "previousScramble")}><FaArrowLeft aria-hidden /></button>
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => scramble.scramble && void navigator.clipboard.writeText(scramble.scramble)} aria-label="Copy scramble" title="Copy scramble"><FaRegCopy aria-hidden /></button>
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setDialog("custom-scramble")} aria-label="Enter a scramble" title="Enter a scramble"><FaPen aria-hidden /></button>
-                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.next} aria-label="Next scramble" title="Next scramble (N)"><FaArrowRight aria-hidden /></button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.next} aria-label="Next scramble" title={withShortcut("Next scramble", "nextScramble")}><FaArrowRight aria-hidden /></button>
                   {scramble.custom && <span className="badge badge-soft badge-sm">Entered</span>}
                 </div>
                 <p className={`scramble-text mx-auto max-w-4xl text-balance ${longScramble ? "text-sm" : "text-lg sm:text-xl"}`}>
@@ -484,7 +492,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             ) : settings.entry === "typing" ? (
               <>
                 <TypingEntry precision={settings.precision} onSave={saveTyped} disabled={!writable || !scrambleText} />
-                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} /></div>
+                <div className="focus-fade mt-2"><LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} shortcuts={phase === "idle"} /></div>
               </>
             ) : (
               <>
@@ -504,7 +512,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                     : phase === "idle" && !actionSolve && <span className="text-muted">{pad.connected ? "Both hands on your phone’s pads (or use the space bar)" : settings.inspection && event.inspection ? "Press space (or touch the timer) to inspect" : "Hold space (or touch the timer), then let go"}</span>}
                 </p>
                 <div className={`focus-fade ${phase === "idle" ? "" : "invisible"}`}>
-                  <LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} />
+                  <LastSolveActions solve={actionSolve} sotdByEventDay={sotdMap} sotdEnabled={sotdEnabled} precision={settings.precision} shortcuts={phase === "idle"} />
                 </div>
               </>
             )}
@@ -534,8 +542,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
           </div>
           {/* Only worth tabs when there's Solve of the Day to switch to. */}
           <div role="tablist" className={`tabs tabs-box tabs-sm hidden ${sotdEnabled ? "lg:flex" : ""}`}>
-            <button type="button" role="tab" className={`tab grow ${shownTab === "solves" ? "tab-active" : ""}`} aria-selected={shownTab === "solves"} onClick={() => setTab("solves")}>Solves</button>
-            {sotdEnabled && <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")}>Solve of the Day</button>}
+            <button type="button" role="tab" className={`tab grow ${shownTab === "solves" ? "tab-active" : ""}`} aria-selected={shownTab === "solves"} onClick={() => setTab("solves")} title={withShortcut("Solves", "solves")}>Solves</button>
+            {sotdEnabled && <button type="button" role="tab" className={`tab grow ${tab === "sotd" ? "tab-active" : ""}`} aria-selected={tab === "sotd"} onClick={() => setTab("sotd")} title={withShortcut("Solve of the Day", "sotdList")}>Solve of the Day</button>}
           </div>
           {/* On phones the bottom tabs pick the list; on wide screens the tabs above do. */}
           <div className={`min-h-0 flex-1 overflow-hidden ${shownView === "solves" ? "block" : "hidden"} ${shownTab === "solves" ? "lg:block" : "lg:hidden"}`} role="tabpanel">
@@ -563,6 +571,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
             type="button"
             className={`flex flex-col items-center gap-0.5 py-2 text-xs ${shownView === item.view ? "text-primary" : "text-muted"}`}
             aria-current={shownView === item.view ? "page" : undefined}
+            title={withShortcut(item.label, item.shortcut)}
             onClick={() => setView(item.view)}
           >
             <span className="text-base">{item.icon}</span>
@@ -622,6 +631,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} stored={storedSettings} eventId={activeEventId} onChange={setSettings} onImportCsTimer={() => setDialog("import")} authEnabled={authEnabled} />
       <ImportDialog open={dialog === "import"} onClose={() => setDialog(null)} />
       <PhonePadDialog open={dialog === "phone"} onClose={() => setDialog(null)} pad={pad} />
+      <ShortcutsDialog open={dialog === "shortcuts"} onClose={() => setDialog(null)} sotdEnabled={sotdEnabled} />
       {authEnabled && (
         <>
           <AccountSession />
