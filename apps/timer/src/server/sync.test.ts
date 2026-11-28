@@ -216,6 +216,24 @@ describe("POST /api/sync", () => {
     expect(unmarked.data.changes.sotd).toEqual([{ eventId: "sq1", date: day, solveId: "f1", updatedAt: 30, deletedAt: 30 }]);
   });
 
+  it("gives back every kind of solve id exactly as sent, and with all its details", async () => {
+    const hana = await signIn("hana@example.com");
+    const solves = [
+      solve("0197c3b4-d378-7e1d-ba6c-8a43fc62d744", 10, { penalty: "dnf", entry: "stackmat" }),
+      solve("0197C3B4-D378-7E1D-BA6C-8A43FC62D745", 10, { penalty: "+2", entry: "typed" }),
+      solve("wca-NAC2022-pyram-1-5", 10, { eventId: "pyram", sessionId: "main-pyram", source: "competition", entry: "import" }),
+    ];
+    const pushed = await sync(hana, { cursor: 0, changes: { ...empty, solves, sotd: [{ eventId: "pyram", date: "2026-11-24", solveId: "wca-NAC2022-pyram-1-5", updatedAt: 10, deletedAt: null }] } });
+    expect(pushed.status).toBe(200);
+    expect(pushed.data.changes.solves.toSorted((a, b) => a.id.localeCompare(b.id))).toEqual(solves.toSorted((a, b) => a.id.localeCompare(b.id)));
+    expect(pushed.data.changes.sotd).toHaveLength(1);
+    // An edit to each lands on the same row.
+    const edited = await sync(hana, { cursor: pushed.data.cursor, changes: { ...empty, solves: solves.map((s) => ({ ...s, comment: "again", updatedAt: 20 })) } });
+    expect(edited.data.changes.solves.map((s) => s.comment)).toEqual(["again", "again", "again"]);
+    const rows = await db.select({ id: schema.solve.id }).from(schema.solve).where(eq(schema.solve.comment, "again"));
+    expect(rows).toHaveLength(3);
+  });
+
   it("keeps each person's records apart", async () => {
     const bobs = await sync(bob, { cursor: 0, changes: { ...empty, solves: [solve("a", 1, { comment: "bob's" })] } });
     expect(bobs.data.changes.solves.map((s) => s.comment)).toEqual(["bob's"]);

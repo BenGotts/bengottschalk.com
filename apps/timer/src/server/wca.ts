@@ -34,6 +34,7 @@ import { PersonResultSchema, ScramblesSchema, UserCompetitionsSchema, WcifSchema
 import type { TimerDb } from "./db";
 import { solve, sotdMark, timerSession, wcaCompetition, wcaPerson, wcaScrambles } from "./schema";
 import { updateFromExcluded } from "./sync";
+import { fromStoredId, solveUuid, toStoredId } from "./solve-key";
 import { captureFresh, liveCapture, storedCaptures, withinLiveRetention } from "./wca-live";
 
 const MINUTE_MS = 60_000;
@@ -160,7 +161,7 @@ export async function competitionScrambles(db: TimerDb, competitionId: string, n
 /** Whether this user has official attempts from the competition yet. */
 async function hasOfficialResults(db: TimerDb, userId: string, competitionId: string): Promise<boolean> {
   const rows = await db.select({ id: solve.id }).from(solve)
-    .where(and(eq(solve.userId, userId), like(solve.id, `wca-${competitionId}-%`), sql`${solve.competition}->>'status' = 'official'`))
+    .where(and(eq(solve.userId, userId), like(solve.key, `wca-${competitionId}-%`), sql`${solve.competition}->>'status' = 'official'`))
     .limit(1);
   return rows.length > 0;
 }
@@ -180,7 +181,7 @@ async function resultsDue(db: TimerDb, userId: string, wcaId: string, fetchedAt:
   return false;
 }
 
-const rowAsSolve = ({ userId: _userId, seq: _seq, ...record }: typeof solve.$inferSelect): Solve => record;
+const rowAsSolve = ({ userId: _userId, seq: _seq, ...record }: typeof solve.$inferSelect): Solve => fromStoredId(record);
 
 /**
  * Writes one competition's official attempts into the user's account, the
@@ -197,8 +198,8 @@ async function saveCompetition(db: TimerDb, userId: string, competitionId: strin
     const stored = new Map<string, Solve>();
     const ids = fresh.map((s) => s.id);
     for (let i = 0; i < ids.length; i += 500) {
-      const rows = await tx.select().from(solve).where(and(eq(solve.userId, userId), inArray(solve.id, ids.slice(i, i + 500))));
-      for (const row of rows) stored.set(row.id, rowAsSolve(row));
+      const rows = await tx.select().from(solve).where(and(eq(solve.userId, userId), inArray(solve.id, ids.slice(i, i + 500).map(solveUuid))));
+      for (const saved of rows.map(rowAsSolve)) stored.set(saved.id, saved);
     }
     const changed: Solve[] = [];
     for (const solveNow of fresh) {
@@ -210,18 +211,19 @@ async function saveCompetition(db: TimerDb, userId: string, competitionId: strin
       const sessions = [...new Set(changed.map((s) => s.eventId))].map((eventId) => ({ ...createMainSession(eventId, now), userId }));
       await tx.insert(timerSession).values(sessions).onConflictDoNothing();
       for (let i = 0; i < changed.length; i += 200) {
-        await tx.insert(solve).values(changed.slice(i, i + 200).map((s) => ({ ...s, userId })))
+        await tx.insert(solve).values(changed.slice(i, i + 200).map((s) => ({ ...s, ...toStoredId(s.id), userId })))
           .onConflictDoUpdate({ target: [solve.userId, solve.id], set: updateFromExcluded(solve, ["userId", "id"]) });
       }
     }
 
     const officialIds = new Set(ids);
     const leftovers = (await tx.select().from(solve)
-      .where(and(eq(solve.userId, userId), like(solve.id, `wca-${competitionId}-%`), isNull(solve.deletedAt))))
+      .where(and(eq(solve.userId, userId), like(solve.key, `wca-${competitionId}-%`), isNull(solve.deletedAt))))
+      .map(rowAsSolve)
       .filter((s) => s.competition?.competitionId === competitionId && s.competition.status === "live" && !officialIds.has(s.id));
     for (const live of leftovers) {
       await tx.update(solve).set({ deletedAt: now, updatedAt: now, seq: sql`nextval('sync_seq')` })
-        .where(and(eq(solve.userId, userId), eq(solve.id, live.id)));
+        .where(and(eq(solve.userId, userId), eq(solve.id, solveUuid(live.id))));
       const match = fresh.find((s) => s.eventId === live.eventId && s.competition?.attempt === live.competition?.attempt && s.competition?.roundNumber === live.competition?.roundNumber);
       await tx.update(sotdMark)
         .set(match ? { solveId: match.id, deletedAt: null, updatedAt: now, seq: sql`nextval('sync_seq')` } : { deletedAt: now, updatedAt: now, seq: sql`nextval('sync_seq')` })

@@ -9,6 +9,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, describe, expect, it } from "vitest";
+import { solveUuid } from "./solve-key";
 
 const folder = fileURLToPath(new URL("../../drizzle", import.meta.url));
 const scratch: string[] = [];
@@ -69,5 +70,36 @@ describe("0004: a Solve of the Day for each event", () => {
     await client.exec(`insert into sotd_mark (user_id, event_id, date, solve_id, updated_at) values ('u1', 'sq1', '2026-11-23', 'b', 7)`);
     await expect(client.exec(`insert into sotd_mark (user_id, event_id, date, solve_id, updated_at) values ('u1', '333', '2026-11-23', 'b', 8)`)).rejects.toThrow();
     await expect(client.exec(`insert into sotd_mark (user_id, date, solve_id, updated_at) values ('u1', '2026-11-20', 'b', 8)`)).rejects.toThrow();
+  }, 60_000);
+});
+
+describe("0005: smaller solve rows", () => {
+  it("stores ids as uuids (keeping ids that aren't) and penalty, source and entry as codes, without moving any cursor", async () => {
+    const client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: migrationsBefore("0005_solve_storage") });
+
+    await client.exec(`
+      insert into "user" (id, name, email, email_verified, created_at, updated_at) values ('u1', 'One', 'one@example.com', false, now(), now());
+      insert into solve (user_id, id, event_id, session_id, time_ms, penalty, scramble, comment, started_at, source, entry, created_at, updated_at) values
+        ('u1', '0197c3b4-d378-7e1d-ba6c-8a43fc62d744', '333', 'main-333', 9000, 'none', 'R U', '', 1, 'home', 'timer', 1, 1),
+        ('u1', '0197C3B4-D378-7E1D-BA6C-8A43FC62D744', '333', 'main-333', 9000, '+2', '', '', 1, 'home', 'typed', 1, 1),
+        ('u1', 'wca-NAC2022-pyram-1-5', 'pyram', 'main-pyram', 9000, 'dnf', '', '', 1, 'competition', 'import', 1, 1),
+        ('u1', 'x', '333', 'main-333', 9000, 'none', '', '', 1, 'home', 'stackmat', 1, 1);
+    `);
+    const before = await client.query<{ id: string; seq: number }>(`select id, seq from solve`);
+
+    await migrate(db, { migrationsFolder: folder });
+
+    const rows = await client.query<{ id: string; key: string | null; penalty: number; source: number; entry: number; seq: number }>(
+      `select id::text, key, penalty, source, entry, seq from solve order by entry`,
+    );
+    expect(rows.rows.map(({ seq: _seq, ...row }) => row)).toEqual([
+      { id: "0197c3b4-d378-7e1d-ba6c-8a43fc62d744", key: null, penalty: 0, source: 0, entry: 0 },
+      { id: solveUuid("0197C3B4-D378-7E1D-BA6C-8A43FC62D744"), key: "0197C3B4-D378-7E1D-BA6C-8A43FC62D744", penalty: 1, source: 0, entry: 1 },
+      { id: solveUuid("x"), key: "x", penalty: 0, source: 0, entry: 2 },
+      { id: solveUuid("wca-NAC2022-pyram-1-5"), key: "wca-NAC2022-pyram-1-5", penalty: 2, source: 1, entry: 3 },
+    ]);
+    expect(rows.rows.map((row) => row.seq).toSorted((a, b) => a - b)).toEqual(before.rows.map((row) => row.seq).toSorted((a, b) => a - b));
   }, 60_000);
 });

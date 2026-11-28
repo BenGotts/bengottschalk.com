@@ -10,8 +10,8 @@
 // connecting as the database owner, reads and writes them.
 
 import { sql } from "drizzle-orm";
-import { bigint, boolean, index, integer, jsonb, pgSequence, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
-import type { CompetitionAttempt, FmcRecord, MultiBlindResult, TimingMethod } from "@bengottschalk/timer-core/solve";
+import { bigint, boolean, customType, index, integer, jsonb, pgSequence, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import type { CompetitionAttempt, FmcRecord, MultiBlindResult, Penalty, Solve, SolveSource, TimingMethod } from "@bengottschalk/timer-core/solve";
 
 // ---------------------------------------------------------------------------
 // better-auth
@@ -94,23 +94,51 @@ export const timerSession = pgTable("timer_session", {
   seq: changeCursor(),
 }, (t) => [primaryKey({ columns: [t.userId, t.id] }), index("timer_session_user_seq_idx").on(t.userId, t.seq)]).enableRLS();
 
+/**
+ * A short list of names kept as a smallint (2 bytes instead of 3 to 9 of
+ * text: it adds up over hundreds of thousands of solves). The number is the
+ * name's place in `names`, so only ever add names at the end.
+ */
+function coded<const T extends string>(names: readonly T[]) {
+  return customType<{ data: T; driverData: number }>({
+    dataType: () => "smallint",
+    toDriver: (name) => {
+      const code = names.indexOf(name);
+      if (code < 0) throw new Error(`Unknown value: ${name}`);
+      return code;
+    },
+    fromDriver: (code) => {
+      const name = names[code];
+      if (name === undefined) throw new Error(`Unknown code: ${code}`);
+      return name;
+    },
+  });
+}
+
+const PENALTIES = ["none", "+2", "dnf"] as const satisfies readonly Penalty[];
+const SOURCES = ["home", "competition"] as const satisfies readonly SolveSource[];
+const ENTRIES = ["timer", "typed", "stackmat", "import"] as const satisfies readonly Solve["entry"][];
+
 export const solve = pgTable("solve", {
   userId: owner(),
-  id: text("id").notNull(),
+  /** The solve's id as a uuid; see solve-key.ts for ids that aren't UUIDs. */
+  id: uuid("id").notNull(),
+  /** The solve's id when it isn't a UUID (official results), else null. */
+  key: text("key"),
   eventId: text("event_id").notNull(),
   sessionId: text("session_id").notNull(),
   timeMs: integer("time_ms").notNull(),
-  penalty: text("penalty", { enum: ["none", "+2", "dnf"] }).notNull(),
+  penalty: coded(PENALTIES)("penalty").notNull(),
   scramble: text("scramble").notNull(),
   comment: text("comment").notNull(),
   startedAt: ms("started_at").notNull(),
   endedAt: ms("ended_at"),
-  source: text("source", { enum: ["home", "competition"] }).notNull(),
+  source: coded(SOURCES)("source").notNull(),
   competition: jsonb("competition").$type<CompetitionAttempt>(),
   memoMs: integer("memo_ms"),
   fmc: jsonb("fmc").$type<FmcRecord>(),
   multi: jsonb("multi").$type<MultiBlindResult>(),
-  entry: text("entry", { enum: ["timer", "typed", "stackmat", "import"] }).notNull(),
+  entry: coded(ENTRIES)("entry").notNull(),
   /** How the time was taken (keyboard, touch, typed, …); null for solves saved before it was recorded. Not an enum, so new hardware needs no migration. */
   timing: text("timing").$type<TimingMethod>(),
   createdAt: ms("created_at").notNull(),

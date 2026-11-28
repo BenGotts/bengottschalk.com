@@ -8,6 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { TimerDb } from "./db";
 import { schema, solve, sotdMark, timerSession, user, wcaCompetition } from "./schema";
+import { solveUuid, toStoredId } from "./solve-key";
 import { syncForUser } from "./sync";
 import { importCompetitionResults } from "./wca";
 import { handleCron } from "./wca-routes";
@@ -114,13 +115,13 @@ describe("importing WCA results on the server", () => {
     const now = Date.now();
     await importCompetitionResults(db, userId, "2018CCCC01", { now });
     const id = "wca-EditOpen2024-333-f-1";
-    await db.update(solve).set({ comment: "Lucky PLL skip", scramble: "R U R'" }).where(and(eq(solve.userId, userId), eq(solve.id, id)));
+    await db.update(solve).set({ comment: "Lucky PLL skip", scramble: "R U R'" }).where(and(eq(solve.userId, userId), eq(solve.id, solveUuid(id))));
 
     // A result corrected by the WCA, fetched on request (allowed after 5 minutes).
     results["2018CCCC01"][0].attempts[0] = 950;
     const refreshed = await importCompetitionResults(db, userId, "2018CCCC01", { force: true, now: now + 6 * 60_000 });
     expect(refreshed.saved).toBe(1);
-    const [row] = await db.select().from(solve).where(and(eq(solve.userId, userId), eq(solve.id, id)));
+    const [row] = await db.select().from(solve).where(and(eq(solve.userId, userId), eq(solve.id, solveUuid(id))));
     expect(row).toMatchObject({ timeMs: 9500, comment: "Lucky PLL skip", scramble: "R U R'" });
 
     // Asking again within 5 minutes doesn't go back to the WCA.
@@ -135,14 +136,14 @@ describe("importing WCA results on the server", () => {
     const t = Date.now() - DAY;
     // WCA Live called the round "1" instead of "f".
     await db.insert(solve).values({
-      userId, id: "wca-LiveOpen2026-333-1-2", eventId: "333", sessionId: "main-333", timeMs: 9000, penalty: "none", scramble: "", comment: "",
+      userId, ...toStoredId("wca-LiveOpen2026-333-1-2"), eventId: "333", sessionId: "main-333", timeMs: 9000, penalty: "none", scramble: "", comment: "",
       startedAt: t, endedAt: null, source: "competition", memoMs: null, fmc: null, multi: null, entry: "import", createdAt: t, updatedAt: t, deletedAt: null,
       competition: { competitionId: "LiveOpen2026", competitionName: "LiveOpen2026", roundTypeId: "1", roundNumber: 1, attempt: 2, status: "live", timeEstimate: "day", position: null, roundAverage: null, singleRecord: null, averageRecord: null },
     });
     await db.insert(sotdMark).values({ userId, eventId: "333", date: "2026-10-01", solveId: "wca-LiveOpen2026-333-1-2", updatedAt: t, deletedAt: null });
 
     await importCompetitionResults(db, userId, "2017DDDD01");
-    const [live] = await db.select().from(solve).where(and(eq(solve.userId, userId), eq(solve.id, "wca-LiveOpen2026-333-1-2")));
+    const [live] = await db.select().from(solve).where(and(eq(solve.userId, userId), eq(solve.id, solveUuid("wca-LiveOpen2026-333-1-2"))));
     expect(live.deletedAt).not.toBeNull();
     const [mark] = await db.select().from(sotdMark).where(eq(sotdMark.userId, userId));
     expect(mark).toMatchObject({ solveId: "wca-LiveOpen2026-333-f-2", deletedAt: null });

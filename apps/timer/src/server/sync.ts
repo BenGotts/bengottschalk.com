@@ -16,6 +16,7 @@ import type { SotdMark } from "@bengottschalk/timer-core/sotd";
 import type { SyncResponse } from "@bengottschalk/timer-core/sync";
 import type { TimerDb } from "./db";
 import { solve, sotdMark, timerSession } from "./schema";
+import { fromStoredId, solveUuid, toStoredId } from "./solve-key";
 
 const ms = z.number().int().nonnegative();
 const nullableMs = ms.nullable();
@@ -155,9 +156,9 @@ async function withServerEvents(tx: TimerDb, userId: string, marks: IncomingMark
   const missing = [...new Set(marks.filter((m) => m.eventId === undefined).map((m) => m.solveId))];
   const events = new Map<string, string>();
   for (let i = 0; i < missing.length; i += 500) {
-    const rows = await tx.select({ id: solve.id, eventId: solve.eventId }).from(solve)
-      .where(and(eq(solve.userId, userId), inArray(solve.id, missing.slice(i, i + 500))));
-    for (const row of rows) events.set(row.id, row.eventId);
+    const rows = await tx.select({ id: solve.id, key: solve.key, eventId: solve.eventId }).from(solve)
+      .where(and(eq(solve.userId, userId), inArray(solve.id, missing.slice(i, i + 500).map(solveUuid))));
+    for (const row of rows) events.set(fromStoredId(row).id, row.eventId);
   }
   return marks.flatMap(({ solveId, eventId = events.get(solveId), ...mark }) => (eventId === undefined ? [] : [{ ...mark, solveId, eventId }]));
 }
@@ -190,7 +191,7 @@ export async function syncForUser(
 
     const { sessions, solves, sotd } = request.changes;
     await upsertNewer(tx, timerSession, [timerSession.userId, timerSession.id], ["userId", "id"], sessions.map((r) => ({ ...r, userId })));
-    await upsertNewer(tx, solve, [solve.userId, solve.id], ["userId", "id"], solves.map((r) => ({ ...r, userId })));
+    await upsertNewer(tx, solve, [solve.userId, solve.id], ["userId", "id"], solves.map((r) => ({ ...r, ...toStoredId(r.id), userId })));
     const marks = await withServerEvents(tx, userId, sotd);
     await upsertNewer(tx, sotdMark, [sotdMark.userId, sotdMark.eventId, sotdMark.date], ["userId", "eventId", "date"], marks.map((r) => ({ ...r, userId })));
 
@@ -229,7 +230,7 @@ export async function syncForUser(
       remaining: hasMore ? await countSince(tx, userId, cursor) : 0,
       changes: {
         sessions: sent[0].map(stripServerColumns),
-        solves: sent[1].map((row) => stripServerColumns(row)),
+        solves: sent[1].map((row) => fromStoredId(stripServerColumns(row))),
         sotd: sent[2].map(stripServerColumns),
       },
     };
