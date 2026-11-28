@@ -308,6 +308,8 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
 
   if (eventId === null) return <div className="min-h-dvh" />;
 
+  // Big-cube and Megaminx scrambles run to several lines, so they get a smaller size.
+  const longScramble = event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7");
   const scrambleImage = settings.showScrambleImage && event.puzzleId && scramble.scramble && event.kind !== "multi-blind" && event.kind !== "fewest-moves" ? (
     <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
   ) : null;
@@ -399,7 +401,7 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
                   <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={scramble.next} aria-label="Next scramble" title="Next scramble (N)"><FaArrowRight aria-hidden /></button>
                   {scramble.custom && <span className="badge badge-soft badge-sm">Entered</span>}
                 </div>
-                <p className={`scramble-text mx-auto max-w-4xl text-balance ${event.id === "minx" || event.id.startsWith("6") || event.id.startsWith("7") ? "text-sm" : "text-lg sm:text-xl"}`}>
+                <p className={`scramble-text mx-auto max-w-4xl text-balance ${longScramble ? "text-sm" : "text-lg sm:text-xl"}`}>
                   {scramble.error ?? (scramble.scramble ? <ScrambleText scramble={scramble.scramble} /> : <span className="text-muted">Making a scramble…</span>)}
                 </p>
               </>
@@ -583,10 +585,13 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
       <Modal open={dialog === "scramble"} onClose={() => setDialog(null)} title="Scramble" wide>
         {event.puzzleId && scramble.scramble && event.kind !== "fewest-moves" && (
           <div className="space-y-3">
-            <div className="h-[min(60dvh,28rem)] w-full">
+            <p className={`scramble-text text-center text-balance ${longScramble ? "text-sm" : "text-base sm:text-lg"}`}>
+              <ScrambleText scramble={scramble.scramble} />
+            </p>
+            {/* No taller than a phone's width needs, so a long scramble above it still fits. */}
+            <div className="h-[min(60dvh,28rem,60vw)] w-full">
               <ScrambleImage puzzleId={event.puzzleId} scramble={scramble.scramble} scheme={settings.scheme} />
             </div>
-            <p className="scramble-text text-center text-sm">{scramble.scramble}</p>
           </div>
         )}
       </Modal>
@@ -601,10 +606,11 @@ export default function TimerApp({ authEnabled }: { authEnabled: boolean }) {
   );
 }
 
-/** The scramble, never breaking a line inside a Square-1 move like "(1, -3) /". */
+/** The scramble, never breaking a line inside a move: a Square-1 move like "(1, -3) /", or a Megaminx "D--" after its first hyphen. */
 function ScrambleText({ scramble }: { scramble: string }) {
-  if (!scramble.includes("(")) return scramble;
-  return (scramble.match(/[^/]+\/?|\//g) ?? [scramble]).map((part, i) => (
+  const parts = scramble.includes("(") ? scramble.match(/[^/]+\/?|\//g) : scramble.includes("-") ? scramble.split(/\s+/) : null;
+  if (!parts) return scramble;
+  return parts.map((part, i) => (
     // Index keys are fine: the parts of one scramble never reorder.
     // oxlint-disable-next-line react/no-array-index-key
     <Fragment key={i}><span className="whitespace-nowrap">{part.trim()}</span>{" "}</Fragment>
